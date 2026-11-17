@@ -1643,7 +1643,7 @@ export default function Home() {
   });
 
   return (
-    <div className="flex min-h-screen bg-[#010804] text-white font-sans selection:bg-emerald-500 selection:text-black">
+    <div className="flex h-screen overflow-hidden bg-[#010804] text-white font-sans selection:bg-emerald-500 selection:text-black">
       <input type="file" ref={fileInputRef} onChange={handleLogoUpload} accept="image/*" className="hidden" />
 
       {/* Floating Toast Notification */}
@@ -1729,7 +1729,7 @@ export default function Home() {
       {/* ========================================================= */}
       {/* PANEL KIRI: LEBIH GELAP PEKAT (#010a06)                  */}
       {/* ========================================================= */}
-      <aside className="w-64 flex-shrink-0 bg-[#010a06] border-r border-emerald-950/80 flex flex-col justify-between py-5 px-3 min-h-screen select-none z-20 shadow-2xl shadow-black">
+      <aside className="w-64 flex-shrink-0 bg-[#010a06] border-r border-emerald-950/80 flex flex-col justify-between py-5 px-3 h-screen overflow-y-auto select-none z-20 shadow-2xl shadow-black sticky top-0">
         <div>
           {/* Header Profil Perusahaan */}
           <div className="group relative p-2.5 rounded-2xl bg-[#03140d]/70 border border-emerald-900/40 hover:border-emerald-500/40 transition-all mb-6">
@@ -2026,11 +2026,11 @@ export default function Home() {
       {/* ========================================================= */}
       {/* PANEL KANAN: BERGRADASI HIJAU TUA MODERN                  */}
       {/* ========================================================= */}
-      <div className="flex-1 flex flex-col min-h-screen overflow-y-auto bg-gradient-to-br from-[#051f14] via-[#020d08] to-[#010604] relative">
+      <div className="flex-1 flex flex-col h-screen overflow-y-auto bg-gradient-to-br from-[#051f14] via-[#020d08] to-[#010604] relative">
         <div className="absolute top-0 right-1/4 w-[600px] h-[350px] bg-emerald-500/5 blur-[140px] pointer-events-none -z-0" />
 
         {/* Top Header Row — Switcher Simulasi Role */}
-        <header className="px-8 pt-6 pb-4 flex flex-col md:flex-row md:items-center justify-between gap-4 relative z-10 border-b border-emerald-950/40">
+        <header className="px-8 pt-6 pb-4 flex flex-col md:flex-row md:items-center justify-between gap-4 sticky top-0 z-30 bg-[#021008]/90 backdrop-blur-md border-b border-emerald-950/40">
           <div className="flex items-center gap-3.5">
             <span className="text-3xl leading-none select-none">{currentMeta.icon}</span>
             <div>
