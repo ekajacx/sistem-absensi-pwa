@@ -1,8 +1,9 @@
 "use client";
 
-import React from "react";
+import React, { useEffect } from "react";
 import { useApp } from "@/context/AppContext";
 import { MapPin, Camera, CheckCircle2, AlertTriangle, Smartphone, RefreshCw, Sparkles, Lock, Server, Video, VideoOff, ShieldAlert, ScanFace } from "lucide-react";
+import { ServerClock } from "@/hooks/useClock";
 
 export default function AbsensiView() {
   const {
@@ -39,9 +40,17 @@ export default function AbsensiView() {
     simulatedFaceScore,
     spoofAlertDetails,
     startLevel4Liveness,
+    stopWebcam,
     toggleWebcam,
     videoRef,
   } = useApp();
+
+  // Lifecycle Cleanup: Menjamin seluruh MediaStream tracks kamera fisik dihentikan saat AbsensiView unmount
+  useEffect(() => {
+    return () => {
+      stopWebcam();
+    };
+  }, [stopWebcam]);
 
   return (
     <div className="max-w-xl mx-auto space-y-6">
@@ -478,7 +487,7 @@ export default function AbsensiView() {
                       <span>APPROVED (Otomatis Hadir Sah)</span>
                     </div>
                     <p className="text-xs text-white">
-                      Jam Server: <strong>{currentTime}</strong> • Tepat Waktu • Jarak: {simulatedDistance.toFixed(1)}m
+                      Jam Server: <strong><ServerClock /></strong> • Tepat Waktu • Jarak: {simulatedDistance.toFixed(1)}m
                     </p>
                     <div className="flex gap-2 justify-center pt-2">
                       <button

@@ -31,6 +31,7 @@ import {
   allPermissions,
   initialRolePermissions,
 } from "@/data/initialData";
+import { getFormattedServerTime } from "@/hooks/useClock";
 
 function useAppProviderValue() {
 // Navigation State
@@ -92,23 +93,7 @@ function useAppProviderValue() {
     setOpenSections((prev) => ({ ...prev, [section]: !prev[section] }));
   };
 
-  // Real-time Clock
-  const [currentTime, setCurrentTime] = useState("");
-  useEffect(() => {
-    const updateClock = () => {
-      const now = new Date();
-      setCurrentTime(
-        now.toLocaleTimeString("id-ID", {
-          hour: "2-digit",
-          minute: "2-digit",
-          second: "2-digit",
-        }) + " WIB"
-      );
-    };
-    updateClock();
-    const interval = setInterval(updateClock, 1000);
-    return () => clearInterval(interval);
-  }, []);
+  // Catatan: Timer jam realtime diisolasi ke hook useClock/ServerClock agar tidak memicu re-render cascade.
 
   // ─────────────────────────────────────────────────────────────
   // 7 DEPARTEMEN PERUSAHAAN (TERMASUK DIREKSI)
@@ -285,6 +270,7 @@ function useAppProviderValue() {
   const [antiSpoofScore, setAntiSpoofScore] = useState<number>(98.5);
   const [isWebcamActive, setIsWebcamActive] = useState<boolean>(false);
   const videoRef = useRef<HTMLVideoElement | null>(null);
+  const mediaStreamRef = useRef<MediaStream | null>(null);
 
   const challengeDefinitions: Record<LivenessChallengeType, { title: string; instruction: string; icon: string; detail: string }> = {
     blink: {
@@ -382,23 +368,54 @@ function useAppProviderValue() {
     }
   };
 
-  const toggleWebcam = async () => {
-    if (isWebcamActive) {
-      if (videoRef.current && videoRef.current.srcObject) {
-        const stream = videoRef.current.srcObject as MediaStream;
-        stream.getTracks().forEach((track) => track.stop());
+  const stopWebcam = () => {
+    // 1. Hentikan seluruh media track dari ref terisolasi untuk mencegah resource leak
+    if (mediaStreamRef.current) {
+      mediaStreamRef.current.getTracks().forEach((track) => {
+        try {
+          track.stop();
+        } catch (e) {
+          console.warn("Failed to stop media stream track:", e);
+        }
+      });
+      mediaStreamRef.current = null;
+    }
+
+    // 2. Bersihkan srcObject dari videoRef jika elemen video masih terpasang
+    if (videoRef.current) {
+      if (videoRef.current.srcObject) {
+        try {
+          const stream = videoRef.current.srcObject as MediaStream;
+          stream.getTracks().forEach((track) => {
+            try {
+              track.stop();
+            } catch (e) {
+              // ignore
+            }
+          });
+        } catch (e) {
+          // ignore
+        }
         videoRef.current.srcObject = null;
       }
-      setIsWebcamActive(false);
+    }
+
+    setIsWebcamActive(false);
+  };
+
+  const toggleWebcam = async () => {
+    if (isWebcamActive) {
+      stopWebcam();
       showToast("Kamera fisik dimatikan. Beralih ke Biometric Sensor Simulator.");
     } else {
       try {
         const stream = await navigator.mediaDevices.getUserMedia({
           video: { facingMode: "user", width: { ideal: 640 }, height: { ideal: 480 } },
         });
+        mediaStreamRef.current = stream;
         if (videoRef.current) {
           videoRef.current.srcObject = stream;
-          videoRef.current.play();
+          videoRef.current.play().catch((err) => console.warn("Video play error:", err));
         }
         setIsWebcamActive(true);
         showToast("📹 Kamera depan aktif! Menyelaraskan feed dengan pemindai biometrik AI Level 4.");
@@ -410,13 +427,8 @@ function useAppProviderValue() {
   };
 
   useEffect(() => {
-    if (activeMenu !== "absensi" && isWebcamActive) {
-      if (videoRef.current && videoRef.current.srcObject) {
-        const stream = videoRef.current.srcObject as MediaStream;
-        stream.getTracks().forEach((track) => track.stop());
-        videoRef.current.srcObject = null;
-      }
-      setIsWebcamActive(false);
+    if (activeMenu !== "absensi" && (isWebcamActive || mediaStreamRef.current)) {
+      stopWebcam();
     }
   }, [activeMenu, isWebcamActive]);
 
@@ -475,7 +487,7 @@ function useAppProviderValue() {
           isEdited: true,
           editedBy: `${currentActiveEmployee.name} (${currentActiveEmployee.role})`,
           editReason: editAttendanceForm.reason,
-          editedAt: `${new Date().toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" })}, ${currentTime || "15:00 WIB"}`,
+          editedAt: `${new Date().toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" })}, ${getFormattedServerTime()}`,
         };
       }
       return item;
@@ -486,7 +498,7 @@ function useAppProviderValue() {
     // Tambahkan log baru berwarna merah (MANUAL_EDIT)
     const newLog: ActivityLog = {
       id: `log-${Date.now()}`,
-      timestamp: `${new Date().toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" })}, ${currentTime || "15:00 WIB"}`,
+      timestamp: `${new Date().toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" })}, ${getFormattedServerTime()}`,
       type: "MANUAL_EDIT",
       title: `⚠️ Koreksi Manual Rekap Absensi (${editingAttendance.name})`,
       description: `Jam Check-In disesuaikan ke "${editAttendanceForm.in}", Check-Out ke "${editAttendanceForm.out}", Status: ${editAttendanceForm.status}`,
@@ -550,7 +562,7 @@ function useAppProviderValue() {
     // Catat ke log aktivitas sistem
     const newLog: ActivityLog = {
       id: `log-${Date.now()}`,
-      timestamp: `${journalForm.date || "17 Nov 2026"}, ${currentTime || "16:00 WIB"}`,
+      timestamp: `${journalForm.date || "17 Nov 2026"}, ${getFormattedServerTime()}`,
       type: "LEAVE_APPLY",
       title: "Pengisian Jurnal Kerja Harian",
       description: `Laporan jurnal kerja harian (${tasks.length} aktivitas tugas) diserahkan oleh ${currentActiveEmployee.name} (${currentActiveEmployee.role})`,
@@ -1436,7 +1448,7 @@ function useAppProviderValue() {
         nik: currentActiveEmployee.nik,
         dept: currentActiveEmployee.dept,
         shift: shifts.find((s) => s.id === currentActiveEmployee.shiftId)?.name || "Shift Pagi (Utama)",
-        in: currentTime || "07:45 WIB",
+        in: getFormattedServerTime(),
         out: "--:--",
         dist: simulatedDistance,
         score: simulatedFaceScore,
@@ -1448,7 +1460,7 @@ function useAppProviderValue() {
 
       const autoLog: ActivityLog = {
         id: `log-${Date.now()}`,
-        timestamp: `${new Date().toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" })}, ${currentTime || "07:45 WIB"}`,
+        timestamp: `${new Date().toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" })}, ${getFormattedServerTime()}`,
         type: "CHECK_IN",
         title: "Check-In Mandiri Otomatis (Level 4 AI)",
         description: `Absensi hadir masuk terverifikasi via GPS (${simulatedDistance.toFixed(1)}m) & Level 4 AI Anti-Spoofing (${antiSpoofScore}%) [3/3 Multi-Challenge Valid]`,
@@ -1616,7 +1628,9 @@ function useAppProviderValue() {
     currentChallengeIndex,
     currentMeta,
     currentRoleName,
-    currentTime,
+    currentTime: "--:-- WIB",
+    getCurrentTime: getFormattedServerTime,
+    getFormattedServerTime,
     cutiOverrideConfirm,
     deleteShiftConfirm,
     directSubordinates,
@@ -1722,7 +1736,7 @@ function useAppProviderValue() {
     setCompanyName,
     setConfirmDialog,
     setCurrentChallengeIndex,
-    setCurrentTime,
+    setCurrentTime: () => {},
     setCutiOverrideConfirm,
     setDeleteShiftConfirm,
     setDraftSchedule,
@@ -1810,6 +1824,7 @@ function useAppProviderValue() {
     togglePermission,
     toggleSection,
     toggleWebcam,
+    stopWebcam,
     userDeptFilter,
     userSearchQuery,
     users,
