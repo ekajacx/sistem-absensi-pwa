@@ -847,11 +847,38 @@ export default function Home() {
     birthDate: "1998-05-14",
     dept: "IT" as DepartmentType,
     level: "Staff" as HierarchyLevel,
+    managerId: "emp-it-spv", // Pre-linked ke IT Supervisor
     shiftId: "shift-1",
     contractType: "Kontrak" as ContractType,
     startDate: "2026-11-20",
     endDate: "2027-11-20",
   });
+
+  const handleDeptChange = (newDept: DepartmentType) => {
+    let targetMgrId = "emp-ceo";
+    if (newEmployeeForm.level === "Staff") {
+      const spv = employees.find((e) => e.dept === newDept && e.level === "Supervisor");
+      if (spv) targetMgrId = spv.id;
+    }
+    setNewEmployeeForm((prev) => ({
+      ...prev,
+      dept: newDept,
+      managerId: targetMgrId,
+    }));
+  };
+
+  const handleLevelChange = (newLevel: HierarchyLevel) => {
+    let targetMgrId = "emp-ceo";
+    if (newLevel === "Staff") {
+      const spv = employees.find((e) => e.dept === newEmployeeForm.dept && e.level === "Supervisor");
+      if (spv) targetMgrId = spv.id;
+    }
+    setNewEmployeeForm((prev) => ({
+      ...prev,
+      level: newLevel,
+      managerId: targetMgrId,
+    }));
+  };
 
   // Form State: Paksa Ganti Password Karyawan Baru
   const [forcedPasswordForm, setForcedPasswordForm] = useState({
@@ -892,9 +919,10 @@ export default function Home() {
         : deptInfo?.staffRole || `${newEmployeeForm.dept} Staff`;
 
     const superiorEmployee =
-      newEmployeeForm.level === "Staff"
+      employees.find((e) => e.id === newEmployeeForm.managerId) ||
+      (newEmployeeForm.level === "Staff"
         ? employees.find((e) => e.dept === newEmployeeForm.dept && e.level === "Supervisor") || employees[0]
-        : employees[0]; // Supervisor melapor ke CEO
+        : employees[0]); // Supervisor melapor ke CEO
 
     const effectiveEndDate = newEmployeeForm.contractType === "Tetap" ? null : newEmployeeForm.endDate;
 
@@ -977,6 +1005,7 @@ export default function Home() {
       birthDate: "1998-05-14",
       dept: "IT",
       level: "Staff",
+      managerId: "emp-it-spv",
       shiftId: "shift-1",
       contractType: "Kontrak",
       startDate: "2026-11-20",
@@ -3082,7 +3111,7 @@ export default function Home() {
                   <label className="block text-emerald-400 font-bold mb-1">Pilih Departemen (6 Pokok) *</label>
                   <select
                     value={newEmployeeForm.dept}
-                    onChange={(e) => setNewEmployeeForm({ ...newEmployeeForm, dept: e.target.value as DepartmentType })}
+                    onChange={(e) => handleDeptChange(e.target.value as DepartmentType)}
                     className="w-full bg-[#021008] border border-emerald-500/40 rounded-xl p-2.5 text-white font-bold focus:border-emerald-400 focus:outline-none"
                   >
                     {standardDepartments.map((d) => (
@@ -3097,12 +3126,45 @@ export default function Home() {
                   <label className="block text-emerald-400 font-bold mb-1">Tingkatan Posisi *</label>
                   <select
                     value={newEmployeeForm.level}
-                    onChange={(e) => setNewEmployeeForm({ ...newEmployeeForm, level: e.target.value as HierarchyLevel })}
+                    onChange={(e) => handleLevelChange(e.target.value as HierarchyLevel)}
                     className="w-full bg-[#021008] border border-emerald-500/40 rounded-xl p-2.5 text-white font-bold focus:border-emerald-400 focus:outline-none"
                   >
                     <option value="Staff">Staff ({newEmployeeForm.dept} Staff)</option>
                     <option value="Supervisor">Supervisor ({newEmployeeForm.dept} Supervisor)</option>
                   </select>
+                </div>
+              </div>
+
+              {/* Atasan Langsung (N+1) Auto-Link & Select */}
+              <div className="bg-[#010804] p-3 rounded-2xl border border-emerald-500/40 space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <label className="block text-emerald-400 font-bold text-xs">
+                    Atasan Langsung (N+1) *
+                  </label>
+                  <span className="text-[10px] font-extrabold text-amber-400 bg-amber-400/10 px-2 py-0.5 rounded-full border border-amber-400/30 flex items-center gap-1">
+                    <span>⚡</span> Terhubung Otomatis
+                  </span>
+                </div>
+                <select
+                  value={newEmployeeForm.managerId}
+                  onChange={(e) => setNewEmployeeForm({ ...newEmployeeForm, managerId: e.target.value })}
+                  className="w-full bg-[#021008] border border-emerald-900/80 rounded-xl p-2.5 text-white font-bold focus:border-emerald-400 focus:outline-none"
+                >
+                  {employees
+                    .filter((e) => e.level === "Director" || e.level === "Supervisor")
+                    .map((mgr) => (
+                      <option key={mgr.id} value={mgr.id}>
+                        {mgr.name} — {mgr.role} ({mgr.dept})
+                      </option>
+                    ))}
+                </select>
+                <div className="flex items-center gap-1.5 pt-0.5 text-[11px] text-white/80">
+                  <span className="text-emerald-400 font-bold">✓ Relasi:</span>
+                  <span>
+                    {newEmployeeForm.level === "Staff"
+                      ? `Staf ini otomatis melapor ke ${employees.find((e) => e.id === newEmployeeForm.managerId)?.name || "Supervisor"} dan masuk dalam pengawasan langsung beliau.`
+                      : `Supervisor ini bertanggung jawab dan melapor langsung ke ${employees.find((e) => e.id === newEmployeeForm.managerId)?.name || "Direktur Utama"}.`}
+                  </span>
                 </div>
               </div>
 
