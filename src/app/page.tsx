@@ -958,7 +958,7 @@ export default function Home() {
   // ─────────────────────────────────────────────────────────────
   const allPermissions: PermissionItem[] = [
     { id: "menu_user_mgmt", category: "Hak Akses Menu Sistem", name: "Akses Menu User Management", description: "Wewenang membuka menu User Management, kelola kredensial akun & matriks RBAC" },
-    { id: "menu_settings", category: "Hak Akses Menu Sistem", name: "Akses Menu Pengaturan Teknis IT", description: "Wewenang membuka menu Pengaturan Teknis IT, Geofence GPS & AI Match" },
+    { id: "menu_settings", category: "Hak Akses Menu Sistem", name: "Akses Menu Pengaturan Sistem", description: "Wewenang membuka menu Pengaturan Sistem (Lokasi / Geofence GPS & Master Jam Shift)" },
     { id: "dash_global", category: "Dashboard", name: "Lihat Dashboard Global Perusahaan", description: "Melihat grafik total SDM, absensi, dan analitik seluruh divisi" },
     { id: "dash_team", category: "Dashboard", name: "Lihat Ringkasan Tim / Bawahan Saja", description: "Hanya melihat metrik performa dan kehadiran staf di bawah supervisinya" },
     { id: "emp_manage_hr", category: "Wewenang Khusus HR", name: "Daftarkan Karyawan & Buat Akun Otomatis", description: "Hak khusus HR untuk mendaftarkan NIK, nama, atasan, status kerja & kredensial acak" },
@@ -1000,6 +1000,7 @@ export default function Home() {
     ],
     "General Manager": [
       "menu_user_mgmt", // GM berwenang memantau seluruh akun dan hirarki organisasi
+      "menu_settings", // GM berwenang mengakses Pengaturan Lokasi & Master Shift
       "dash_global",
       "dash_team",
       "att_scan_self",
@@ -1014,6 +1015,7 @@ export default function Home() {
     ],
     "HR Supervisor": [
       "menu_user_mgmt", // HR Supervisor berwenang penuh pada user management & pendaftaran
+      "menu_settings", // HR Supervisor berwenang mengakses Pengaturan Lokasi & Master Shift
       "dash_global",
       "dash_team",
       "emp_manage_hr",
@@ -1057,6 +1059,7 @@ export default function Home() {
       "att_scan_self",
     ],
     Supervisor: [
+      "menu_settings", // Supervisor berwenang mengakses Pengaturan Master Jam Shift
       "dash_team",
       "att_scan_self",
       "att_team",
@@ -1115,10 +1118,13 @@ export default function Home() {
 
   // Otomatis alihkan jika menu dibatasi untuk Staff atau tidak memiliki izin akses
   useEffect(() => {
-    if (isStaff && ["departemen", "jabatan", "kontrak", "rekap-absensi", "user-management", "pengaturan"].includes(activeMenu)) {
+    if (isStaff && ["departemen", "jabatan", "kontrak", "rekap-absensi", "user-management", "izin-akses", "pengaturan"].includes(activeMenu)) {
       setActiveMenu("karyawan");
     }
     if (activeMenu === "user-management" && !hasPermission("menu_user_mgmt")) {
+      setActiveMenu("dashboard");
+    }
+    if (activeMenu === "izin-akses" && !hasPermission("menu_user_mgmt")) {
       setActiveMenu("dashboard");
     }
     if (activeMenu === "pengaturan" && !hasPermission("menu_settings")) {
@@ -1598,6 +1604,7 @@ export default function Home() {
 
   const [shiftActiveTab, setShiftActiveTab] = useState<"roster" | "master">("roster");
   const [selectedScheduleEmpId, setSelectedScheduleEmpId] = useState<string>("emp-ops-spv");
+  const [pengaturanTab, setPengaturanTab] = useState<"lokasi" | "shift">("lokasi");
 
   // Jika POV Staff, kunci target jadwal ke diri sendiri dan kunci tab ke roster
   useEffect(() => {
@@ -2226,12 +2233,12 @@ export default function Home() {
     kontrak: { title: "KONTRAK & LIFECYCLE", subtitle: "Status Kerja Karyawan: Tetap, Kontrak, Magang, DW", icon: "📄" },
     absensi: { title: "ABSENSI", subtitle: "Verifikasi Kehadiran Otomatis Real-Time (GPS & AI Liveness)", icon: "📍" },
     "rekap-absensi": { title: "REKAP ABSENSI", subtitle: `Audit Log Kehadiran Terverifikasi (${attendances.length} Log Hari Ini)`, icon: "📊" },
-    "jadwal-shift": { title: "JADWAL SHIFT", subtitle: `Konfigurasi Shift Kerja Dinamis (${shifts.length} Shift Aktif)`, icon: "📅" },
+    "jadwal-shift": { title: "JADWAL SHIFT", subtitle: "Penjadwalan Roster Kerja Mingguan (7 Hari)", icon: "📅" },
     "pengajuan-cuti": { title: "PENGAJUAN CUTI", subtitle: `Self-Service Permohonan Cuti & Persetujuan Berjenjang N+1 (${pendingSubordinateCount} Pending Approval)`, icon: "⛱️" },
     "jurnal-kerja": { title: "JURNAL KERJA", subtitle: `Catatan Produktivitas Harian & Penilaian Supervisor (${journals.length} Jurnal Tercatat)`, icon: "📝" },
     "user-management": { title: "USER MANAGEMENT", subtitle: `Kelola Akun Pengguna Sistem (${users.length} Akun Terdaftar)`, icon: "👤" },
     "izin-akses": { title: "IZIN AKSES (RBAC)", subtitle: "Matriks Wewenang & Hak Akses Berdasarkan Peran Sistem (Role-Based Access Control)", icon: "🛡️" },
-    pengaturan: { title: "PENGATURAN", subtitle: `Konfigurasi Geofence Kantor (${settings.geofenceRadius}m) & AI Match (${settings.aiFaceThreshold}%)`, icon: "⚙️" },
+    pengaturan: { title: "PENGATURAN", subtitle: `Konfigurasi Geofence Kantor (${settings.geofenceRadius}m) & Master Jam Shift (${shifts.length} Shift)`, icon: "⚙️" },
   };
 
   const currentMeta = menuMeta[activeMenu] ?? { title: activeMenu.toUpperCase(), subtitle: "", icon: "📋" };
@@ -4956,41 +4963,32 @@ export default function Home() {
                     </div>
                   </div>
 
-                  {/* Tab Selector: [📅 Roster Mingguan] vs [⚙️ Master Shift] - Khusus Supervisor & Manajemen */}
-                  {!isStaff && (
-                    <div className="flex items-center gap-3 pt-2 border-t border-emerald-900/60">
+                  {/* Action Link: Pindah ke Pengaturan Master Jam Shift */}
+                  {!isStaff && hasPermission("menu_settings") && (
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-3 border-t border-emerald-900/60">
+                      <div className="flex items-center gap-2 text-xs text-white/70">
+                        <CalendarDays className="w-4 h-4 text-emerald-400" />
+                        <span className="font-medium">Halaman Penjadwalan Roster Mingguan (7 Hari)</span>
+                      </div>
                       <button
-                        onClick={() => setShiftActiveTab("roster")}
-                        className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-xs transition-all ${
-                          shiftActiveTab === "roster"
-                            ? "bg-emerald-500 text-black shadow-lg shadow-emerald-500/20 font-extrabold"
-                            : "bg-[#021008] text-white/70 hover:text-white border border-emerald-900/60"
-                        }`}
+                        type="button"
+                        onClick={() => {
+                          setActiveMenu("pengaturan");
+                          setPengaturanTab("shift");
+                        }}
+                        className="px-4 py-2 rounded-xl bg-[#021008] hover:bg-emerald-950 text-emerald-300 border border-emerald-500/40 font-bold text-xs transition-all flex items-center gap-2 shadow-sm"
                       >
-                        <CalendarDays className="w-4 h-4" />
-                        <span>Penjadwalan Roster Mingguan (7 Hari)</span>
-                      </button>
-
-                      <button
-                        onClick={() => setShiftActiveTab("master")}
-                        className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-xs transition-all ${
-                          shiftActiveTab === "master"
-                            ? "bg-emerald-500 text-black shadow-lg shadow-emerald-500/20 font-extrabold"
-                            : "bg-[#021008] text-white/70 hover:text-white border border-emerald-900/60"
-                        }`}
-                      >
-                        <Settings className="w-4 h-4" />
-                        <span>Master Jam Shift ({shifts.length} Shift Aktif)</span>
+                        <Settings className="w-3.5 h-3.5" />
+                        <span>Master Jam Shift di Pengaturan ({shifts.length} Shift) →</span>
                       </button>
                     </div>
                   )}
                 </div>
 
                 {/* =================================================== */}
-                {/* TAB 1: PENJADWALAN ROSTER MINGGUAN (7 HARI)         */}
+                {/* PENJADWALAN ROSTER MINGGUAN (7 HARI)                */}
                 {/* =================================================== */}
-                {shiftActiveTab === "roster" && (
-                  isStaff ? (
+                {isStaff ? (
                     <div className="space-y-6">
                       {/* Notice Wewenang Supervisor & Card Info Karyawan */}
                       <div className="bg-[#021008] border border-emerald-900/60 rounded-3xl p-6 shadow-xl space-y-5">
@@ -5789,110 +5787,6 @@ export default function Home() {
                       </div>
                     </div>
                   </div>
-                  )
-                )}
-
-                {/* =================================================== */}
-                {/* TAB 2: MASTER KONFIGURASI SHIFT (CRUD SHIFT)        */}
-                {/* =================================================== */}
-                {!isStaff && shiftActiveTab === "master" && (
-                  <div className="space-y-6">
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-[#021008] p-5 rounded-3xl border border-emerald-900/60 shadow-xl">
-                      <div>
-                        <h4 className="font-bold text-white text-base">Master Jam Shift Operasional</h4>
-                        <p className="text-xs text-white/60">
-                          Tambah, edit jam kerja, dan kelola toleransi keterlambatan shift kantor & operasional.
-                        </p>
-                      </div>
-
-                      <button
-                        type="button"
-                        onClick={handleOpenAddShift}
-                        className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-400 hover:from-emerald-400 hover:to-teal-300 text-black font-black text-xs flex items-center gap-2 shadow-lg shadow-emerald-500/20 transition-all hover:scale-[1.02]"
-                      >
-                        <Plus className="w-4 h-4" />
-                        <span>+ Tambah Shift Baru</span>
-                      </button>
-                    </div>
-
-                    {/* Grid Cards Master Shifts */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                      {shifts.map((s) => {
-                        const shiftStaffCount = employees.filter((e) => e.shiftId === s.id).length;
-
-                        return (
-                          <div
-                            key={s.id}
-                            className="bg-gradient-to-br from-[#062417] to-[#021008] p-6 rounded-3xl border border-emerald-900/60 shadow-xl flex flex-col justify-between space-y-4 relative overflow-hidden"
-                          >
-                            <div className="space-y-3">
-                              <div className="flex justify-between items-center">
-                                <span
-                                  className={`text-[10px] font-black px-2.5 py-0.5 rounded-full border uppercase tracking-wider ${
-                                    s.status === "Aktif"
-                                      ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/30"
-                                      : "bg-red-500/20 text-red-300 border-red-500/30"
-                                  }`}
-                                >
-                                  {s.status}
-                                </span>
-                                <span className="text-xs font-bold text-white/80 bg-[#010804] px-2.5 py-1 rounded-lg border border-emerald-900/60">
-                                  👥 {shiftStaffCount} Staf Terkait
-                                </span>
-                              </div>
-
-                              <h4 className="font-extrabold text-white text-base">{s.name}</h4>
-
-                              {/* Jam Masuk - Jam Pulang Block */}
-                              <div className="bg-[#010804] p-4 rounded-2xl border border-emerald-900/60 text-center space-y-1">
-                                <span className="text-[10px] text-white/50 uppercase tracking-widest font-bold block">
-                                  JAM KERJA OPERASIONAL
-                                </span>
-                                <div className="font-mono text-2xl font-black text-white tracking-wider">
-                                  {s.startTime} - {s.endTime}
-                                </div>
-                                <span className="text-[10px] text-emerald-400 font-semibold block">Waktu Indonesia Barat (WIB)</span>
-                              </div>
-
-                              {/* Detail Toleransi & Buka Absen */}
-                              <div className="bg-[#010804] p-3 rounded-xl border border-emerald-900/40 text-xs space-y-2">
-                                <div className="flex justify-between">
-                                  <span className="text-white/60">Toleransi Terlambat:</span>
-                                  <span className="font-bold text-amber-300">{s.tolerance}</span>
-                                </div>
-                                <div className="flex justify-between">
-                                  <span className="text-white/60">Buka Absen Masuk:</span>
-                                  <span className="font-bold text-teal-300">{s.openBefore} sebelum jam kerja</span>
-                                </div>
-                              </div>
-                            </div>
-
-                            {/* Tombol Aksi: Edit & Hapus Shift */}
-                            <div className="pt-2 border-t border-emerald-900/60 flex gap-2">
-                              <button
-                                type="button"
-                                onClick={() => handleOpenEditShift(s)}
-                                className="flex-1 py-2 rounded-xl bg-emerald-500/20 hover:bg-emerald-500 hover:text-black text-emerald-300 text-xs font-bold transition-all text-center flex items-center justify-center gap-1.5"
-                              >
-                                <Pencil className="w-3.5 h-3.5" />
-                                <span>Edit Shift</span>
-                              </button>
-
-                              <button
-                                type="button"
-                                onClick={() => setDeleteShiftConfirm(s)}
-                                className="py-2 px-3 rounded-xl bg-red-500/20 hover:bg-red-500 hover:text-white text-red-300 text-xs font-bold transition-all text-center flex items-center justify-center gap-1.5"
-                                title="Hapus Shift"
-                              >
-                                <span>🗑️</span>
-                                <span>Hapus</span>
-                              </button>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
                 )}
               </div>
             );
@@ -6386,64 +6280,199 @@ export default function Home() {
           })()}
 
           {/* ===================================================== */}
-          {/* VIEW: PENGATURAN TEKNIS IT (WEWENANG KHUSUS IT)       */}
+          {/* VIEW: PENGATURAN (LOKASI GEOFENCE & MASTER JAM SHIFT) */}
           {/* ===================================================== */}
           {activeMenu === "pengaturan" && hasPermission("menu_settings") && (
-            <div className="max-w-2xl bg-gradient-to-br from-[#062417] to-[#021008] rounded-2xl p-6 border border-emerald-900/60 space-y-5">
-              <div className="flex items-center justify-between border-b border-emerald-900/60 pb-3">
-                <div>
-                  <h3 className="font-bold text-white text-base flex items-center gap-2">
-                    <Cpu className="w-5 h-5 text-blue-400" />
-                    <span>Pengaturan Teknis IT & Geofence GPS</span>
-                  </h3>
-                  <p className="text-xs text-white/70">
-                    Wewenang khusus IT Supervisor & IT Staff untuk mengelola infrastruktur & keamanan sistem.
-                  </p>
-                </div>
-                <span className="px-2.5 py-1 rounded-lg bg-blue-500/20 text-blue-300 border border-blue-500/30 text-[10px] font-bold">
-                  IT ONLY
-                </span>
-              </div>
-
-              <div className="space-y-4 text-xs">
-                <div>
-                  <label className="text-white block mb-1 font-bold">Nama Titik Kantor</label>
-                  <input
-                    type="text"
-                    value={settings.officeName}
-                    onChange={(e) => setSettings({ ...settings, officeName: e.target.value })}
-                    className="w-full bg-[#010804] border border-emerald-900/60 rounded-xl px-3.5 py-2.5 text-white"
-                  />
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="text-white block mb-1 font-bold">Radius Toleransi Geofence (Meter)</label>
-                    <input
-                      type="number"
-                      value={settings.geofenceRadius}
-                      onChange={(e) => setSettings({ ...settings, geofenceRadius: parseInt(e.target.value) || 50 })}
-                      className="w-full bg-[#010804] border border-emerald-900/60 rounded-xl px-3.5 py-2.5 text-white font-mono"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-white block mb-1 font-bold">Ambang Batas Skor AI Wajah (%)</label>
-                    <input
-                      type="number"
-                      value={settings.aiFaceThreshold}
-                      onChange={(e) => setSettings({ ...settings, aiFaceThreshold: parseInt(e.target.value) || 80 })}
-                      className="w-full bg-[#010804] border border-emerald-900/60 rounded-xl px-3.5 py-2.5 text-white font-mono"
-                    />
-                  </div>
-                </div>
+            <div className="space-y-6">
+              {/* Tab Selector Utama Pengaturan */}
+              <div className="flex flex-wrap items-center gap-3 border-b border-emerald-900/60 pb-3">
+                <button
+                  type="button"
+                  onClick={() => setPengaturanTab("lokasi")}
+                  className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-xs transition-all ${
+                    pengaturanTab === "lokasi"
+                      ? "bg-emerald-500 text-black shadow-lg shadow-emerald-500/20 font-extrabold"
+                      : "bg-[#021008] text-white/70 hover:text-white border border-emerald-900/60"
+                  }`}
+                >
+                  <MapPin className="w-4 h-4" />
+                  <span>Pengaturan Lokasi & Geofence GPS</span>
+                </button>
 
                 <button
-                  onClick={() => showToast("✓ Konfigurasi server geofence berhasil disimpan oleh tim IT!")}
-                  className="w-full mt-4 py-3 rounded-xl bg-gradient-to-r from-blue-600 to-teal-500 text-white font-extrabold text-xs hover:brightness-110 transition-all shadow-lg"
+                  type="button"
+                  onClick={() => setPengaturanTab("shift")}
+                  className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-xs transition-all ${
+                    pengaturanTab === "shift"
+                      ? "bg-emerald-500 text-black shadow-lg shadow-emerald-500/20 font-extrabold"
+                      : "bg-[#021008] text-white/70 hover:text-white border border-emerald-900/60"
+                  }`}
                 >
-                  Simpan Konfigurasi Teknis IT
+                  <Settings className="w-4 h-4" />
+                  <span>Master Jam Shift ({shifts.length} Shift Aktif)</span>
                 </button>
               </div>
+
+              {/* TAB 1: PENGATURAN LOKASI & GEOFENCE GPS */}
+              {pengaturanTab === "lokasi" && (
+                <div className="max-w-2xl bg-gradient-to-br from-[#062417] to-[#021008] rounded-2xl p-6 border border-emerald-900/60 space-y-5">
+                  <div className="flex items-center justify-between border-b border-emerald-900/60 pb-3">
+                    <div>
+                      <h3 className="font-bold text-white text-base flex items-center gap-2">
+                        <Cpu className="w-5 h-5 text-blue-400" />
+                        <span>Pengaturan Titik Lokasi Kantor & Geofence GPS</span>
+                      </h3>
+                      <p className="text-xs text-white/70">
+                        Wewenang khusus IT Supervisor & IT Staff untuk mengelola infrastruktur & keamanan sistem.
+                      </p>
+                    </div>
+                    <span className="px-2.5 py-1 rounded-lg bg-blue-500/20 text-blue-300 border border-blue-500/30 text-[10px] font-bold">
+                      IT ONLY
+                    </span>
+                  </div>
+
+                  <div className="space-y-4 text-xs">
+                    <div>
+                      <label className="text-white block mb-1 font-bold">Nama Titik Kantor</label>
+                      <input
+                        type="text"
+                        value={settings.officeName}
+                        onChange={(e) => setSettings({ ...settings, officeName: e.target.value })}
+                        className="w-full bg-[#010804] border border-emerald-900/60 rounded-xl px-3.5 py-2.5 text-white"
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="text-white block mb-1 font-bold">Radius Toleransi Geofence (Meter)</label>
+                        <input
+                          type="number"
+                          value={settings.geofenceRadius}
+                          onChange={(e) => setSettings({ ...settings, geofenceRadius: parseInt(e.target.value) || 50 })}
+                          className="w-full bg-[#010804] border border-emerald-900/60 rounded-xl px-3.5 py-2.5 text-white font-mono"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-white block mb-1 font-bold">Ambang Batas Skor AI Wajah (%)</label>
+                        <input
+                          type="number"
+                          value={settings.aiFaceThreshold}
+                          onChange={(e) => setSettings({ ...settings, aiFaceThreshold: parseInt(e.target.value) || 80 })}
+                          className="w-full bg-[#010804] border border-emerald-900/60 rounded-xl px-3.5 py-2.5 text-white font-mono"
+                        />
+                      </div>
+                    </div>
+
+                    <button
+                      onClick={() => showToast("✓ Konfigurasi server geofence berhasil disimpan oleh tim IT!")}
+                      className="w-full mt-4 py-3 rounded-xl bg-gradient-to-r from-blue-600 to-teal-500 text-white font-extrabold text-xs hover:brightness-110 transition-all shadow-lg"
+                    >
+                      Simpan Konfigurasi Teknis IT
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* TAB 2: MASTER JAM SHIFT OPERASIONAL (DIPINDAHKAN KE PENGATURAN) */}
+              {pengaturanTab === "shift" && (
+                <div className="space-y-6">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-[#021008] p-5 rounded-3xl border border-emerald-900/60 shadow-xl">
+                    <div>
+                      <h4 className="font-bold text-white text-base">Master Jam Shift Operasional</h4>
+                      <p className="text-xs text-white/60">
+                        Tambah, edit jam kerja, dan kelola toleransi keterlambatan shift kantor & operasional.
+                      </p>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={handleOpenAddShift}
+                      className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-400 hover:from-emerald-400 hover:to-teal-300 text-black font-black text-xs flex items-center gap-2 shadow-lg shadow-emerald-500/20 transition-all hover:scale-[1.02]"
+                    >
+                      <Plus className="w-4 h-4" />
+                      <span>+ Tambah Shift Baru</span>
+                    </button>
+                  </div>
+
+                  {/* Grid Cards Master Shifts */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {shifts.map((s) => {
+                      const shiftStaffCount = employees.filter((e) => e.shiftId === s.id).length;
+
+                      return (
+                        <div
+                          key={s.id}
+                          className="bg-gradient-to-br from-[#062417] to-[#021008] p-6 rounded-3xl border border-emerald-900/60 shadow-xl flex flex-col justify-between space-y-4 relative overflow-hidden"
+                        >
+                          <div className="space-y-3">
+                            <div className="flex justify-between items-center">
+                              <span
+                                className={`text-[10px] font-black px-2.5 py-0.5 rounded-full border uppercase tracking-wider ${
+                                  s.status === "Aktif"
+                                    ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/30"
+                                    : "bg-red-500/20 text-red-300 border-red-500/30"
+                                }`}
+                              >
+                                {s.status}
+                              </span>
+                              <span className="text-xs font-bold text-white/80 bg-[#010804] px-2.5 py-1 rounded-lg border border-emerald-900/60">
+                                👥 {shiftStaffCount} Staf Terkait
+                              </span>
+                            </div>
+
+                            <h4 className="font-extrabold text-white text-base">{s.name}</h4>
+
+                            {/* Jam Masuk - Jam Pulang Block */}
+                            <div className="bg-[#010804] p-4 rounded-2xl border border-emerald-900/60 text-center space-y-1">
+                              <span className="text-[10px] text-white/50 uppercase tracking-widest font-bold block">
+                                JAM KERJA OPERASIONAL
+                              </span>
+                              <div className="font-mono text-2xl font-black text-white tracking-wider">
+                                {s.startTime} - {s.endTime}
+                              </div>
+                              <span className="text-[10px] text-emerald-400 font-semibold block">Waktu Indonesia Barat (WIB)</span>
+                            </div>
+
+                            {/* Detail Toleransi & Buka Absen */}
+                            <div className="bg-[#010804] p-3 rounded-xl border border-emerald-900/40 text-xs space-y-2">
+                              <div className="flex justify-between">
+                                <span className="text-white/60">Toleransi Terlambat:</span>
+                                <span className="font-bold text-amber-300">{s.tolerance}</span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span className="text-white/60">Buka Absen Masuk:</span>
+                                <span className="font-bold text-teal-300">{s.openBefore} sebelum jam kerja</span>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Tombol Aksi: Edit & Hapus Shift */}
+                          <div className="pt-2 border-t border-emerald-900/60 flex gap-2">
+                            <button
+                              type="button"
+                              onClick={() => handleOpenEditShift(s)}
+                              className="flex-1 py-2 rounded-xl bg-emerald-500/20 hover:bg-emerald-500 hover:text-black text-emerald-300 text-xs font-bold transition-all text-center flex items-center justify-center gap-1.5"
+                            >
+                              <Pencil className="w-3.5 h-3.5" />
+                              <span>Edit Shift</span>
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => setDeleteShiftConfirm(s)}
+                              className="py-2 px-3 rounded-xl bg-red-500/20 hover:bg-red-500 hover:text-white text-red-300 text-xs font-bold transition-all text-center flex items-center justify-center gap-1.5"
+                              title="Hapus Shift"
+                            >
+                              <span>🗑️</span>
+                              <span>Hapus</span>
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>
