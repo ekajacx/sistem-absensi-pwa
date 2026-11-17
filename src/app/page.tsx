@@ -966,6 +966,65 @@ export default function Home() {
 
   // Modals Open State
   const [showAddEmployeeModal, setShowAddEmployeeModal] = useState(false);
+  const [showEditEmployeeModal, setShowEditEmployeeModal] = useState(false);
+  const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null);
+  const [confirmDialog, setConfirmDialog] = useState<{
+    isOpen: boolean;
+    type: "deactivate" | "delete";
+    employee: Employee | null;
+  }>({
+    isOpen: false,
+    type: "deactivate",
+    employee: null,
+  });
+
+  const handleOpenEditModal = (emp: Employee) => {
+    setEditingEmployee({ ...emp });
+    setShowEditEmployeeModal(true);
+  };
+
+  const handleSaveEditEmployee = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingEmployee) return;
+
+    setEmployees((prev) =>
+      prev.map((emp) => (emp.id === editingEmployee.id ? { ...editingEmployee } : emp))
+    );
+    setUsers((prev) =>
+      prev.map((u) =>
+        u.employeeId === editingEmployee.id
+          ? {
+              ...u,
+              name: editingEmployee.name,
+              email: editingEmployee.email,
+              dept: editingEmployee.dept,
+              role: (editingEmployee.role as any) || u.role,
+            }
+          : u
+      )
+    );
+    setShowEditEmployeeModal(false);
+    showToast(`✓ Data karyawan ${editingEmployee.name} berhasil diperbarui!`, "success");
+  };
+
+  const handleConfirmAction = () => {
+    if (!confirmDialog.employee) return;
+    const emp = confirmDialog.employee;
+
+    if (confirmDialog.type === "deactivate") {
+      setEmployees((prev) =>
+        prev.map((e) => (e.id === emp.id ? { ...e, status: "Non-Aktif" as const } : e))
+      );
+      showToast(`${emp.name} telah dinonaktifkan (Resign).`, "info");
+    } else if (confirmDialog.type === "delete") {
+      setEmployees((prev) => prev.filter((e) => e.id !== emp.id));
+      setUsers((prev) => prev.filter((u) => u.employeeId !== emp.id));
+      showToast(`Data karyawan ${emp.name} berhasil dihapus permanen.`, "error");
+    }
+
+    setConfirmDialog({ isOpen: false, type: "deactivate", employee: null });
+  };
+
   const [showCredentialsModal, setShowCredentialsModal] = useState(false);
   const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [showApplyLeaveModal, setShowApplyLeaveModal] = useState(false);
@@ -2705,47 +2764,47 @@ export default function Home() {
                       <div className="pt-2 border-t border-emerald-900/40 flex gap-2">
                         {hasPermission("emp_edit") && (
                         <button
-                          onClick={() => {
-                            showToast(`Edit data karyawan: ${k.name}`, "info");
-                          }}
-                          className="flex-1 py-1.5 rounded-lg bg-emerald-500/20 hover:bg-emerald-500 hover:text-black text-emerald-300 text-[10px] font-bold transition-all text-center"
+                          onClick={() => handleOpenEditModal(k)}
+                          className="flex-1 py-1.5 rounded-lg bg-emerald-500/20 hover:bg-emerald-500 hover:text-black text-emerald-300 text-[10px] font-bold transition-all text-center flex items-center justify-center gap-1"
                         >
-                          ✏️ Edit Data
+                          <span>✏️</span>
+                          <span>Edit Data</span>
                         </button>
                         )}
                         {hasPermission("emp_deactivate") && k.status === "Aktif" && (
                         <button
                           onClick={() => {
-                            if (confirm(`Nonaktifkan karyawan "${k.name}"? Status akan diubah menjadi Non-Aktif (Resign).`)) {
-                              setEmployees((prev) =>
-                                prev.map((emp) =>
-                                  emp.id === k.id ? { ...emp, status: "Non-Aktif" as const } : emp
-                                )
-                              );
-                              showToast(`${k.name} telah dinonaktifkan (Resign).`, "info");
-                            }
+                            setConfirmDialog({
+                              isOpen: true,
+                              type: "deactivate",
+                              employee: k,
+                            });
                           }}
-                          className="flex-1 py-1.5 rounded-lg bg-amber-500/20 hover:bg-amber-500 hover:text-black text-amber-300 text-[10px] font-bold transition-all text-center"
+                          className="flex-1 py-1.5 rounded-lg bg-amber-500/20 hover:bg-amber-500 hover:text-black text-amber-300 text-[10px] font-bold transition-all text-center flex items-center justify-center gap-1"
                         >
-                          🚫 Nonaktifkan
+                          <span>🚫</span>
+                          <span>Nonaktifkan</span>
                         </button>
                         )}
                         {hasPermission("emp_deactivate") && k.status === "Non-Aktif" && (
-                        <span className="flex-1 py-1.5 rounded-lg bg-red-500/10 text-red-400 text-[10px] font-bold text-center border border-red-500/20">
-                          ⛔ Non-Aktif (Resign)
+                        <span className="flex-1 py-1.5 rounded-lg bg-red-500/10 text-red-400 text-[10px] font-bold text-center border border-red-500/20 flex items-center justify-center gap-1">
+                          <span>⛔</span>
+                          <span>Non-Aktif (Resign)</span>
                         </span>
                         )}
                         {hasPermission("emp_delete") && (
                         <button
                           onClick={() => {
-                            if (confirm(`HAPUS PERMANEN data karyawan "${k.name}"? Tindakan ini tidak dapat dibatalkan!`)) {
-                              setEmployees((prev) => prev.filter((emp) => emp.id !== k.id));
-                              showToast(`Data ${k.name} telah dihapus permanen.`, "error");
-                            }
+                            setConfirmDialog({
+                              isOpen: true,
+                              type: "delete",
+                              employee: k,
+                            });
                           }}
-                          className="flex-1 py-1.5 rounded-lg bg-red-500/20 hover:bg-red-500 hover:text-white text-red-300 text-[10px] font-bold transition-all text-center"
+                          className="flex-1 py-1.5 rounded-lg bg-red-500/20 hover:bg-red-500 hover:text-white text-red-300 text-[10px] font-bold transition-all text-center flex items-center justify-center gap-1"
                         >
-                          🗑️ Hapus
+                          <span>🗑️</span>
+                          <span>Hapus</span>
                         </button>
                         )}
                       </div>
@@ -4680,6 +4739,462 @@ export default function Home() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================= */}
+      {/* MODAL: EDIT DATA KARYAWAN (WEWENANG RBAC)                 */}
+      {/* ========================================================= */}
+      {showEditEmployeeModal && editingEmployee && (
+        <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-[#021008] border border-emerald-500/40 rounded-3xl p-7 max-w-2xl w-full shadow-2xl space-y-4 my-8 max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-center border-b border-emerald-900/60 pb-3">
+              <div>
+                <span className="text-[10px] text-emerald-400 font-black uppercase tracking-wider block">
+                  MANAJEMEN KARYAWAN • EDIT DATA PROFIL
+                </span>
+                <h3 className="font-black text-white text-base flex items-center gap-2">
+                  <span>✏️</span>
+                  <span>Edit Data: {editingEmployee.name}</span>
+                </h3>
+              </div>
+              <button
+                onClick={() => setShowEditEmployeeModal(false)}
+                className="text-white/60 hover:text-white p-1 rounded-lg hover:bg-white/10"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveEditEmployee} className="space-y-4 text-xs">
+              {/* Seksi 1: Data Identitas Diri */}
+              <div className="bg-[#010804] p-4 rounded-2xl border border-emerald-900/60 space-y-3">
+                <span className="text-[10px] font-black uppercase tracking-wider text-emerald-400 block">
+                  1. Identitas Pokok Karyawan
+                </span>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-white/80 font-bold mb-1">
+                      Nomor Induk Karyawan (NIK) <span className="text-red-400">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={editingEmployee.nik}
+                      onChange={(e) =>
+                        setEditingEmployee({ ...editingEmployee, nik: e.target.value })
+                      }
+                      className="w-full bg-[#020b06] border border-emerald-900/80 rounded-xl p-2.5 text-white font-mono focus:border-emerald-400 focus:outline-none"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-white/80 font-bold mb-1">
+                      Nama Lengkap & Gelar <span className="text-red-400">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={editingEmployee.name}
+                      onChange={(e) =>
+                        setEditingEmployee({ ...editingEmployee, name: e.target.value })
+                      }
+                      className="w-full bg-[#020b06] border border-emerald-900/80 rounded-xl p-2.5 text-white focus:border-emerald-400 focus:outline-none"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-white/80 font-bold mb-1">
+                      Email Perusahaan <span className="text-red-400">*</span>
+                    </label>
+                    <input
+                      type="email"
+                      required
+                      value={editingEmployee.email}
+                      onChange={(e) =>
+                        setEditingEmployee({ ...editingEmployee, email: e.target.value })
+                      }
+                      className="w-full bg-[#020b06] border border-emerald-900/80 rounded-xl p-2.5 text-white font-mono focus:border-emerald-400 focus:outline-none"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-white/80 font-bold mb-1">
+                      Nomor WhatsApp / HP <span className="text-red-400">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={editingEmployee.phone}
+                      onChange={(e) =>
+                        setEditingEmployee({ ...editingEmployee, phone: e.target.value })
+                      }
+                      className="w-full bg-[#020b06] border border-emerald-900/80 rounded-xl p-2.5 text-white focus:border-emerald-400 focus:outline-none"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-white/80 font-bold mb-1">Tanggal Lahir</label>
+                    <input
+                      type="date"
+                      value={editingEmployee.birthDate}
+                      onChange={(e) =>
+                        setEditingEmployee({ ...editingEmployee, birthDate: e.target.value })
+                      }
+                      className="w-full bg-[#020b06] border border-emerald-900/80 rounded-xl p-2.5 text-white font-mono focus:border-emerald-400 focus:outline-none"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-white/80 font-bold mb-1">Alamat Domisili</label>
+                    <input
+                      type="text"
+                      value={editingEmployee.address}
+                      onChange={(e) =>
+                        setEditingEmployee({ ...editingEmployee, address: e.target.value })
+                      }
+                      className="w-full bg-[#020b06] border border-emerald-900/80 rounded-xl p-2.5 text-white focus:border-emerald-400 focus:outline-none"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Seksi 2: Struktur Organisasi & Jabatan */}
+              <div className="bg-[#010804] p-4 rounded-2xl border border-emerald-900/60 space-y-3">
+                <span className="text-[10px] font-black uppercase tracking-wider text-amber-400 block">
+                  2. Struktur Organisasi & Penugasan
+                </span>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-white/80 font-bold mb-1">
+                      Departemen <span className="text-red-400">*</span>
+                    </label>
+                    <select
+                      value={editingEmployee.dept}
+                      onChange={(e) => {
+                        const newDept = e.target.value as DepartmentType;
+                        let newMgr = editingEmployee.managerId;
+                        if (editingEmployee.level === "Staff") {
+                          const spv = employees.find(
+                            (x) => x.dept === newDept && x.level === "Supervisor"
+                          );
+                          if (spv) newMgr = spv.id;
+                        }
+                        setEditingEmployee({
+                          ...editingEmployee,
+                          dept: newDept,
+                          managerId: newMgr,
+                        });
+                      }}
+                      className="w-full bg-[#020b06] border border-emerald-900/80 rounded-xl p-2.5 text-white focus:border-emerald-400 focus:outline-none"
+                    >
+                      <option value="Direksi">Direksi</option>
+                      <option value="HR">HR (Human Resources)</option>
+                      <option value="Finance">Finance</option>
+                      <option value="Marketing">Marketing</option>
+                      <option value="Sales">Sales</option>
+                      <option value="Operations">Operations</option>
+                      <option value="IT">IT (Information Technology)</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-white/80 font-bold mb-1">
+                      Level Hirarki <span className="text-red-400">*</span>
+                    </label>
+                    <select
+                      value={editingEmployee.level}
+                      onChange={(e) => {
+                        const newLvl = e.target.value as HierarchyLevel;
+                        let newMgr: string | null = null;
+                        if (newLvl === "Staff") {
+                          const spv = employees.find(
+                            (x) => x.dept === editingEmployee.dept && x.level === "Supervisor"
+                          );
+                          newMgr = spv ? spv.id : null;
+                        } else if (newLvl === "Supervisor") {
+                          const gm = employees.find((x) => x.level === "GeneralManager");
+                          newMgr = gm ? gm.id : null;
+                        } else if (newLvl === "GeneralManager") {
+                          const ceo = employees.find((x) => x.level === "Director");
+                          newMgr = ceo ? ceo.id : null;
+                        }
+                        setEditingEmployee({
+                          ...editingEmployee,
+                          level: newLvl,
+                          managerId: newMgr,
+                        });
+                      }}
+                      className="w-full bg-[#020b06] border border-emerald-900/80 rounded-xl p-2.5 text-white focus:border-emerald-400 focus:outline-none"
+                    >
+                      <option value="Director">Director (CEO)</option>
+                      <option value="GeneralManager">General Manager (GM)</option>
+                      <option value="Supervisor">Supervisor</option>
+                      <option value="Staff">Staff</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-white/80 font-bold mb-1">
+                      Nama Posisi / Jabatan <span className="text-red-400">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={editingEmployee.role}
+                      onChange={(e) =>
+                        setEditingEmployee({ ...editingEmployee, role: e.target.value })
+                      }
+                      className="w-full bg-[#020b06] border border-emerald-900/80 rounded-xl p-2.5 text-white focus:border-emerald-400 focus:outline-none"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-white/80 font-bold mb-1">
+                      Atasan Langsung (N+1)
+                    </label>
+                    <select
+                      value={editingEmployee.managerId || ""}
+                      onChange={(e) =>
+                        setEditingEmployee({
+                          ...editingEmployee,
+                          managerId: e.target.value || null,
+                        })
+                      }
+                      className="w-full bg-[#020b06] border border-emerald-900/80 rounded-xl p-2.5 text-white focus:border-emerald-400 focus:outline-none text-[11px]"
+                    >
+                      <option value="">Tanpa Atasan (Direktur Utama / Pimpinan Puncak)</option>
+                      {employees
+                        .filter((x) => x.id !== editingEmployee.id)
+                        .map((mgr) => (
+                          <option key={mgr.id} value={mgr.id}>
+                            {mgr.name} — {mgr.role} ({mgr.dept})
+                          </option>
+                        ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-white/80 font-bold mb-1">
+                      Status Akun / Kepegawaian <span className="text-red-400">*</span>
+                    </label>
+                    <select
+                      value={editingEmployee.status}
+                      onChange={(e) =>
+                        setEditingEmployee({
+                          ...editingEmployee,
+                          status: e.target.value as "Aktif" | "Cuti" | "Non-Aktif",
+                        })
+                      }
+                      className="w-full bg-[#020b06] border border-emerald-900/80 rounded-xl p-2.5 text-white focus:border-emerald-400 focus:outline-none"
+                    >
+                      <option value="Aktif">🟢 Aktif Bekerja</option>
+                      <option value="Cuti">🏖️ Sedang Cuti</option>
+                      <option value="Non-Aktif">🔴 Non-Aktif (Resign / Berhenti)</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-white/80 font-bold mb-1">Jadwal Shift</label>
+                    <select
+                      value={editingEmployee.shiftId}
+                      onChange={(e) =>
+                        setEditingEmployee({ ...editingEmployee, shiftId: e.target.value })
+                      }
+                      className="w-full bg-[#020b06] border border-emerald-900/80 rounded-xl p-2.5 text-white focus:border-emerald-400 focus:outline-none"
+                    >
+                      {shifts.map((s) => (
+                        <option key={s.id} value={s.id}>
+                          {s.name} ({s.startTime} - {s.endTime})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              {/* Seksi 3: Masa Kerja & Kontrak */}
+              <div className="bg-[#010804] p-4 rounded-2xl border border-emerald-900/60 space-y-3">
+                <span className="text-[10px] font-black uppercase tracking-wider text-teal-400 block">
+                  3. Masa Kerja & Kontrak
+                </span>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                  <div>
+                    <label className="block text-white/80 font-bold mb-1">Tipe Kontrak</label>
+                    <select
+                      value={editingEmployee.contractType}
+                      onChange={(e) =>
+                        setEditingEmployee({
+                          ...editingEmployee,
+                          contractType: e.target.value as ContractType,
+                        })
+                      }
+                      className="w-full bg-[#020b06] border border-emerald-900/80 rounded-xl p-2.5 text-white focus:border-emerald-400 focus:outline-none"
+                    >
+                      <option value="Tetap">Tetap (Permanent)</option>
+                      <option value="Kontrak">Kontrak (PKWT)</option>
+                      <option value="Magang">Magang (Internship)</option>
+                      <option value="DW">Daily Worker (DW)</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-white/80 font-bold mb-1">Tanggal Mulai Kerja</label>
+                    <input
+                      type="date"
+                      value={editingEmployee.startDate}
+                      onChange={(e) =>
+                        setEditingEmployee({ ...editingEmployee, startDate: e.target.value })
+                      }
+                      className="w-full bg-[#020b06] border border-emerald-900/80 rounded-xl p-2.5 text-white font-mono focus:border-emerald-400 focus:outline-none"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-white/80 font-bold mb-1">
+                      Tanggal Berakhir Kerja
+                    </label>
+                    <input
+                      type="date"
+                      disabled={editingEmployee.contractType === "Tetap"}
+                      value={editingEmployee.endDate || ""}
+                      onChange={(e) =>
+                        setEditingEmployee({ ...editingEmployee, endDate: e.target.value })
+                      }
+                      placeholder={editingEmployee.contractType === "Tetap" ? "Karyawan Tetap" : ""}
+                      className="w-full bg-[#020b06] border border-emerald-900/80 rounded-xl p-2.5 text-white font-mono focus:border-emerald-400 focus:outline-none disabled:opacity-40"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="pt-2 flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => setShowEditEmployeeModal(false)}
+                  className="flex-1 py-3 rounded-2xl bg-white/10 text-white font-bold hover:bg-white/20 transition-all text-xs"
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 py-3 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-400 text-black font-black hover:brightness-110 transition-all text-xs shadow-lg shadow-emerald-500/20"
+                >
+                  💾 Simpan Perubahan Data
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================= */}
+      {/* MODAL: ALERT KONFIRMASI (NONAKTIFKAN / HAPUS)              */}
+      {/* ========================================================= */}
+      {confirmDialog.isOpen && confirmDialog.employee && (
+        <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-sm flex items-center justify-center p-4">
+          <div
+            className={`bg-[#021008] border rounded-3xl p-6 max-w-md w-full shadow-2xl space-y-4 animate-in zoom-in-95 duration-150 ${
+              confirmDialog.type === "delete"
+                ? "border-red-500/60 ring-2 ring-red-500/20"
+                : "border-amber-500/60 ring-2 ring-amber-500/20"
+            }`}
+          >
+            <div className="flex items-center gap-3">
+              <div
+                className={`w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0 ${
+                  confirmDialog.type === "delete"
+                    ? "bg-red-500/20 text-red-400 ring-1 ring-red-400"
+                    : "bg-amber-500/20 text-amber-400 ring-1 ring-amber-400"
+                }`}
+              >
+                <AlertTriangle className="w-6 h-6" />
+              </div>
+              <div>
+                <span
+                  className={`text-[10px] font-black uppercase tracking-wider block ${
+                    confirmDialog.type === "delete" ? "text-red-400" : "text-amber-400"
+                  }`}
+                >
+                  {confirmDialog.type === "delete"
+                    ? "PERINGATAN BAHAYA SISTEM"
+                    : "KONFIRMASI TINDAKAN STATUS"}
+                </span>
+                <h3 className="font-black text-white text-base">
+                  {confirmDialog.type === "delete"
+                    ? "Hapus Data Karyawan?"
+                    : "Nonaktifkan Karyawan (Resign)?"}
+                </h3>
+              </div>
+            </div>
+
+            <div className="bg-[#010804] p-4 rounded-2xl border border-emerald-900/60 space-y-2 text-xs">
+              <div className="flex justify-between">
+                <span className="text-white/60">Nama:</span>
+                <span className="font-bold text-white">{confirmDialog.employee.name}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-white/60">NIK:</span>
+                <span className="font-mono text-white">{confirmDialog.employee.nik}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-white/60">Departemen & Posisi:</span>
+                <span className="font-semibold text-emerald-300">
+                  {confirmDialog.employee.dept} — {confirmDialog.employee.role}
+                </span>
+              </div>
+            </div>
+
+            <div
+              className={`p-3 rounded-xl border text-xs leading-relaxed ${
+                confirmDialog.type === "delete"
+                  ? "bg-red-500/10 border-red-500/30 text-red-300"
+                  : "bg-amber-500/10 border-amber-500/30 text-amber-200"
+              }`}
+            >
+              {confirmDialog.type === "delete" ? (
+                <>
+                  <strong className="block text-red-400 font-bold mb-0.5">
+                    🚨 Tindakan Permanen!
+                  </strong>
+                  Seluruh data profil, akun login, dan riwayat karyawan ini akan dihapus dari sistem
+                  secara permanen. Data yang telah dihapus <strong>tidak dapat dipulihkan</strong>.
+                </>
+              ) : (
+                <>
+                  <strong className="block text-amber-300 font-bold mb-0.5">
+                    ⚠️ Status Diubah Menjadi Non-Aktif
+                  </strong>
+                  Karyawan ini akan tercatat telah mengundurkan diri (Resign) dan tidak dapat lagi
+                  melakukan absensi mandiri, mengajukan cuti, ataupun mengakses aplikasi.
+                </>
+              )}
+            </div>
+
+            <div className="flex gap-2 pt-1">
+              <button
+                type="button"
+                onClick={() =>
+                  setConfirmDialog({ isOpen: false, type: "deactivate", employee: null })
+                }
+                className="flex-1 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white font-bold text-xs transition-all"
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmAction}
+                className={`flex-1 py-2.5 rounded-xl font-black text-xs transition-all text-center ${
+                  confirmDialog.type === "delete"
+                    ? "bg-red-500 hover:bg-red-600 text-white shadow-lg shadow-red-500/20"
+                    : "bg-amber-500 hover:bg-amber-400 text-black shadow-lg shadow-amber-500/20"
+                }`}
+              >
+                {confirmDialog.type === "delete" ? "🗑️ Hapus Permanen" : "🚫 Ya, Nonaktifkan"}
+              </button>
+            </div>
           </div>
         </div>
       )}
