@@ -91,6 +91,9 @@ interface Employee {
   managerId: string | null; // Atasan langsung
   isFirstLogin: boolean;
   temporaryPassword?: string | null;
+  registeredDeviceId?: string | null;
+  deviceModel?: string | null;
+  deviceStatus?: "Bound" | "Unbound";
 }
 
 interface Shift {
@@ -176,6 +179,9 @@ interface SystemUser {
   status: "AKTIF" | "NON-AKTIF";
   isFirstLogin: boolean;
   temporaryPassword?: string | null;
+  registeredDeviceId?: string | null;
+  deviceModel?: string | null;
+  deviceStatus?: "Bound" | "Unbound";
 }
 
 interface PermissionItem {
@@ -307,6 +313,9 @@ export default function Home() {
       managerId: null,
       isFirstLogin: false,
       temporaryPassword: null,
+      registeredDeviceId: "DEV-CEO-001",
+      deviceModel: "Samsung Galaxy S24 Ultra",
+      deviceStatus: "Bound",
     },
     // 2. General Manager (GM) — Tepat 1 Orang, Membawahi Seluruh 6 Supervisor
     {
@@ -333,6 +342,9 @@ export default function Home() {
       managerId: "emp-ceo", // Lapor langsung ke CEO
       isFirstLogin: false,
       temporaryPassword: null,
+      registeredDeviceId: "DEV-GM-010",
+      deviceModel: "iPhone 15 Pro Max",
+      deviceStatus: "Bound",
     },
     // 3. SUPERVISOR & STAFF PER DEPARTEMEN (Semua Supervisor Melapor ke GM)
     // HR DEPT
@@ -360,6 +372,9 @@ export default function Home() {
       managerId: "emp-gm", // Lapor ke General Manager
       isFirstLogin: false,
       temporaryPassword: null,
+      registeredDeviceId: "DEV-HR-101",
+      deviceModel: "Samsung Galaxy A54",
+      deviceStatus: "Bound",
     },
     {
       id: "emp-hr-stf",
@@ -385,6 +400,9 @@ export default function Home() {
       managerId: "emp-hr-spv", // Lapor ke HR Supervisor
       isFirstLogin: false,
       temporaryPassword: null,
+      registeredDeviceId: null,
+      deviceModel: null,
+      deviceStatus: "Unbound",
     },
     // FINANCE DEPT
     {
@@ -411,6 +429,9 @@ export default function Home() {
       managerId: "emp-gm", // Lapor ke General Manager
       isFirstLogin: false,
       temporaryPassword: null,
+      registeredDeviceId: "DEV-FIN-201",
+      deviceModel: "Xiaomi 14 Pro",
+      deviceStatus: "Bound",
     },
     {
       id: "emp-fin-stf",
@@ -436,6 +457,9 @@ export default function Home() {
       managerId: "emp-fin-spv", // Lapor ke Finance Supervisor
       isFirstLogin: false,
       temporaryPassword: null,
+      registeredDeviceId: null,
+      deviceModel: null,
+      deviceStatus: "Unbound",
     },
     // MARKETING DEPT
     {
@@ -462,6 +486,9 @@ export default function Home() {
       managerId: "emp-gm", // Lapor ke General Manager
       isFirstLogin: false,
       temporaryPassword: null,
+      registeredDeviceId: "DEV-MKT-301",
+      deviceModel: "OPPO Find X7",
+      deviceStatus: "Bound",
     },
     {
       id: "emp-mkt-stf",
@@ -487,6 +514,9 @@ export default function Home() {
       managerId: "emp-mkt-spv", // Lapor ke Marketing Supervisor
       isFirstLogin: false,
       temporaryPassword: null,
+      registeredDeviceId: null,
+      deviceModel: null,
+      deviceStatus: "Unbound",
     },
     // SALES DEPT
     {
@@ -513,6 +543,9 @@ export default function Home() {
       managerId: "emp-gm", // Lapor ke General Manager
       isFirstLogin: false,
       temporaryPassword: null,
+      registeredDeviceId: "DEV-SLS-401",
+      deviceModel: "Samsung Galaxy S23",
+      deviceStatus: "Bound",
     },
     {
       id: "emp-sls-stf",
@@ -538,6 +571,9 @@ export default function Home() {
       managerId: "emp-sls-spv", // Lapor ke Sales Supervisor
       isFirstLogin: false,
       temporaryPassword: null,
+      registeredDeviceId: null,
+      deviceModel: null,
+      deviceStatus: "Unbound",
     },
     // OPERATIONS DEPT
     {
@@ -564,6 +600,9 @@ export default function Home() {
       managerId: "emp-gm", // Lapor ke General Manager
       isFirstLogin: false,
       temporaryPassword: null,
+      registeredDeviceId: "DEV-OPS-501",
+      deviceModel: "Redmi Note 13 Pro",
+      deviceStatus: "Bound",
     },
     {
       id: "emp-ops-stf",
@@ -589,6 +628,9 @@ export default function Home() {
       managerId: "emp-ops-spv", // Lapor ke Operations Supervisor
       isFirstLogin: false,
       temporaryPassword: null,
+      registeredDeviceId: null,
+      deviceModel: null,
+      deviceStatus: "Unbound",
     },
     // IT DEPT
     {
@@ -615,6 +657,9 @@ export default function Home() {
       managerId: "emp-gm", // Lapor ke General Manager
       isFirstLogin: false,
       temporaryPassword: null,
+      registeredDeviceId: "DEV-IT-601",
+      deviceModel: "Samsung Galaxy S23 FE",
+      deviceStatus: "Bound",
     },
     {
       id: "emp-it-stf",
@@ -640,6 +685,9 @@ export default function Home() {
       managerId: "emp-it-spv", // Lapor ke IT Supervisor
       isFirstLogin: false,
       temporaryPassword: null,
+      registeredDeviceId: null,
+      deviceModel: null,
+      deviceStatus: "Unbound",
     },
   ]);
 
@@ -1612,6 +1660,11 @@ export default function Home() {
   const [selectedScheduleEmpId, setSelectedScheduleEmpId] = useState<string>("emp-ops-spv");
   const [pengaturanTab, setPengaturanTab] = useState<"lokasi" | "shift">("lokasi");
 
+  // ─── Device Lock / Anti-Titip Absen States ───────────────────────────────
+  const [simulatedDeviceId, setSimulatedDeviceId] = useState<string>("DEV-IT-601");
+  const [isMobileSimulated, setIsMobileSimulated] = useState<boolean>(true);
+  const [showDeviceSimulator, setShowDeviceSimulator] = useState<boolean>(false);
+
   // Jika POV Staff, kunci target jadwal ke diri sendiri dan kunci tab ke roster
   useEffect(() => {
     if (isStaff) {
@@ -2072,6 +2125,9 @@ export default function Home() {
       managerId: superiorEmployee ? superiorEmployee.id : null,
       isFirstLogin: true,
       temporaryPassword: randomTempPass,
+      registeredDeviceId: null,
+      deviceModel: null,
+      deviceStatus: "Unbound",
     };
 
     const newUserObj: SystemUser = {
@@ -3841,6 +3897,34 @@ export default function Home() {
                         )}
                       </div>
 
+                      {/* Device Lock Status — tampil di POV HRD */}
+                      {isHRDPov && (
+                        <div className="bg-[#010804] border border-emerald-900/40 rounded-xl p-2.5 flex items-center justify-between text-[10px]">
+                          <div className="flex items-center gap-1.5">
+                            <Smartphone className="w-3 h-3 text-emerald-400 flex-shrink-0" />
+                            <div>
+                              <span className="text-white/60 block">Status HP:</span>
+                              {k.deviceStatus === "Bound" ? (
+                                <span className="text-emerald-300 font-bold">🔒 {k.deviceModel?.split(" ").slice(0, 3).join(" ")}</span>
+                              ) : (
+                                <span className="text-gray-400 font-bold">📵 Belum Terdaftar</span>
+                              )}
+                            </div>
+                          </div>
+                          {hasPermission("emp_manage_hr") && k.deviceStatus === "Bound" && (
+                            <button
+                              onClick={() => setEmployees(prev => prev.map(e =>
+                                e.id === k.id ? { ...e, registeredDeviceId: null, deviceModel: null, deviceStatus: "Unbound" as const } : e
+                              ))}
+                              className="px-2 py-1 rounded-lg bg-orange-500/20 hover:bg-orange-500/40 text-orange-400 font-bold transition-all border border-orange-500/30"
+                              title="Reset Kunci HP — lepas perangkat terdaftar karyawan ini"
+                            >
+                              🔓 Reset HP
+                            </button>
+                          )}
+                        </div>
+                      )}
+
                       {/* Action Links — Edit, Nonaktifkan, Hapus (berdasarkan hak akses RBAC) */}
                       {(hasPermission("emp_edit") || hasPermission("emp_deactivate") || hasPermission("emp_delete")) && (
                       <div className="pt-2 border-t border-emerald-900/40 flex gap-2">
@@ -4287,9 +4371,74 @@ export default function Home() {
                   </span>
                 </div>
 
+                {/* 🧪 DEVICE LOCK SIMULATOR PANEL */}
+                <div className="bg-yellow-500/10 border border-yellow-500/40 rounded-2xl p-4 mb-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                      <Smartphone className="w-4 h-4 text-yellow-400" />
+                      <span className="text-yellow-400 font-semibold text-sm">Simulator Perangkat</span>
+                      <span className="text-xs text-yellow-500/70 bg-yellow-500/20 px-2 py-0.5 rounded-full">DEV MODE</span>
+                    </div>
+                    <button
+                      onClick={() => setShowDeviceSimulator(!showDeviceSimulator)}
+                      className="text-yellow-400/70 hover:text-yellow-400 text-xs underline transition-colors"
+                    >
+                      {showDeviceSimulator ? "Sembunyikan" : "Tampilkan"}
+                    </button>
+                  </div>
+                  {showDeviceSimulator && (
+                    <div className="space-y-3 mt-3">
+                      {/* Toggle Mobile/Desktop */}
+                      <div className="flex items-center justify-between">
+                        <span className="text-yellow-300/80 text-xs font-medium">Jenis Perangkat:</span>
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => setIsMobileSimulated(true)}
+                            className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all ${isMobileSimulated ? "bg-emerald-500 text-white" : "bg-white/10 text-white/50 hover:bg-white/20"}`}
+                          >
+                            📱 HP/Smartphone
+                          </button>
+                          <button
+                            onClick={() => setIsMobileSimulated(false)}
+                            className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all ${!isMobileSimulated ? "bg-red-500 text-white" : "bg-white/10 text-white/50 hover:bg-white/20"}`}
+                          >
+                            💻 Laptop/PC
+                          </button>
+                        </div>
+                      </div>
+                      {/* Device Switcher */}
+                      <div>
+                        <span className="text-yellow-300/80 text-xs font-medium block mb-2">Pilih HP yang Digunakan:</span>
+                        <div className="flex flex-wrap gap-1.5">
+                          {[
+                            { id: "DEV-CEO-001", label: "Samsung S24 Ultra", owner: "CEO" },
+                            { id: "DEV-GM-010", label: "iPhone 15 Pro Max", owner: "GM" },
+                            { id: "DEV-HR-101", label: "Samsung A54", owner: "HR-SPV" },
+                            { id: "DEV-FIN-201", label: "Xiaomi 14 Pro", owner: "Fin-SPV" },
+                            { id: "DEV-MKT-301", label: "OPPO Find X7", owner: "Mkt-SPV" },
+                            { id: "DEV-SLS-401", label: "Samsung S23", owner: "Sls-SPV" },
+                            { id: "DEV-OPS-501", label: "Redmi Note 13", owner: "Ops-SPV" },
+                            { id: "DEV-IT-601", label: "Samsung S23 FE", owner: "IT-SPV" },
+                          ].map((dev) => (
+                            <button
+                              key={dev.id}
+                              onClick={() => setSimulatedDeviceId(dev.id)}
+                              className={`px-2 py-1 rounded-lg text-xs transition-all border ${simulatedDeviceId === dev.id ? "bg-yellow-500 border-yellow-400 text-black font-bold" : "bg-white/5 border-white/10 text-white/50 hover:bg-white/10"}`}
+                            >
+                              {dev.label} <span className="opacity-60">({dev.owner})</span>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                      <p className="text-yellow-500/60 text-xs pt-1">
+                        💡 Gunakan simulator ini untuk menguji Device Lock tanpa perlu banyak HP fisik. Aktif hanya di development.
+                      </p>
+                    </div>
+                  )}
+                </div>
+
                 {/* Distance Slider */}
-                <div className="bg-[#010804] rounded-2xl p-4 border border-emerald-900/60 mb-4 space-y-3">
-                  <div className="flex justify-between items-center text-xs">
+                <div className="bg-[#010804] rounded-2xl p-4 border border-emerald-900/60 mb-4 space-y-3">                  <div className="flex justify-between items-center text-xs">
                     <div className="flex items-center gap-2">
                       <MapPin className="w-4 h-4 text-emerald-400" />
                       <div>
@@ -4381,11 +4530,73 @@ export default function Home() {
                     </div>
                   </div>
                 ) : (
+                  <>
+                    {/* ─── DEVICE LOCK VALIDATION ─── */}
+                    {(() => {
+                      const empData = employees.find(e => e.id === currentActiveEmployee.id);
+                      const isLaptop = !isMobileSimulated;
+                      const isWrongDevice = isMobileSimulated && empData?.deviceStatus === "Bound" && empData?.registeredDeviceId !== simulatedDeviceId;
+                      const isUnbound = isMobileSimulated && empData?.deviceStatus === "Unbound";
+                      const deviceOk = isMobileSimulated && empData?.deviceStatus === "Bound" && empData?.registeredDeviceId === simulatedDeviceId;
+                      return (
+                        <div className="mb-3 space-y-2">
+                          {isLaptop && (
+                            <div className="bg-red-500/20 border border-red-500/60 rounded-xl p-4 flex items-start gap-3">
+                              <span className="text-2xl">🚫</span>
+                              <div>
+                                <p className="text-red-400 font-bold text-sm">Absensi Hanya dari HP/Smartphone</p>
+                                <p className="text-red-300/80 text-xs mt-1">Sistem mendeteksi perangkat Laptop/PC. Absensi mandiri hanya diizinkan melalui perangkat mobile untuk mencegah titip absen.</p>
+                              </div>
+                            </div>
+                          )}
+                          {isWrongDevice && (
+                            <div className="bg-red-500/20 border border-red-500/60 rounded-xl p-4 flex items-start gap-3">
+                              <span className="text-2xl">⚠️</span>
+                              <div>
+                                <p className="text-red-400 font-bold text-sm">Peringatan: Perangkat Tidak Dikenali!</p>
+                                <p className="text-red-300/80 text-xs mt-1">HP ini bukan perangkat resmi Anda. Percobaan absensi dari perangkat lain terdeteksi dan tercatat sebagai pelanggaran.</p>
+                                <p className="text-red-300/60 text-xs mt-1">HP Terdaftar: <span className="font-semibold text-red-300">{empData?.deviceModel ?? "-"}</span></p>
+                              </div>
+                            </div>
+                          )}
+                          {isUnbound && (
+                            <div className="bg-orange-500/20 border border-orange-500/60 rounded-xl p-4 flex items-start gap-3">
+                              <span className="text-2xl">📱</span>
+                              <div className="flex-1">
+                                <p className="text-orange-400 font-bold text-sm">HP Belum Terdaftar di Sistem</p>
+                                <p className="text-orange-300/80 text-xs mt-1">Perangkat Anda belum terdaftar. Daftarkan sekarang atau hubungi HRD.</p>
+                                <button
+                                  onClick={() => {
+                                    setEmployees(prev => prev.map(emp =>
+                                      emp.id === currentActiveEmployee.id
+                                        ? { ...emp, registeredDeviceId: simulatedDeviceId, deviceModel: "HP Baru (Terdaftar via Sistem)", deviceStatus: "Bound" as const }
+                                        : emp
+                                    ));
+                                  }}
+                                  className="mt-2 bg-orange-500 hover:bg-orange-600 text-white text-xs font-bold px-4 py-1.5 rounded-lg transition-all"
+                                >
+                                  🔗 Daftarkan Perangkat Ini sebagai HP Resmi
+                                </button>
+                              </div>
+                            </div>
+                          )}
+                          {deviceOk && (
+                            <div className="bg-emerald-500/15 border border-emerald-500/50 rounded-xl p-3 flex items-center gap-3">
+                              <CheckCircle2 className="w-5 h-5 text-emerald-400 flex-shrink-0" />
+                              <div>
+                                <p className="text-emerald-400 font-semibold text-sm">Perangkat Terverifikasi</p>
+                                <p className="text-emerald-300/70 text-xs">{empData?.deviceModel} — HP Resmi Terdaftar ✓</p>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })()}
                   <button
-                    disabled={isCapturing || !isWithinGeofence}
+                    disabled={isCapturing || !isWithinGeofence || !isMobileSimulated || (employees.find(e => e.id === currentActiveEmployee.id)?.deviceStatus === "Bound" && employees.find(e => e.id === currentActiveEmployee.id)?.registeredDeviceId !== simulatedDeviceId)}
                     onClick={handleCheckIn}
                     className={`w-full py-4 rounded-xl font-black text-xs tracking-wider uppercase shadow-xl shadow-black transition-all flex items-center justify-center gap-2 ${
-                      isWithinGeofence
+                      isWithinGeofence && isMobileSimulated && !(employees.find(e => e.id === currentActiveEmployee.id)?.deviceStatus === "Bound" && employees.find(e => e.id === currentActiveEmployee.id)?.registeredDeviceId !== simulatedDeviceId)
                         ? "bg-gradient-to-r from-emerald-500 to-teal-400 text-black hover:brightness-110 active:scale-[0.98]"
                         : "bg-red-950/60 text-red-300 border border-red-500/40 cursor-not-allowed"
                     }`}
@@ -4407,6 +4618,7 @@ export default function Home() {
                       </>
                     )}
                   </button>
+                  </>
                 )}
               </div>
             </div>
