@@ -24,7 +24,6 @@ import {
   Building2,
   Briefcase,
   FileText,
-  FileCheck,
   Palmtree,
   BookOpen,
   UserCheck,
@@ -33,10 +32,14 @@ import {
   Filter,
   Download,
   Plus,
+  Moon,
+  KeyRound,
+  LogOut,
+  Award,
 } from "lucide-react";
 
 export default function Home() {
-  // Active Menu Navigation
+  // Navigation State
   const [activeMenu, setActiveMenu] = useState<string>("dashboard");
 
   // Collapsible Sidebar Sections
@@ -51,7 +54,10 @@ export default function Home() {
     setOpenSections((prev) => ({ ...prev, [section]: !prev[section] }));
   };
 
-  // Live NTP Clock Simulator
+  // Selected Metric in Dashboard
+  const [selectedMetric, setSelectedMetric] = useState<string>("all");
+
+  // Real-time Clock
   const [currentTime, setCurrentTime] = useState("");
   useEffect(() => {
     const updateClock = () => {
@@ -85,7 +91,7 @@ export default function Home() {
       endTime: "15:00",
       tolerance: "15 Menit",
       openBefore: "60 Menit",
-      activeStaff: 68,
+      activeStaff: 4,
       status: "Aktif",
     },
     {
@@ -95,7 +101,7 @@ export default function Home() {
       endTime: "23:00",
       tolerance: "15 Menit",
       openBefore: "45 Menit",
-      activeStaff: 34,
+      activeStaff: 2,
       status: "Aktif",
     },
     {
@@ -105,12 +111,11 @@ export default function Home() {
       endTime: "07:00",
       tolerance: "10 Menit",
       openBefore: "30 Menit",
-      activeStaff: 18,
+      activeStaff: 0,
       status: "Aktif",
     },
   ]);
 
-  // Handle Attendance Action Simulator
   const handleCheckIn = () => {
     if (!livenessPassed) {
       alert("Harap lakukan uji liveness wajah terlebih dahulu!");
@@ -124,35 +129,36 @@ export default function Home() {
   };
 
   return (
-    <div className="flex min-h-screen bg-[#02130c] text-emerald-50 font-sans selection:bg-emerald-500 selection:text-black">
+    <div className="flex min-h-screen bg-[#020a06] text-emerald-50 font-sans selection:bg-emerald-500 selection:text-black">
       {/* ========================================================= */}
-      {/* SIDEBAR NAVIGATION (PERSIS SESUAI GAMBAR DARI USER)      */}
+      {/* SIDEBAR NAVIGATION (ABSENKU DASHBOARD)                    */}
+      {/* Nuansa: Hijau sangat tua pekat mendekati gelap (#030f0a) */}
       {/* ========================================================= */}
-      <aside className="w-64 flex-shrink-0 bg-[#051c14] border-r border-emerald-500/15 flex flex-col justify-between py-5 px-3 min-h-screen select-none">
+      <aside className="w-64 flex-shrink-0 bg-[#03110b] border-r border-emerald-950/80 flex flex-col justify-between py-5 px-3 min-h-screen select-none">
         <div>
-          {/* Logo Brand: AbsenKu DASHBOARD */}
+          {/* Logo & Header */}
           <div className="flex items-center gap-3 px-3 mb-6">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-emerald-500 to-teal-400 flex items-center justify-center font-black text-black text-sm shadow-lg shadow-emerald-500/30 ring-2 ring-emerald-300/40">
+            <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-teal-400 via-emerald-400 to-emerald-600 flex items-center justify-center font-black text-black text-sm shadow-lg shadow-emerald-950 ring-1 ring-emerald-300/30">
               AK
             </div>
             <div>
               <h1 className="text-base font-extrabold text-white tracking-tight leading-none">
                 AbsenKu
               </h1>
-              <span className="text-[10px] font-bold text-emerald-400/80 tracking-widest uppercase">
+              <span className="text-[10px] font-bold text-emerald-400/70 tracking-widest uppercase">
                 DASHBOARD
               </span>
             </div>
           </div>
 
-          {/* Menu 1: Dashboard (Single Highlighted Item) */}
+          {/* Menu 1: Dashboard (Highlighted Pill Sesuai Gambar) */}
           <div className="px-1 mb-4">
             <button
               onClick={() => setActiveMenu("dashboard")}
               className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all ${
                 activeMenu === "dashboard"
-                  ? "bg-[#0b3324] text-white border border-emerald-500/30 shadow-md shadow-emerald-950"
-                  : "text-emerald-300/70 hover:text-white hover:bg-emerald-500/10"
+                  ? "bg-[#0b2419] text-white border border-emerald-500/25 shadow-lg shadow-black/60"
+                  : "text-emerald-300/60 hover:text-white hover:bg-emerald-950/50"
               }`}
             >
               <span className="text-base">🏠</span>
@@ -180,7 +186,7 @@ export default function Home() {
               </button>
 
               {openSections.kepegawaian && (
-                <div className="mt-1 space-y-0.5 pl-3 border-l-2 border-emerald-500/20 ml-4">
+                <div className="mt-1 space-y-0.5 pl-3 border-l-2 border-emerald-900/60 ml-4">
                   {[
                     { id: "karyawan", label: "Karyawan", icon: "👥" },
                     { id: "departemen", label: "Departemen", icon: "🏢" },
@@ -192,8 +198,8 @@ export default function Home() {
                       onClick={() => setActiveMenu(item.id)}
                       className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs transition-all ${
                         activeMenu === item.id
-                          ? "bg-emerald-500/20 text-white font-bold border-l-2 border-emerald-400"
-                          : "text-emerald-300/60 hover:text-emerald-100 hover:bg-emerald-500/5 font-medium"
+                          ? "bg-emerald-950/80 text-white font-bold border-l-2 border-emerald-400 shadow-sm"
+                          : "text-emerald-300/60 hover:text-emerald-100 hover:bg-emerald-950/30 font-medium"
                       }`}
                     >
                       <span className="text-sm">{item.icon}</span>
@@ -204,7 +210,7 @@ export default function Home() {
               )}
             </div>
 
-            {/* Section 2: KEHADIRAN (Menu Inti Absensi) */}
+            {/* Section 2: KEHADIRAN */}
             <div>
               <button
                 onClick={() => toggleSection("kehadiran")}
@@ -222,9 +228,9 @@ export default function Home() {
               </button>
 
               {openSections.kehadiran && (
-                <div className="mt-1 space-y-0.5 pl-3 border-l-2 border-emerald-500/20 ml-4">
+                <div className="mt-1 space-y-0.5 pl-3 border-l-2 border-emerald-900/60 ml-4">
                   {[
-                    { id: "absensi", label: "Absensi (Kamera & GPS)", icon: "📍" },
+                    { id: "absensi", label: "Absensi (GPS & Wajah)", icon: "📍" },
                     { id: "rekap-absensi", label: "Rekap Absensi", icon: "📊" },
                     { id: "jadwal-shift", label: "Jadwal Shift", icon: "📅" },
                   ].map((item) => (
@@ -233,8 +239,8 @@ export default function Home() {
                       onClick={() => setActiveMenu(item.id)}
                       className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs transition-all ${
                         activeMenu === item.id
-                          ? "bg-emerald-500/20 text-white font-bold border-l-2 border-emerald-400"
-                          : "text-emerald-300/60 hover:text-emerald-100 hover:bg-emerald-500/5 font-medium"
+                          ? "bg-emerald-950/80 text-white font-bold border-l-2 border-emerald-400 shadow-sm"
+                          : "text-emerald-300/60 hover:text-emerald-100 hover:bg-emerald-950/30 font-medium"
                       }`}
                     >
                       <span className="text-sm">{item.icon}</span>
@@ -263,7 +269,7 @@ export default function Home() {
               </button>
 
               {openSections.aktivitas && (
-                <div className="mt-1 space-y-0.5 pl-3 border-l-2 border-emerald-500/20 ml-4">
+                <div className="mt-1 space-y-0.5 pl-3 border-l-2 border-emerald-900/60 ml-4">
                   {[
                     { id: "pengajuan-cuti", label: "Pengajuan Cuti", icon: "🏖️" },
                     { id: "jurnal-kerja", label: "Jurnal Kerja", icon: "📑" },
@@ -273,8 +279,8 @@ export default function Home() {
                       onClick={() => setActiveMenu(item.id)}
                       className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs transition-all ${
                         activeMenu === item.id
-                          ? "bg-emerald-500/20 text-white font-bold border-l-2 border-emerald-400"
-                          : "text-emerald-300/60 hover:text-emerald-100 hover:bg-emerald-500/5 font-medium"
+                          ? "bg-emerald-950/80 text-white font-bold border-l-2 border-emerald-400 shadow-sm"
+                          : "text-emerald-300/60 hover:text-emerald-100 hover:bg-emerald-950/30 font-medium"
                       }`}
                     >
                       <span className="text-sm">{item.icon}</span>
@@ -303,7 +309,7 @@ export default function Home() {
               </button>
 
               {openSections.sistem && (
-                <div className="mt-1 space-y-0.5 pl-3 border-l-2 border-emerald-500/20 ml-4">
+                <div className="mt-1 space-y-0.5 pl-3 border-l-2 border-emerald-900/60 ml-4">
                   {[
                     { id: "user-management", label: "User Management", icon: "👤" },
                     { id: "pengaturan", label: "Pengaturan", icon: "⚙️" },
@@ -313,8 +319,8 @@ export default function Home() {
                       onClick={() => setActiveMenu(item.id)}
                       className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs transition-all ${
                         activeMenu === item.id
-                          ? "bg-emerald-500/20 text-white font-bold border-l-2 border-emerald-400"
-                          : "text-emerald-300/60 hover:text-emerald-100 hover:bg-emerald-500/5 font-medium"
+                          ? "bg-emerald-950/80 text-white font-bold border-l-2 border-emerald-400 shadow-sm"
+                          : "text-emerald-300/60 hover:text-emerald-100 hover:bg-emerald-950/30 font-medium"
                       }`}
                     >
                       <span className="text-sm">{item.icon}</span>
@@ -328,249 +334,258 @@ export default function Home() {
         </div>
 
         {/* Sidebar Footer User Info */}
-        <div className="p-3 bg-[#03140d] rounded-2xl border border-emerald-500/15 flex items-center gap-3">
-          <div className="w-9 h-9 rounded-full bg-emerald-800 flex items-center justify-center font-bold text-xs text-white ring-2 ring-emerald-400/40">
+        <div className="p-3 bg-[#020b06] rounded-xl border border-emerald-900/60 flex items-center gap-3">
+          <div className="w-8 h-8 rounded-full bg-emerald-900 flex items-center justify-center font-bold text-xs text-white ring-1 ring-emerald-500/40">
             BP
           </div>
           <div className="overflow-hidden">
             <span className="text-xs font-bold text-white block truncate">Budi Pratama</span>
-            <span className="text-[10px] text-emerald-400/70 block truncate">Admin HRD / Ops</span>
+            <span className="text-[10px] text-emerald-400/70 block truncate">Administrator</span>
           </div>
         </div>
       </aside>
 
       {/* ========================================================= */}
-      {/* MAIN CONTENT AREA                                         */}
+      {/* MAIN VIEW AREA                                            */}
+      {/* Nuansa: Hijau sangat tua pekat mendekati gelap            */}
       {/* ========================================================= */}
       <div className="flex-1 flex flex-col min-h-screen overflow-y-auto">
-        {/* Top Header Bar */}
-        <header className="sticky top-0 z-40 bg-[#051c14]/90 backdrop-blur-md border-b border-emerald-500/15 px-6 py-3 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <h2 className="text-base font-extrabold text-white capitalize">
-              {activeMenu === "dashboard"
-                ? "Ringkasan Eksekutif Kehadiran"
-                : activeMenu === "absensi"
-                ? "Pintu Absensi Online (Geofence & AI Liveness)"
-                : activeMenu === "rekap-absensi"
-                ? "Rekapitulasi Kehadiran & Audit Trail"
-                : activeMenu === "jadwal-shift"
-                ? "Manajemen Shift Kerja Dinamis"
-                : activeMenu.replace("-", " ")}
-            </h2>
-            <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/15 text-emerald-300 text-[10px] font-bold border border-emerald-500/30 uppercase">
-              Auto-Approval System
-            </span>
+        {/* Top Header Row (Persis Sesuai Gambar) */}
+        <header className="px-8 pt-7 pb-4 flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-black text-white tracking-tight">DASHBOARD</h1>
+            <p className="text-xs text-emerald-300/60 mt-0.5">Ringkasan Data AbsenKu</p>
           </div>
 
-          {/* Real-time NTP Time & Location Pill */}
-          <div className="flex items-center gap-4 text-xs">
-            <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[#072a1e] border border-emerald-500/20">
-              <Building2 className="w-3.5 h-3.5 text-emerald-400" />
-              <span className="text-emerald-300/80">Kantor Pusat Jakarta (50m Radius)</span>
-            </div>
-            <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[#072a1e] border border-emerald-500/20 font-mono">
-              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-              <span className="font-bold text-emerald-200">{currentTime || "07:45:12 WIB"}</span>
-            </div>
+          {/* Right Header Action Buttons: Dark, Ganti Password, Keluar */}
+          <div className="flex items-center gap-2.5 text-xs">
+            <button className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#051a11] text-amber-300/90 border border-emerald-900/60 hover:bg-[#072417] transition-all font-medium">
+              <span>🌙</span>
+              <span>Dark</span>
+            </button>
+            <button className="px-3.5 py-1.5 rounded-lg bg-[#051a11] text-emerald-200 border border-emerald-900/60 hover:bg-[#072417] transition-all font-medium">
+              Ganti Password
+            </button>
+            <button className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#051a11] text-amber-200/90 border border-emerald-900/60 hover:bg-[#072417] transition-all font-medium">
+              <span>🚪</span>
+              <span>Keluar</span>
+            </button>
           </div>
         </header>
 
         {/* Content Body Based on Active Menu */}
-        <div className="p-6 lg:p-8 space-y-6">
+        <div className="px-8 pb-10 space-y-6">
           {/* ===================================================== */}
-          {/* VIEW: DASHBOARD (OVERVIEW)                            */}
+          {/* VIEW: DASHBOARD (PERSIS SEPERTI GAMBAR DARI USER)     */}
           {/* ===================================================== */}
           {activeMenu === "dashboard" && (
-            <div className="space-y-6">
-              {/* Top Metric KPI Cards */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                <div className="bg-[#06241a] p-5 rounded-2xl border border-emerald-500/20 shadow-lg">
-                  <div className="flex justify-between items-center mb-2">
-                    <span className="text-xs text-emerald-300/70">Total Karyawan</span>
-                    <Users className="w-4 h-4 text-emerald-400" />
-                  </div>
-                  <div className="text-3xl font-extrabold text-white font-mono">120</div>
-                  <span className="text-[11px] text-emerald-400 mt-1 block">
-                    ✓ 3 Shift Operasional Aktif
+            <div className="space-y-5">
+              {/* BIG HERO CARD: Human Capital Overview */}
+              <div className="rounded-3xl bg-gradient-to-br from-[#061d13] via-[#04160e] to-[#020d08] p-7 border border-emerald-500/20 shadow-2xl relative overflow-hidden">
+                {/* Glow Accent */}
+                <div className="absolute top-0 right-0 w-96 h-96 bg-emerald-500/5 blur-[100px] pointer-events-none" />
+
+                {/* Card Top Label & Badge */}
+                <div className="flex items-center justify-between mb-4">
+                  <span className="text-[11px] font-black tracking-widest uppercase text-amber-400">
+                    ABSENKU - WORKFORCE INTELLIGENCE
+                  </span>
+                  <span className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#03150d] text-emerald-300 text-[10px] font-extrabold border border-emerald-500/30">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                    <span>DATA ABSENKU</span>
                   </span>
                 </div>
 
-                <div className="bg-[#06241a] p-5 rounded-2xl border border-emerald-500/20 shadow-lg">
-                  <div className="flex justify-between items-center mb-2">
-                    <span className="text-xs text-emerald-300/70">Hadir Hari Ini (Auto-Approved)</span>
-                    <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-                  </div>
-                  <div className="flex items-baseline gap-2">
-                    <span className="text-3xl font-extrabold text-emerald-300 font-mono">108</span>
-                    <span className="text-xs text-emerald-400/80 font-bold">(90%)</span>
-                  </div>
-                  <span className="text-[11px] text-emerald-400 mt-1 block">
-                    ✓ 102 Tepat Waktu • 6 Terlambat
-                  </span>
+                {/* Title */}
+                <div className="mb-6">
+                  <h2 className="text-xl font-extrabold text-white">Human Capital Overview</h2>
+                  <p className="text-xs text-emerald-300/60">Komposisi dan statistik SDM aktif</p>
                 </div>
 
-                <div className="bg-[#06241a] p-5 rounded-2xl border border-emerald-500/20 shadow-lg">
-                  <div className="flex justify-between items-center mb-2">
-                    <span className="text-xs text-emerald-300/70">Akurasi AI Biometrik</span>
-                    <ShieldCheck className="w-4 h-4 text-emerald-400" />
-                  </div>
-                  <div className="text-3xl font-extrabold text-white font-mono">95.8%</div>
-                  <span className="text-[11px] text-emerald-400 mt-1 block">
-                    ✓ Nilai Lolos Ambang Batas (&gt;80%)
-                  </span>
-                </div>
-
-                <div className="bg-[#06241a] p-5 rounded-2xl border border-emerald-500/20 shadow-lg">
-                  <div className="flex justify-between items-center mb-2">
-                    <span className="text-xs text-emerald-300/70">Belum Hadir / Cuti</span>
-                    <AlertTriangle className="w-4 h-4 text-amber-400" />
-                  </div>
-                  <div className="text-3xl font-extrabold text-amber-200 font-mono">12</div>
-                  <span className="text-[11px] text-amber-400/80 mt-1 block">
-                    • 8 Belum Jam Shift • 4 Pengajuan Cuti
-                  </span>
-                </div>
-              </div>
-
-              {/* Attendance Visual Chart & Geofence Radial Meter */}
-              <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-                {/* Bar Chart */}
-                <div className="lg:col-span-8 bg-[#06241a] p-6 rounded-2xl border border-emerald-500/20">
-                  <div className="flex justify-between items-center mb-6">
-                    <div>
-                      <h3 className="font-bold text-white text-sm">Grafik Tren Kehadiran Mingguan</h3>
-                      <p className="text-xs text-emerald-300/60">Persentase kehadiran karyawan per hari</p>
+                {/* 2-Columns Body inside Hero Card */}
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
+                  {/* Left Column: Golden Circular Donut Dial */}
+                  <div className="lg:col-span-4 flex flex-col items-center justify-center">
+                    <div className="relative w-40 h-40 flex items-center justify-center">
+                      {/* SVG Circular Ring */}
+                      <svg className="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
+                        {/* Background track */}
+                        <circle
+                          cx="50"
+                          cy="50"
+                          r="38"
+                          stroke="rgba(16, 185, 129, 0.15)"
+                          strokeWidth="8"
+                          fill="transparent"
+                        />
+                        {/* Golden Foreground Ring */}
+                        <circle
+                          cx="50"
+                          cy="50"
+                          r="38"
+                          stroke="#eab308"
+                          strokeWidth="8"
+                          strokeDasharray="238.76"
+                          strokeDashoffset="0"
+                          strokeLinecap="round"
+                          fill="transparent"
+                        />
+                      </svg>
+                      {/* Center Number */}
+                      <div className="absolute text-center">
+                        <span className="text-4xl font-black text-white font-mono block">6</span>
+                        <span className="text-xs text-emerald-300/70 font-medium">Karyawan</span>
+                      </div>
                     </div>
-                    <span className="text-xs px-3 py-1 rounded-lg bg-emerald-500/10 text-emerald-300 font-semibold border border-emerald-500/20">
-                      Rata-rata: 93.8%
+                    <span className="text-xs text-emerald-300/60 mt-3 font-medium">
+                      Komposisi karyawan aktif
                     </span>
                   </div>
 
-                  <div className="grid grid-cols-6 gap-3 h-44 items-end pt-4">
-                    {[
-                      { day: "Senin", rate: 96, count: "115" },
-                      { day: "Selasa", rate: 90, count: "108" },
-                      { day: "Rabu", rate: 94, count: "113" },
-                      { day: "Kamis", rate: 98, count: "118" },
-                      { day: "Jumat", rate: 92, count: "110" },
-                      { day: "Sabtu", rate: 85, count: "102" },
-                    ].map((b, i) => (
-                      <div key={i} className="flex flex-col items-center gap-1.5 h-full justify-end group">
-                        <span className="text-[10px] font-mono font-bold text-emerald-300 group-hover:scale-110 transition-transform">
-                          {b.rate}%
-                        </span>
-                        <div
-                          style={{ height: `${b.rate}%` }}
-                          className="w-full rounded-xl bg-gradient-to-t from-emerald-600 to-emerald-400 shadow-lg shadow-emerald-500/20 group-hover:brightness-125 transition-all"
-                        />
-                        <span className="text-xs font-semibold text-emerald-200 mt-1">{b.day}</span>
-                        <span className="text-[10px] text-emerald-300/50 font-mono">{b.count}/120</span>
+                  {/* Right Column: Progress Bars & Insight SDM Box */}
+                  <div className="lg:col-span-8 space-y-5">
+                    {/* Progress Bar 1: Karyawan Kontrak */}
+                    <div>
+                      <div className="flex justify-between items-center text-xs mb-1.5">
+                        <div className="flex items-center gap-2">
+                          <span className="w-2.5 h-2.5 rounded-full bg-blue-500" />
+                          <span className="text-white font-medium">Karyawan Kontrak</span>
+                        </div>
+                        <span className="font-mono text-emerald-300/80 font-bold">0 • 0%</span>
                       </div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Geofence Radial Widget */}
-                <div className="lg:col-span-4 bg-[#06241a] p-6 rounded-2xl border border-emerald-500/20 flex flex-col justify-between">
-                  <div>
-                    <h3 className="font-bold text-white text-sm mb-1">Kepatuhan Geofence</h3>
-                    <p className="text-xs text-emerald-300/60 mb-6">Jarak GPS absensi terhadap kantor (Radius 50m)</p>
-
-                    <div className="relative w-32 h-32 mx-auto rounded-full border-8 border-emerald-500/20 flex items-center justify-center">
-                      <div className="absolute inset-0 rounded-full border-8 border-emerald-400 border-t-transparent -rotate-45" />
-                      <div className="text-center">
-                        <span className="text-2xl font-black text-white font-mono block">99.2%</span>
-                        <span className="text-[9px] text-emerald-300/70 uppercase">Lolos Radius</span>
+                      <div className="w-full h-2 rounded-full bg-[#020b06] overflow-hidden">
+                        <div className="h-full bg-blue-500 rounded-full" style={{ width: "0%" }} />
                       </div>
                     </div>
-                  </div>
 
-                  <div className="space-y-1.5 mt-4 text-xs">
-                    <div className="flex justify-between text-emerald-200">
-                      <span>Radius &lt; 20 meter</span>
-                      <span className="font-mono font-bold text-emerald-400">84.2%</span>
+                    {/* Progress Bar 2: Karyawan Tetap (Gold Bar) */}
+                    <div>
+                      <div className="flex justify-between items-center text-xs mb-1.5">
+                        <div className="flex items-center gap-2">
+                          <span className="w-2.5 h-2.5 rounded-full bg-amber-400" />
+                          <span className="text-white font-medium">Karyawan Tetap</span>
+                        </div>
+                        <span className="font-mono text-white font-bold">6 • 100%</span>
+                      </div>
+                      <div className="w-full h-2 rounded-full bg-[#020b06] overflow-hidden">
+                        <div className="h-full bg-gradient-to-r from-amber-500 to-amber-300 rounded-full shadow-sm shadow-amber-400/50" style={{ width: "100%" }} />
+                      </div>
                     </div>
-                    <div className="flex justify-between text-emerald-200">
-                      <span>Radius 20 - 45 meter</span>
-                      <span className="font-mono font-bold text-emerald-400">15.0%</span>
-                    </div>
-                    <div className="flex justify-between text-emerald-300/60">
-                      <span>Di Luar Radius (Ditolak)</span>
-                      <span className="font-mono font-bold text-red-400">0.8%</span>
+
+                    {/* INSIGHT SDM Box (Persis Sesuai Gambar) */}
+                    <div className="bg-[#03150d] rounded-2xl p-4 border border-emerald-900/60 mt-4">
+                      <span className="text-[10px] font-black tracking-wider uppercase text-amber-400 block mb-1">
+                        INSIGHT SDM
+                      </span>
+                      <p className="text-xs text-emerald-200/80">
+                        Sebagian besar karyawan aktif berstatus tetap (100%).
+                      </p>
                     </div>
                   </div>
                 </div>
               </div>
 
-              {/* Live Attendance Table */}
-              <div className="bg-[#06241a] rounded-2xl p-6 border border-emerald-500/20">
-                <div className="flex justify-between items-center mb-4">
-                  <div>
-                    <h3 className="font-bold text-white text-sm">Live Feed Kehadiran Otomatis Hari Ini</h3>
-                    <p className="text-xs text-emerald-300/60">
-                      Karyawan yang berhasil absen langsung disetujui (Approved) secara instan oleh sistem
-                    </p>
+              {/* 4 SUMMARY STAT CARDS (Persis Sesuai Gambar) */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                {/* Card 1: Seluruh Karyawan (Active Blue/Emerald Ring Border) */}
+                <div
+                  onClick={() => setSelectedMetric("all")}
+                  className={`p-4 rounded-2xl cursor-pointer transition-all ${
+                    selectedMetric === "all"
+                      ? "bg-[#062418] border-2 border-emerald-400/80 shadow-xl shadow-emerald-950/60"
+                      : "bg-[#04160e] border border-emerald-900/60 hover:bg-[#062418]"
+                  }`}
+                >
+                  <div className="flex items-center gap-2 text-xs text-emerald-300/70 mb-2">
+                    <span className="text-sm">👥</span>
+                    <span>Seluruh Karyawan</span>
                   </div>
-                  <button
-                    onClick={() => setActiveMenu("rekap-absensi")}
-                    className="text-xs text-emerald-400 hover:underline font-semibold"
-                  >
-                    Buka Rekap Lengkap →
-                  </button>
+                  <div className="text-3xl font-black text-white font-mono">6</div>
+                  <span className="text-[10px] text-emerald-300/50 mt-1 block">Tenaga kerja aktif</span>
                 </div>
 
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left text-xs">
-                    <thead>
-                      <tr className="border-b border-emerald-500/20 text-emerald-300/60 text-[10px] uppercase tracking-wider">
-                        <th className="pb-3 font-semibold">Karyawan</th>
-                        <th className="pb-3 font-semibold">Shift Kerja</th>
-                        <th className="pb-3 font-semibold">Jam Absen Server</th>
-                        <th className="pb-3 font-semibold">Jarak Kantor</th>
-                        <th className="pb-3 font-semibold">Skor AI Wajah</th>
-                        <th className="pb-3 font-semibold">Status Sah</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-emerald-500/10">
-                      {[
-                        { name: "Budi Pratama", nik: "2026-0891", shift: "Shift Pagi", time: "07:42:15 WIB", dist: "14.2 m", score: 96.4, late: false },
-                        { name: "Siti Rahmawati", nik: "2026-0412", shift: "Shift Pagi", time: "07:35:48 WIB", dist: "8.5 m", score: 98.1, late: false },
-                        { name: "Andi Saputra", nik: "2026-0775", shift: "Shift Pagi", time: "07:58:22 WIB", dist: "24.1 m", score: 93.7, late: false },
-                        { name: "Dewi Lestari", nik: "2026-0219", shift: "Shift Pagi", time: "08:04:10 WIB", dist: "18.9 m", score: 95.2, late: true },
-                      ].map((row, idx) => (
-                        <tr key={idx} className="hover:bg-emerald-500/5 transition-colors">
-                          <td className="py-3 flex items-center gap-3">
-                            <div className="w-7 h-7 rounded-full bg-emerald-900 border border-emerald-400/40 flex items-center justify-center font-bold text-white text-[11px]">
-                              {row.name.charAt(0)}
-                            </div>
-                            <div>
-                              <span className="font-bold text-white block">{row.name}</span>
-                              <span className="text-[10px] text-emerald-300/60 font-mono">NIK: {row.nik}</span>
-                            </div>
-                          </td>
-                          <td className="py-3 text-emerald-200">{row.shift}</td>
-                          <td className="py-3 font-mono text-emerald-100">{row.time}</td>
-                          <td className="py-3 font-mono text-emerald-300 font-semibold">{row.dist}</td>
-                          <td className="py-3">
-                            <span className="font-mono text-emerald-300 font-bold bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
-                              {row.score}%
-                            </span>
-                          </td>
-                          <td className="py-3">
-                            <span
-                              className={`px-2.5 py-1 rounded-full text-[10px] font-extrabold border ${
-                                row.late
-                                  ? "bg-amber-500/20 text-amber-300 border-amber-500/30"
-                                  : "bg-emerald-500/20 text-emerald-300 border-emerald-500/30"
-                              }`}
-                            >
-                              {row.late ? "TERLAMBAT (AUTO)" : "APPROVED (AUTO)"}
-                            </span>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                {/* Card 2: Karyawan Kontrak */}
+                <div
+                  onClick={() => setSelectedMetric("kontrak")}
+                  className={`p-4 rounded-2xl cursor-pointer transition-all ${
+                    selectedMetric === "kontrak"
+                      ? "bg-[#062418] border-2 border-emerald-400/80 shadow-xl shadow-emerald-950/60"
+                      : "bg-[#04160e] border border-emerald-900/60 hover:bg-[#062418]"
+                  }`}
+                >
+                  <div className="flex items-center gap-2 text-xs text-emerald-300/70 mb-2">
+                    <span className="text-sm">📄</span>
+                    <span>Karyawan Kontrak</span>
+                  </div>
+                  <div className="text-3xl font-black text-white font-mono">0</div>
+                  <span className="text-[10px] text-emerald-300/50 mt-1 block">Status kontrak</span>
+                </div>
+
+                {/* Card 3: Karyawan Tetap */}
+                <div
+                  onClick={() => setSelectedMetric("tetap")}
+                  className={`p-4 rounded-2xl cursor-pointer transition-all ${
+                    selectedMetric === "tetap"
+                      ? "bg-[#062418] border-2 border-emerald-400/80 shadow-xl shadow-emerald-950/60"
+                      : "bg-[#04160e] border border-emerald-900/60 hover:bg-[#062418]"
+                  }`}
+                >
+                  <div className="flex items-center gap-2 text-xs text-emerald-300/70 mb-2">
+                    <span className="text-sm">🏅</span>
+                    <span>Karyawan Tetap</span>
+                  </div>
+                  <div className="text-3xl font-black text-white font-mono">6</div>
+                  <span className="text-[10px] text-emerald-300/50 mt-1 block">Status tetap</span>
+                </div>
+
+                {/* Card 4: User Aktif */}
+                <div
+                  onClick={() => setSelectedMetric("user")}
+                  className={`p-4 rounded-2xl cursor-pointer transition-all ${
+                    selectedMetric === "user"
+                      ? "bg-[#062418] border-2 border-emerald-400/80 shadow-xl shadow-emerald-950/60"
+                      : "bg-[#04160e] border border-emerald-900/60 hover:bg-[#062418]"
+                  }`}
+                >
+                  <div className="flex items-center gap-2 text-xs text-emerald-300/70 mb-2">
+                    <span className="text-sm">🔐</span>
+                    <span>User Aktif</span>
+                  </div>
+                  <div className="text-3xl font-black text-white font-mono">7</div>
+                  <span className="text-[10px] text-emerald-300/50 mt-1 block">Akun sistem aktif</span>
+                </div>
+              </div>
+
+              {/* ROW: METRIK TERPILIH (Persis Sesuai Gambar) */}
+              <div className="bg-[#04160e] rounded-2xl p-5 border border-emerald-900/60 flex items-center justify-between">
+                <div>
+                  <span className="text-[10px] font-black uppercase tracking-wider text-amber-400 block mb-1">
+                    METRIK TERPILIH
+                  </span>
+                  <h3 className="text-base font-bold text-white">Seluruh Karyawan</h3>
+                  <p className="text-xs text-emerald-300/60">Total tenaga kerja aktif di database HRIS.</p>
+                </div>
+                <div className="text-4xl font-black text-white font-mono">6</div>
+              </div>
+
+              {/* BOTTOM SECTION: Informasi Akun & Server Sync */}
+              <div className="bg-[#04160e] rounded-2xl p-5 border border-emerald-900/60 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div>
+                  <h3 className="text-sm font-bold text-white">Informasi Akun & Server Sync</h3>
+                  <p className="text-xs text-emerald-300/60">
+                    Sistem absensi tersinkronisasi otomatis dengan database kantor dan waktu server NTP.
+                  </p>
+                </div>
+                <div className="flex items-center gap-3">
+                  <span className="px-3 py-1.5 rounded-lg bg-emerald-500/15 text-emerald-300 text-xs font-mono font-bold border border-emerald-500/30">
+                    NTP: {currentTime || "07:45:12 WIB"}
+                  </span>
+                  <button
+                    onClick={() => setActiveMenu("absensi")}
+                    className="px-4 py-2 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-400 text-black text-xs font-extrabold hover:brightness-110 shadow-lg shadow-emerald-950 transition-all"
+                  >
+                    Buka Pintu Absensi →
+                  </button>
                 </div>
               </div>
             </div>
@@ -581,11 +596,11 @@ export default function Home() {
           {/* ===================================================== */}
           {activeMenu === "absensi" && (
             <div className="max-w-xl mx-auto space-y-6">
-              <div className="rounded-3xl bg-gradient-to-b from-[#083324] to-[#041a12] p-6 border-2 border-emerald-500/30 shadow-2xl relative">
-                {/* Employee Info Header */}
-                <div className="bg-[#06241a] rounded-2xl p-4 border border-emerald-500/20 mb-4 flex items-center justify-between">
+              <div className="rounded-3xl bg-gradient-to-b from-[#061f14] via-[#04160e] to-[#020d08] p-6 border border-emerald-500/25 shadow-2xl relative">
+                {/* Employee Header */}
+                <div className="bg-[#03150d] rounded-2xl p-4 border border-emerald-900/60 mb-4 flex items-center justify-between">
                   <div className="flex items-center gap-3">
-                    <div className="w-12 h-12 rounded-full ring-2 ring-emerald-400 bg-emerald-900 flex items-center justify-center text-lg font-bold text-white">
+                    <div className="w-11 h-11 rounded-full ring-2 ring-emerald-400 bg-emerald-950 flex items-center justify-center font-bold text-white text-sm">
                       BP
                     </div>
                     <div>
@@ -594,13 +609,13 @@ export default function Home() {
                       <span className="text-[10px] font-semibold text-emerald-400">Shift Pagi (07:00 - 15:00)</span>
                     </div>
                   </div>
-                  <span className="px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-300 text-[10px] font-bold border border-emerald-500/30">
+                  <span className="px-3 py-1 rounded-full bg-emerald-500/15 text-emerald-300 text-[10px] font-bold border border-emerald-500/30">
                     Geofence OK
                   </span>
                 </div>
 
                 {/* Geofence Distance Card */}
-                <div className="bg-[#03150f] rounded-xl p-3 border border-emerald-500/20 mb-4 flex justify-between items-center text-xs">
+                <div className="bg-[#020b06] rounded-xl p-3.5 border border-emerald-900/60 mb-4 flex justify-between items-center text-xs">
                   <div className="flex items-center gap-2">
                     <MapPin className="w-4 h-4 text-emerald-400" />
                     <div>
@@ -612,14 +627,14 @@ export default function Home() {
                 </div>
 
                 {/* Oval Camera Face Scanner */}
-                <div className="relative rounded-2xl bg-[#020e08] border-2 border-emerald-500/40 p-6 text-center overflow-hidden mb-5">
-                  <div className="absolute inset-0 bg-[radial-gradient(#10b981_1px,transparent_1px)] [background-size:16px_16px] opacity-25" />
+                <div className="relative rounded-2xl bg-[#010805] border border-emerald-500/30 p-6 text-center overflow-hidden mb-5">
+                  <div className="absolute inset-0 bg-[radial-gradient(#10b981_1px,transparent_1px)] [background-size:16px_16px] opacity-20" />
 
                   <div
-                    className={`relative mx-auto w-40 h-52 rounded-[50%] border-2 transition-all flex flex-col items-center justify-center p-2 ${
+                    className={`relative mx-auto w-36 h-48 rounded-[50%] border-2 transition-all flex flex-col items-center justify-center p-2 ${
                       livenessPassed
-                        ? "border-emerald-400 bg-emerald-500/10 shadow-xl shadow-emerald-500/30"
-                        : "border-dashed border-emerald-500/50"
+                        ? "border-emerald-400 bg-emerald-500/10 shadow-lg shadow-emerald-500/25"
+                        : "border-dashed border-emerald-500/40"
                     }`}
                   >
                     <Camera className="w-8 h-8 text-emerald-400 mb-2" />
@@ -647,16 +662,16 @@ export default function Home() {
 
                 {/* Auto-Approval Result / Action Button */}
                 {attendanceState === "SUCCESS" ? (
-                  <div className="bg-emerald-500/20 border border-emerald-400/40 rounded-2xl p-4 text-center">
-                    <div className="flex items-center justify-center gap-2 text-emerald-300 font-extrabold text-base mb-1">
-                      <CheckCircle2 className="w-6 h-6 text-emerald-400" />
+                  <div className="bg-emerald-500/15 border border-emerald-400/40 rounded-2xl p-4 text-center">
+                    <div className="flex items-center justify-center gap-2 text-emerald-300 font-black text-sm mb-1">
+                      <CheckCircle2 className="w-5 h-5 text-emerald-400" />
                       <span>APPROVED (Otomatis Hadir Sah)</span>
                     </div>
                     <p className="text-xs text-emerald-200/80 mb-2">
-                      Jam Server: {currentTime} • Tepat Waktu (Tidak Terlambat)
+                      Jam Server: {currentTime} • Tepat Waktu
                     </p>
                     <p className="text-[11px] text-emerald-300/60">
-                      Sistem telah mencocokkan biometrik & geolokasi secara instan tanpa perlu approval manual HRD.
+                      Sistem telah mengesahkan absensi secara otomatis tanpa perlu approval manual HRD.
                     </p>
                     <button
                       onClick={() => {
@@ -672,7 +687,7 @@ export default function Home() {
                   <button
                     disabled={isCapturing}
                     onClick={handleCheckIn}
-                    className="w-full py-4 rounded-xl bg-gradient-to-r from-emerald-500 to-emerald-400 text-black font-black text-sm tracking-wide shadow-xl shadow-emerald-500/30 hover:brightness-110 active:scale-[0.98] transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+                    className="w-full py-3.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-400 text-black font-black text-xs tracking-wider uppercase shadow-xl shadow-black/80 hover:brightness-110 active:scale-[0.98] transition-all flex items-center justify-center gap-2 disabled:opacity-50"
                   >
                     {isCapturing ? (
                       <>
@@ -681,7 +696,7 @@ export default function Home() {
                       </>
                     ) : (
                       <>
-                        <CheckCircle2 className="w-5 h-5 text-black" />
+                        <CheckCircle2 className="w-4 h-4 text-black" />
                         <span>KIRIM ABSENSI MASUK (AUTO-APPROVED)</span>
                       </>
                     )}
@@ -695,50 +710,28 @@ export default function Home() {
           {/* VIEW: REKAP ABSENSI                                   */}
           {/* ===================================================== */}
           {activeMenu === "rekap-absensi" && (
-            <div className="bg-[#06241a] rounded-2xl p-6 border border-emerald-500/20 space-y-4">
+            <div className="bg-[#04160e] rounded-2xl p-6 border border-emerald-900/60 space-y-4">
               <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-3">
                 <div>
                   <h3 className="font-bold text-white text-base">Rekapitulasi Kehadiran Karyawan</h3>
-                  <p className="text-xs text-emerald-300/60">Laporan log kehadiran lengkap untuk payroll</p>
+                  <p className="text-xs text-emerald-300/60">Log kehadiran terverifikasi otomatis</p>
                 </div>
                 <div className="flex gap-2">
-                  <button className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 text-xs font-semibold hover:bg-emerald-500/20">
+                  <button className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#03150d] text-emerald-300 border border-emerald-900/60 text-xs font-semibold hover:bg-emerald-950">
                     <Download className="w-3.5 h-3.5" />
                     <span>Ekspor XLSX</span>
                   </button>
-                  <button className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 text-xs font-semibold hover:bg-emerald-500/20">
+                  <button className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#03150d] text-emerald-300 border border-emerald-900/60 text-xs font-semibold hover:bg-emerald-950">
                     <Download className="w-3.5 h-3.5" />
                     <span>Ekspor PDF</span>
                   </button>
                 </div>
               </div>
 
-              {/* Filter Row */}
-              <div className="flex gap-3 text-xs">
-                <input
-                  type="text"
-                  placeholder="Cari nama karyawan / NIK..."
-                  className="bg-[#03150f] border border-emerald-500/25 rounded-xl px-3.5 py-2 text-white placeholder-emerald-400/40 focus:outline-none focus:border-emerald-400 flex-1"
-                />
-                <select className="bg-[#03150f] border border-emerald-500/25 rounded-xl px-3 py-2 text-emerald-200">
-                  <option>Semua Shift</option>
-                  <option>Shift Pagi</option>
-                  <option>Shift Siang</option>
-                  <option>Shift Malam</option>
-                </select>
-                <select className="bg-[#03150f] border border-emerald-500/25 rounded-xl px-3 py-2 text-emerald-200">
-                  <option>Semua Status</option>
-                  <option>Approved (Auto)</option>
-                  <option>Terlambat</option>
-                  <option>Dispensasi</option>
-                </select>
-              </div>
-
-              {/* Table */}
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-xs">
                   <thead>
-                    <tr className="border-b border-emerald-500/20 text-emerald-300/60 text-[10px] uppercase">
+                    <tr className="border-b border-emerald-900/60 text-emerald-300/60 text-[10px] uppercase">
                       <th className="py-3">Karyawan</th>
                       <th className="py-3">Departemen</th>
                       <th className="py-3">Shift</th>
@@ -749,15 +742,14 @@ export default function Home() {
                       <th className="py-3">Status</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-emerald-500/10">
+                  <tbody className="divide-y divide-emerald-900/30">
                     {[
                       { name: "Budi Pratama", nik: "2026-0891", dept: "IT Ops", shift: "Shift Pagi", in: "07:42 WIB", out: "15:02 WIB", dist: "14.2m", score: "96.4%", status: "APPROVED" },
                       { name: "Siti Rahmawati", nik: "2026-0412", dept: "HRD", shift: "Shift Pagi", in: "07:35 WIB", out: "15:00 WIB", dist: "8.5m", score: "98.1%", status: "APPROVED" },
                       { name: "Andi Saputra", nik: "2026-0775", dept: "Finance", shift: "Shift Pagi", in: "07:58 WIB", out: "15:15 WIB", dist: "24.1m", score: "93.7%", status: "APPROVED" },
                       { name: "Dewi Lestari", nik: "2026-0219", dept: "Marketing", shift: "Shift Pagi", in: "08:04 WIB", out: "--:--", dist: "18.9m", score: "95.2%", status: "TERLAMBAT" },
-                      { name: "Rian Hidayat", nik: "2026-0155", dept: "Operasional", shift: "Shift Pagi", in: "07:29 WIB", out: "15:01 WIB", dist: "12.0m", score: "97.5%", status: "APPROVED" },
                     ].map((r, i) => (
-                      <tr key={i} className="hover:bg-emerald-500/5">
+                      <tr key={i} className="hover:bg-emerald-950/20">
                         <td className="py-3 font-bold text-white">{r.name}</td>
                         <td className="py-3 text-emerald-300/80">{r.dept}</td>
                         <td className="py-3 text-emerald-200">{r.shift}</td>
@@ -795,7 +787,7 @@ export default function Home() {
                   <p className="text-xs text-emerald-300/60">Tentukan jam masuk, jam pulang, dan batas toleransi</p>
                 </div>
                 <button
-                  onClick={() => alert("Form Tambah Shift Dinamis")}
+                  onClick={() => alert("Form Tambah Shift Baru")}
                   className="px-4 py-2 rounded-xl bg-emerald-500 text-black font-bold text-xs hover:bg-emerald-400 transition-all flex items-center gap-1.5"
                 >
                   <Plus className="w-4 h-4 text-black" />
@@ -805,16 +797,16 @@ export default function Home() {
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 {shifts.map((s) => (
-                  <div key={s.id} className="bg-[#06241a] p-6 rounded-2xl border border-emerald-500/20 shadow-lg flex flex-col justify-between">
+                  <div key={s.id} className="bg-[#04160e] p-6 rounded-2xl border border-emerald-900/60 shadow-lg flex flex-col justify-between">
                     <div>
                       <div className="flex justify-between items-center mb-3">
-                        <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300">
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-500/15 text-emerald-300 border border-emerald-500/20">
                           {s.status}
                         </span>
                         <span className="text-xs text-emerald-300/60">{s.activeStaff} Anggota</span>
                       </div>
                       <h4 className="font-bold text-white text-base mb-2">{s.name}</h4>
-                      <div className="bg-[#03150f] p-3 rounded-xl border border-emerald-500/15 text-center my-3">
+                      <div className="bg-[#020b06] p-3 rounded-xl border border-emerald-900/40 text-center my-3">
                         <span className="font-mono text-xl font-extrabold text-emerald-300">
                           {s.startTime} - {s.endTime}
                         </span>
@@ -830,7 +822,7 @@ export default function Home() {
                         </div>
                       </div>
                     </div>
-                    <button className="w-full mt-5 py-2 rounded-lg bg-emerald-500/10 text-emerald-300 border border-emerald-500/20 hover:bg-emerald-500/20 text-xs font-semibold">
+                    <button className="w-full mt-5 py-2 rounded-lg bg-[#03150d] text-emerald-300 border border-emerald-900/60 hover:bg-emerald-950 text-xs font-semibold">
                       Ubah Parameter
                     </button>
                   </div>
@@ -843,9 +835,9 @@ export default function Home() {
           {/* VIEW: KARYAWAN & KEPEGAWAIAN                          */}
           {/* ===================================================== */}
           {activeMenu === "karyawan" && (
-            <div className="bg-[#06241a] rounded-2xl p-6 border border-emerald-500/20 space-y-4">
+            <div className="bg-[#04160e] rounded-2xl p-6 border border-emerald-900/60 space-y-4">
               <div className="flex justify-between items-center">
-                <h3 className="font-bold text-white text-base">Direktori Karyawan & Master Biometrik Wajah</h3>
+                <h3 className="font-bold text-white text-base">Direktori 6 Karyawan Aktif</h3>
                 <button className="px-3.5 py-1.5 rounded-lg bg-emerald-500 text-black text-xs font-bold hover:bg-emerald-400">
                   + Daftarkan Karyawan
                 </button>
@@ -856,10 +848,13 @@ export default function Home() {
                   { name: "Budi Pratama", nik: "2026-0891", dept: "IT Operations", role: "Sr. Software Eng", face: "Terdaftar (Embedding Valid)" },
                   { name: "Siti Rahmawati", nik: "2026-0412", dept: "HR & People", role: "HR Specialist", face: "Terdaftar (Embedding Valid)" },
                   { name: "Andi Saputra", nik: "2026-0775", dept: "Finance", role: "Finance Officer", face: "Terdaftar (Embedding Valid)" },
+                  { name: "Dewi Lestari", nik: "2026-0219", dept: "Marketing", role: "Marketing Lead", face: "Terdaftar (Embedding Valid)" },
+                  { name: "Rian Hidayat", nik: "2026-0155", dept: "Operations", role: "Operations Staff", face: "Terdaftar (Embedding Valid)" },
+                  { name: "Maya Indah", nik: "2026-0348", dept: "Legal & Compliance", role: "Legal Specialist", face: "Terdaftar (Embedding Valid)" },
                 ].map((k, idx) => (
-                  <div key={idx} className="bg-[#03150f] p-4 rounded-xl border border-emerald-500/20 space-y-2">
+                  <div key={idx} className="bg-[#020b06] p-4 rounded-xl border border-emerald-900/50 space-y-2">
                     <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-full bg-emerald-900 flex items-center justify-center font-bold text-white text-sm ring-2 ring-emerald-400/40">
+                      <div className="w-10 h-10 rounded-full bg-emerald-950 flex items-center justify-center font-bold text-white text-sm ring-1 ring-emerald-500/30">
                         {k.name.charAt(0)}
                       </div>
                       <div>
@@ -867,7 +862,7 @@ export default function Home() {
                         <span className="text-[10px] text-emerald-300/60 font-mono">NIK: {k.nik}</span>
                       </div>
                     </div>
-                    <div className="text-xs text-emerald-200/80 pt-2 border-t border-emerald-500/10">
+                    <div className="text-xs text-emerald-200/80 pt-2 border-t border-emerald-900/30">
                       <div>Departemen: <span className="text-white font-semibold">{k.dept}</span></div>
                       <div>Jabatan: <span className="text-white font-semibold">{k.role}</span></div>
                       <div className="text-[10px] text-emerald-400 mt-1">✓ {k.face}</div>
@@ -882,7 +877,7 @@ export default function Home() {
           {/* VIEW: PENGATURAN KANTOR & GEOFENCE                    */}
           {/* ===================================================== */}
           {activeMenu === "pengaturan" && (
-            <div className="max-w-2xl bg-[#06241a] rounded-2xl p-6 border border-emerald-500/20 space-y-5">
+            <div className="max-w-2xl bg-[#04160e] rounded-2xl p-6 border border-emerald-900/60 space-y-5">
               <div>
                 <h3 className="font-bold text-white text-base">Pengaturan Lokasi Kantor & Parameter Geofence</h3>
                 <p className="text-xs text-emerald-300/60">Tentukan titik koordinat pusat kantor dan radius batas toleransi</p>
@@ -894,7 +889,7 @@ export default function Home() {
                   <input
                     type="text"
                     defaultValue="Kantor Pusat - Sudirman Tower Lt. 12"
-                    className="w-full bg-[#03150f] border border-emerald-500/25 rounded-xl px-3.5 py-2.5 text-white focus:outline-none focus:border-emerald-400"
+                    className="w-full bg-[#020b06] border border-emerald-900/60 rounded-xl px-3.5 py-2.5 text-white focus:outline-none focus:border-emerald-400"
                   />
                 </div>
 
@@ -904,7 +899,7 @@ export default function Home() {
                     <input
                       type="text"
                       defaultValue="-6.2088"
-                      className="w-full bg-[#03150f] border border-emerald-500/25 rounded-xl px-3.5 py-2.5 text-white font-mono"
+                      className="w-full bg-[#020b06] border border-emerald-900/60 rounded-xl px-3.5 py-2.5 text-white font-mono"
                     />
                   </div>
                   <div>
@@ -912,7 +907,7 @@ export default function Home() {
                     <input
                       type="text"
                       defaultValue="106.8456"
-                      className="w-full bg-[#03150f] border border-emerald-500/25 rounded-xl px-3.5 py-2.5 text-white font-mono"
+                      className="w-full bg-[#020b06] border border-emerald-900/60 rounded-xl px-3.5 py-2.5 text-white font-mono"
                     />
                   </div>
                 </div>
@@ -923,7 +918,7 @@ export default function Home() {
                     <input
                       type="number"
                       defaultValue="50"
-                      className="w-full bg-[#03150f] border border-emerald-500/25 rounded-xl px-3.5 py-2.5 text-white font-mono"
+                      className="w-full bg-[#020b06] border border-emerald-900/60 rounded-xl px-3.5 py-2.5 text-white font-mono"
                     />
                   </div>
                   <div>
@@ -931,7 +926,7 @@ export default function Home() {
                     <input
                       type="number"
                       defaultValue="80"
-                      className="w-full bg-[#03150f] border border-emerald-500/25 rounded-xl px-3.5 py-2.5 text-white font-mono"
+                      className="w-full bg-[#020b06] border border-emerald-900/60 rounded-xl px-3.5 py-2.5 text-white font-mono"
                     />
                   </div>
                 </div>
@@ -945,13 +940,13 @@ export default function Home() {
 
           {/* Placeholder for other menus */}
           {!["dashboard", "absensi", "rekap-absensi", "jadwal-shift", "karyawan", "pengaturan"].includes(activeMenu) && (
-            <div className="bg-[#06241a] rounded-2xl p-12 border border-emerald-500/20 text-center space-y-3">
+            <div className="bg-[#04160e] rounded-2xl p-12 border border-emerald-900/60 text-center space-y-3">
               <div className="text-4xl">📂</div>
               <h3 className="font-bold text-white text-base capitalize">
                 Modul {activeMenu.replace("-", " ")}
               </h3>
               <p className="text-xs text-emerald-300/60 max-w-sm mx-auto">
-                Modul ini siap dikembangkan sesuai alur kerja yang sudah kita tentukan di PRD.
+                Modul siap dihubungkan dengan database sesuai alur kerja PRD.
               </p>
               <button
                 onClick={() => setActiveMenu("dashboard")}
