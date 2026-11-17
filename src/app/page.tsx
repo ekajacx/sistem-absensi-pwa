@@ -958,7 +958,7 @@ export default function Home() {
   // ─────────────────────────────────────────────────────────────
   const allPermissions: PermissionItem[] = [
     { id: "menu_user_mgmt", category: "Hak Akses Menu Sistem", name: "Akses Menu User Management", description: "Wewenang membuka menu User Management, kelola kredensial akun & matriks RBAC" },
-    { id: "menu_settings", category: "Hak Akses Menu Sistem", name: "Akses Menu Pengaturan Sistem", description: "Wewenang membuka menu Pengaturan Sistem (Lokasi / Geofence GPS & Pengaturan Shift Kerja)" },
+    { id: "menu_settings", category: "Hak Akses Menu Sistem", name: "Akses Menu Pengaturan Teknis IT", description: "Wewenang membuka menu Pengaturan Teknis IT, Geofence GPS & AI Match" },
     { id: "dash_global", category: "Dashboard", name: "Lihat Dashboard Global Perusahaan", description: "Melihat grafik total SDM, absensi, dan analitik seluruh divisi" },
     { id: "dash_team", category: "Dashboard", name: "Lihat Ringkasan Tim / Bawahan Saja", description: "Hanya melihat metrik performa dan kehadiran staf di bawah supervisinya" },
     { id: "emp_manage_hr", category: "Wewenang Khusus HR", name: "Daftarkan Karyawan & Buat Akun Otomatis", description: "Hak khusus HR untuk mendaftarkan NIK, nama, atasan, status kerja & kredensial acak" },
@@ -1000,7 +1000,6 @@ export default function Home() {
     ],
     "General Manager": [
       "menu_user_mgmt", // GM berwenang memantau seluruh akun dan hirarki organisasi
-      "menu_settings", // GM berwenang mengakses Pengaturan Sistem & Shift
       "dash_global",
       "dash_team",
       "att_scan_self",
@@ -1015,7 +1014,6 @@ export default function Home() {
     ],
     "HR Supervisor": [
       "menu_user_mgmt", // HR Supervisor berwenang penuh pada user management & pendaftaran
-      "menu_settings", // HR Supervisor berwenang mengakses Pengaturan Sistem & Shift
       "dash_global",
       "dash_team",
       "emp_manage_hr",
@@ -1059,7 +1057,6 @@ export default function Home() {
       "att_scan_self",
     ],
     Supervisor: [
-      "menu_settings", // Supervisor berwenang mengatur Shift Kerja di menu Pengaturan
       "dash_team",
       "att_scan_self",
       "att_team",
@@ -1118,13 +1115,10 @@ export default function Home() {
 
   // Otomatis alihkan jika menu dibatasi untuk Staff atau tidak memiliki izin akses
   useEffect(() => {
-    if (isStaff && ["departemen", "jabatan", "kontrak", "rekap-absensi", "user-management", "izin-akses", "pengaturan"].includes(activeMenu)) {
+    if (isStaff && ["departemen", "jabatan", "kontrak", "rekap-absensi", "user-management", "pengaturan"].includes(activeMenu)) {
       setActiveMenu("karyawan");
     }
     if (activeMenu === "user-management" && !hasPermission("menu_user_mgmt")) {
-      setActiveMenu("dashboard");
-    }
-    if (activeMenu === "izin-akses" && !hasPermission("menu_user_mgmt")) {
       setActiveMenu("dashboard");
     }
     if (activeMenu === "pengaturan" && !hasPermission("menu_settings")) {
@@ -1604,7 +1598,6 @@ export default function Home() {
 
   const [shiftActiveTab, setShiftActiveTab] = useState<"roster" | "master">("roster");
   const [selectedScheduleEmpId, setSelectedScheduleEmpId] = useState<string>("emp-ops-spv");
-  const [pengaturanTab, setPengaturanTab] = useState<"lokasi" | "shift">("lokasi");
 
   // Jika POV Staff, kunci target jadwal ke diri sendiri dan kunci tab ke roster
   useEffect(() => {
@@ -1612,10 +1605,7 @@ export default function Home() {
       setSelectedScheduleEmpId(currentActiveEmployee.id);
       setShiftActiveTab("roster");
     }
-    if (currentActiveEmployee.level === "Supervisor" && currentActiveEmployee.dept !== "IT") {
-      setPengaturanTab("shift");
-    }
-  }, [isStaff, currentActiveEmployee.id, currentActiveEmployee.level, currentActiveEmployee.dept]);
+  }, [isStaff, currentActiveEmployee.id]);
 
   // Tanggal Senin dari minggu yang sedang dijadwalkan
   const [rosterWeekStart, setRosterWeekStart] = useState<string>("2026-11-16");
@@ -2236,11 +2226,12 @@ export default function Home() {
     kontrak: { title: "KONTRAK & LIFECYCLE", subtitle: "Status Kerja Karyawan: Tetap, Kontrak, Magang, DW", icon: "📄" },
     absensi: { title: "ABSENSI", subtitle: "Verifikasi Kehadiran Otomatis Real-Time (GPS & AI Liveness)", icon: "📍" },
     "rekap-absensi": { title: "REKAP ABSENSI", subtitle: `Audit Log Kehadiran Terverifikasi (${attendances.length} Log Hari Ini)`, icon: "📊" },
+    "jadwal-shift": { title: "JADWAL SHIFT", subtitle: `Konfigurasi Shift Kerja Dinamis (${shifts.length} Shift Aktif)`, icon: "📅" },
     "pengajuan-cuti": { title: "PENGAJUAN CUTI", subtitle: `Self-Service Permohonan Cuti & Persetujuan Berjenjang N+1 (${pendingSubordinateCount} Pending Approval)`, icon: "⛱️" },
     "jurnal-kerja": { title: "JURNAL KERJA", subtitle: `Catatan Produktivitas Harian & Penilaian Supervisor (${journals.length} Jurnal Tercatat)`, icon: "📝" },
     "user-management": { title: "USER MANAGEMENT", subtitle: `Kelola Akun Pengguna Sistem (${users.length} Akun Terdaftar)`, icon: "👤" },
     "izin-akses": { title: "IZIN AKSES (RBAC)", subtitle: "Matriks Wewenang & Hak Akses Berdasarkan Peran Sistem (Role-Based Access Control)", icon: "🛡️" },
-    pengaturan: { title: "PENGATURAN", subtitle: `Konfigurasi Geofence GPS (${settings.geofenceRadius}m) & Master Shift Kerja (${shifts.length} Shift Aktif)`, icon: "⚙️" },
+    pengaturan: { title: "PENGATURAN", subtitle: `Konfigurasi Geofence Kantor (${settings.geofenceRadius}m) & AI Match (${settings.aiFaceThreshold}%)`, icon: "⚙️" },
   };
 
   const currentMeta = menuMeta[activeMenu] ?? { title: activeMenu.toUpperCase(), subtitle: "", icon: "📋" };
@@ -2588,10 +2579,12 @@ export default function Home() {
                   {(isStaff
                     ? [
                         { id: "absensi", label: "Absensi", icon: "📍" },
+                        { id: "jadwal-shift", label: "Jadwal Shift", icon: "📅", badge: shifts.length },
                       ]
                     : [
                         { id: "absensi", label: "Absensi", icon: "📍" },
                         { id: "rekap-absensi", label: "Rekap Absensi", icon: "📊", badge: attendances.length },
+                        { id: "jadwal-shift", label: "Jadwal Shift", icon: "📅", badge: shifts.length },
                       ]
                   ).map((item) => (
                     <button
@@ -3343,11 +3336,7 @@ export default function Home() {
                         <span>Absensi Masuk / Pulang</span>
                       </button>
                       <button
-                        onClick={() => {
-                          const elem = document.getElementById("card-shift-mandiri");
-                          if (elem) elem.scrollIntoView({ behavior: "smooth" });
-                          else showToast(`Jadwal Anda: ${currentActiveEmployee.shiftId === "shift-1" ? "Shift Pagi (07:00 - 15:00 WIB)" : "Shift Siang (15:00 - 23:00 WIB)"}. Dikelola resmi oleh Atasan.`);
-                        }}
+                        onClick={() => setActiveMenu("jadwal-shift")}
                         className="px-4 py-2 rounded-xl bg-[#010804] hover:bg-emerald-950 text-emerald-300 border border-emerald-500/30 font-bold text-xs transition-all flex items-center gap-2"
                       >
                         <span>📅</span>
@@ -3462,7 +3451,7 @@ export default function Home() {
                   </div>
 
                   {/* Card 3: Shift Kerja & Kuota Cuti Mandiri */}
-                  <div id="card-shift-mandiri" className="bg-[#021209] rounded-2xl p-5 border border-emerald-900/60 space-y-4">
+                  <div className="bg-[#021209] rounded-2xl p-5 border border-emerald-900/60 space-y-4">
                     <div className="flex items-center justify-between border-b border-emerald-900/40 pb-3">
                       <h3 className="font-extrabold text-white text-sm flex items-center gap-2">
                         <span className="text-base">⏱️</span>
@@ -4909,137 +4898,17 @@ export default function Home() {
           )}
 
           {/* ===================================================== */}
-          {/* VIEW: PENGATURAN (LOKASI GEOFENCE & SHIFT KERJA)      */}
+          {/* VIEW: JADWAL SHIFT & ROSTER KERJA MINGGUAN             */}
           {/* ===================================================== */}
-          {activeMenu === "pengaturan" && hasPermission("menu_settings") && (
-            <div className="space-y-6">
-              {/* Tab Selector Utama Pengaturan: Lokasi & Geofence GPS vs Pengaturan Shift Kerja */}
-              <div className="flex flex-wrap items-center gap-3 border-b border-emerald-900/60 pb-3">
-                <button
-                  onClick={() => setPengaturanTab("lokasi")}
-                  className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-xs transition-all ${
-                    pengaturanTab === "lokasi"
-                      ? "bg-emerald-500 text-black shadow-lg shadow-emerald-500/20 font-extrabold"
-                      : "bg-[#021008] text-white/70 hover:text-white border border-emerald-900/60"
-                  }`}
-                >
-                  <MapPin className="w-4 h-4" />
-                  <span>Pengaturan Lokasi & Geofence GPS</span>
-                </button>
+          {activeMenu === "jadwal-shift" && (() => {
+            const schedulableEmployees = getSchedulableEmployees();
+            const currentSchedTarget =
+              employees.find((e) => e.id === selectedScheduleEmpId) || schedulableEmployees[0] || employees[0];
+            const isSupervisorRole = currentActiveEmployee.level === "Supervisor";
+            const isAdminOrHR = activePerspective === "admin" || currentRoleName === "Super Admin" || currentRoleName === "HR Supervisor";
+            const canOverrideCuti = currentActiveEmployee.level === "Supervisor" || currentActiveEmployee.level === "GeneralManager" || currentActiveEmployee.level === "Director" || isAdminOrHR;
 
-                <button
-                  onClick={() => setPengaturanTab("shift")}
-                  className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-xs transition-all ${
-                    pengaturanTab === "shift"
-                      ? "bg-emerald-500 text-black shadow-lg shadow-emerald-500/20 font-extrabold"
-                      : "bg-[#021008] text-white/70 hover:text-white border border-emerald-900/60"
-                  }`}
-                >
-                  <CalendarDays className="w-4 h-4" />
-                  <span>Pengaturan Shift Kerja & Roster ({shifts.length} Shift Aktif)</span>
-                </button>
-              </div>
-
-              {/* TAB 1: PENGATURAN LOKASI & GEOFENCE GPS */}
-              {pengaturanTab === "lokasi" && (
-                <div className="max-w-2xl bg-gradient-to-br from-[#062417] to-[#021008] rounded-2xl p-6 border border-emerald-900/60 space-y-5">
-                  <div className="flex items-center justify-between border-b border-emerald-900/60 pb-3">
-                    <div>
-                      <h3 className="font-bold text-white text-base flex items-center gap-2">
-                        <Cpu className="w-5 h-5 text-blue-400" />
-                        <span>Pengaturan Titik Lokasi Kantor & Geofence GPS</span>
-                      </h3>
-                      <p className="text-xs text-white/70">
-                        Kelola koordinat GPS kantor pusat, radius batas kehadiran, dan ambang batas verifikasi AI Liveness.
-                      </p>
-                    </div>
-                    <span className="px-2.5 py-1 rounded-lg bg-blue-500/20 text-blue-300 border border-blue-500/30 text-[10px] font-bold">
-                      {hasPermission("it_geofence_security") ? "IT / ADMIN" : "INFO RESMI"}
-                    </span>
-                  </div>
-
-                  <div className="space-y-4 text-xs">
-                    <div>
-                      <label className="text-white block mb-1 font-bold">Nama Titik Kantor</label>
-                      <input
-                        type="text"
-                        value={settings.officeName}
-                        disabled={!hasPermission("it_geofence_security")}
-                        onChange={(e) => setSettings({ ...settings, officeName: e.target.value })}
-                        className="w-full bg-[#010804] border border-emerald-900/60 rounded-xl px-3.5 py-2.5 text-white disabled:opacity-75"
-                      />
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <label className="text-white block mb-1 font-bold">Latitude Titik Kantor</label>
-                        <input
-                          type="number"
-                          step="0.0001"
-                          value={settings.latitude}
-                          disabled={!hasPermission("it_geofence_security")}
-                          onChange={(e) => setSettings({ ...settings, latitude: parseFloat(e.target.value) || -6.2088 })}
-                          className="w-full bg-[#010804] border border-emerald-900/60 rounded-xl px-3.5 py-2.5 text-white font-mono disabled:opacity-75"
-                        />
-                      </div>
-                      <div>
-                        <label className="text-white block mb-1 font-bold">Longitude Titik Kantor</label>
-                        <input
-                          type="number"
-                          step="0.0001"
-                          value={settings.longitude}
-                          disabled={!hasPermission("it_geofence_security")}
-                          onChange={(e) => setSettings({ ...settings, longitude: parseFloat(e.target.value) || 106.8456 })}
-                          className="w-full bg-[#010804] border border-emerald-900/60 rounded-xl px-3.5 py-2.5 text-white font-mono disabled:opacity-75"
-                        />
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <label className="text-white block mb-1 font-bold">Radius Toleransi Geofence (Meter)</label>
-                        <input
-                          type="number"
-                          value={settings.geofenceRadius}
-                          disabled={!hasPermission("it_geofence_security")}
-                          onChange={(e) => setSettings({ ...settings, geofenceRadius: parseInt(e.target.value) || 50 })}
-                          className="w-full bg-[#010804] border border-emerald-900/60 rounded-xl px-3.5 py-2.5 text-white font-mono disabled:opacity-75"
-                        />
-                      </div>
-                      <div>
-                        <label className="text-white block mb-1 font-bold">Ambang Batas Skor AI Wajah (%)</label>
-                        <input
-                          type="number"
-                          value={settings.aiFaceThreshold}
-                          disabled={!hasPermission("it_geofence_security")}
-                          onChange={(e) => setSettings({ ...settings, aiFaceThreshold: parseInt(e.target.value) || 80 })}
-                          className="w-full bg-[#010804] border border-emerald-900/60 rounded-xl px-3.5 py-2.5 text-white font-mono disabled:opacity-75"
-                        />
-                      </div>
-                    </div>
-
-                    {hasPermission("it_geofence_security") && (
-                      <button
-                        onClick={() => showToast("✓ Konfigurasi server geofence & lokasi kantor berhasil disimpan!")}
-                        className="w-full mt-4 py-3 rounded-xl bg-gradient-to-r from-blue-600 to-teal-500 text-white font-extrabold text-xs hover:brightness-110 transition-all shadow-lg"
-                      >
-                        Simpan Konfigurasi Lokasi & Geofence
-                      </button>
-                    )}
-                  </div>
-                </div>
-              )}
-
-              {/* TAB 2: PENGATURAN SHIFT KERJA & ROSTER */}
-              {pengaturanTab === "shift" && (() => {
-                const schedulableEmployees = getSchedulableEmployees();
-                const currentSchedTarget =
-                  employees.find((e) => e.id === selectedScheduleEmpId) || schedulableEmployees[0] || employees[0];
-                const isSupervisorRole = currentActiveEmployee.level === "Supervisor";
-                const isAdminOrHR = activePerspective === "admin" || currentRoleName === "Super Admin" || currentRoleName === "HR Supervisor";
-                const canOverrideCuti = currentActiveEmployee.level === "Supervisor" || currentActiveEmployee.level === "GeneralManager" || currentActiveEmployee.level === "Director" || isAdminOrHR;
-
-                return (
+            return (
               <div className="space-y-6">
                 {/* Header Information Box */}
                 <div className="bg-gradient-to-r from-[#062417] via-[#041910] to-[#021008] rounded-3xl p-6 border border-emerald-900/60 shadow-xl space-y-4">
@@ -6028,8 +5897,6 @@ export default function Home() {
               </div>
             );
           })()}
-            </div>
-          )}
 
           {/* ===================================================== */}
           {/* VIEW: PENGAJUAN CUTI & PERSETUJUAN BERJENJANG         */}
@@ -6517,6 +6384,68 @@ export default function Home() {
               </div>
             );
           })()}
+
+          {/* ===================================================== */}
+          {/* VIEW: PENGATURAN TEKNIS IT (WEWENANG KHUSUS IT)       */}
+          {/* ===================================================== */}
+          {activeMenu === "pengaturan" && hasPermission("menu_settings") && (
+            <div className="max-w-2xl bg-gradient-to-br from-[#062417] to-[#021008] rounded-2xl p-6 border border-emerald-900/60 space-y-5">
+              <div className="flex items-center justify-between border-b border-emerald-900/60 pb-3">
+                <div>
+                  <h3 className="font-bold text-white text-base flex items-center gap-2">
+                    <Cpu className="w-5 h-5 text-blue-400" />
+                    <span>Pengaturan Teknis IT & Geofence GPS</span>
+                  </h3>
+                  <p className="text-xs text-white/70">
+                    Wewenang khusus IT Supervisor & IT Staff untuk mengelola infrastruktur & keamanan sistem.
+                  </p>
+                </div>
+                <span className="px-2.5 py-1 rounded-lg bg-blue-500/20 text-blue-300 border border-blue-500/30 text-[10px] font-bold">
+                  IT ONLY
+                </span>
+              </div>
+
+              <div className="space-y-4 text-xs">
+                <div>
+                  <label className="text-white block mb-1 font-bold">Nama Titik Kantor</label>
+                  <input
+                    type="text"
+                    value={settings.officeName}
+                    onChange={(e) => setSettings({ ...settings, officeName: e.target.value })}
+                    className="w-full bg-[#010804] border border-emerald-900/60 rounded-xl px-3.5 py-2.5 text-white"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-white block mb-1 font-bold">Radius Toleransi Geofence (Meter)</label>
+                    <input
+                      type="number"
+                      value={settings.geofenceRadius}
+                      onChange={(e) => setSettings({ ...settings, geofenceRadius: parseInt(e.target.value) || 50 })}
+                      className="w-full bg-[#010804] border border-emerald-900/60 rounded-xl px-3.5 py-2.5 text-white font-mono"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-white block mb-1 font-bold">Ambang Batas Skor AI Wajah (%)</label>
+                    <input
+                      type="number"
+                      value={settings.aiFaceThreshold}
+                      onChange={(e) => setSettings({ ...settings, aiFaceThreshold: parseInt(e.target.value) || 80 })}
+                      className="w-full bg-[#010804] border border-emerald-900/60 rounded-xl px-3.5 py-2.5 text-white font-mono"
+                    />
+                  </div>
+                </div>
+
+                <button
+                  onClick={() => showToast("✓ Konfigurasi server geofence berhasil disimpan oleh tim IT!")}
+                  className="w-full mt-4 py-3 rounded-xl bg-gradient-to-r from-blue-600 to-teal-500 text-white font-extrabold text-xs hover:brightness-110 transition-all shadow-lg"
+                >
+                  Simpan Konfigurasi Teknis IT
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
