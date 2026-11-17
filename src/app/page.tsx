@@ -4259,16 +4259,6 @@ export default function Home() {
                     </p>
                   </div>
                 </div>
-
-                {(currentActiveEmployee.dept === "HR" || currentActiveEmployee.level === "Supervisor" || currentActiveEmployee.level === "GeneralManager" || currentActiveEmployee.level === "Director" || activePerspective === "admin") && (
-                  <button
-                    onClick={() => setActiveMenu("rekap-absensi")}
-                    className="self-start sm:self-auto px-3.5 py-2 rounded-xl bg-[#010804] hover:bg-emerald-950 text-emerald-300 border border-emerald-500/40 text-xs font-bold transition-all flex items-center gap-1.5 shadow-sm whitespace-nowrap"
-                  >
-                    <BarChart3 className="w-3.5 h-3.5" />
-                    <span>Lihat Rekap Absensi Tim →</span>
-                  </button>
-                )}
               </div>
 
               {/* Attendance Card untuk currentActiveEmployee */}
@@ -5822,19 +5812,11 @@ export default function Home() {
               {/* CONTENT TAB 1: CUTI SAYA */}
               {leaveActiveTab === "my-leaves" && (
                 <div className="space-y-4">
-                  <div className="flex justify-between items-center">
-                    <div>
-                      <h4 className="font-bold text-white text-sm">Riwayat Pengajuan Cuti Mandiri</h4>
-                      <p className="text-xs text-white/60">
-                        Daftar seluruh cuti yang diajukan oleh akun aktif Anda ({currentActiveEmployee.name}) beserta status persetujuan dari atasan.
-                      </p>
-                    </div>
-                    <button
-                      onClick={() => setShowApplyLeaveModal(true)}
-                      className="text-xs px-3 py-1.5 rounded-lg bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/20 font-bold transition-all"
-                    >
-                      + Tambah Pengajuan
-                    </button>
+                  <div>
+                    <h4 className="font-bold text-white text-sm">Riwayat Pengajuan Cuti Mandiri</h4>
+                    <p className="text-xs text-white/60">
+                      Daftar seluruh cuti yang diajukan oleh akun aktif Anda ({currentActiveEmployee.name}) beserta status persetujuan dari atasan.
+                    </p>
                   </div>
 
                   {myLeaves.length === 0 ? (
@@ -5844,14 +5826,8 @@ export default function Home() {
                       </div>
                       <h5 className="font-bold text-white text-sm">Belum Ada Pengajuan Cuti</h5>
                       <p className="text-xs text-white/60 max-w-sm mx-auto">
-                        Anda belum pernah mengajukan cuti. Gunakan tombol di bawah ini untuk mengajukan cuti tahunan, sakit, atau izin khusus.
+                        Anda belum pernah mengajukan cuti. Gunakan tombol <strong className="text-emerald-400">+ Ajukan Cuti Baru</strong> di atas untuk mengajukan cuti tahunan, sakit, atau izin khusus.
                       </p>
-                      <button
-                        onClick={() => setShowApplyLeaveModal(true)}
-                        className="px-4 py-2 rounded-xl bg-emerald-500 text-black font-bold text-xs hover:bg-emerald-400 transition-all"
-                      >
-                        Ajukan Cuti Sekarang
-                      </button>
                     </div>
                   ) : (
                     <div className="bg-gradient-to-br from-[#062417] to-[#021008] rounded-2xl p-5 border border-emerald-900/60 overflow-x-auto shadow-xl">
