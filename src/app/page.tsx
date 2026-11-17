@@ -163,6 +163,7 @@ interface WorkJournal {
   hours: string;
   score: number;
   tasks: string[];
+  notes?: string;
 }
 
 interface SystemUser {
@@ -778,6 +779,66 @@ export default function Home() {
         "Penyelarasan kuota cuti tahunan",
       ],
     },
+    {
+      id: "jrn-3",
+      employeeId: "emp-fin-stf",
+      name: "Farhan Ramadhan",
+      dept: "Finance",
+      avatar: "FR",
+      date: "17 Nov 2026",
+      hours: "8j 00m",
+      score: 94,
+      tasks: [
+        "Rekonsiliasi mutasi rekening koran BCA & Mandiri bulan berjalan",
+        "Pencatatan dan verifikasi voucher kas kecil operasional",
+        "Pengecekan kelengkapan invoice vendor logistik & perpajakan",
+      ],
+    },
+    {
+      id: "jrn-4",
+      employeeId: "emp-mkt-stf",
+      name: "Aditya Pratama",
+      dept: "Marketing",
+      avatar: "AP",
+      date: "17 Nov 2026",
+      hours: "7j 45m",
+      score: 91,
+      tasks: [
+        "Desain konten visual promosi media sosial mingguan",
+        "Monitoring dan evaluasi metrik performa engagement campaign digital",
+        "Riset tren copywriting iklan akhir tahun kompetitor",
+      ],
+    },
+    {
+      id: "jrn-5",
+      employeeId: "emp-sls-stf",
+      name: "Bella Savira",
+      dept: "Sales",
+      avatar: "BS",
+      date: "17 Nov 2026",
+      hours: "8j 15m",
+      score: 93,
+      tasks: [
+        "Follow up 15 prospek calon klien baru melalui WhatsApp dan telepon",
+        "Penyusunan penawaran harga (quotation) proyek korporat",
+        "Pembaruan status pipeline leads harian ke database penjualan",
+      ],
+    },
+    {
+      id: "jrn-6",
+      employeeId: "emp-ops-stf",
+      name: "Joko Susilo",
+      dept: "Operations",
+      avatar: "JS",
+      date: "17 Nov 2026",
+      hours: "8j 00m",
+      score: 90,
+      tasks: [
+        "Pemeriksaan kebersihan dan fasilitas gedung kantor",
+        "Inventarisasi stok ATK dan kebutuhan operasional kerja mingguan",
+        "Koordinasi pengiriman paket berkas penting via ekspedisi",
+      ],
+    },
   ]);
 
   // System Users State
@@ -1045,20 +1106,26 @@ export default function Home() {
       ? "Supervisor"
       : "Staff";
 
+  // POV Karyawan Staff (Tetap, DW, Magang, Kontrak)
+  const isStaff = activePerspective !== "admin" && currentActiveEmployee.level === "Staff";
+
   const hasPermission = (permId: string): boolean => {
     const rolePerms = rolePermissions[currentRoleName] || [];
     return rolePerms.includes(permId);
   };
 
-  // Otomatis alihkan ke dashboard jika menu yang sedang dibuka tidak memiliki izin akses
+  // Otomatis alihkan jika menu dibatasi untuk Staff atau tidak memiliki izin akses
   useEffect(() => {
+    if (isStaff && ["departemen", "jabatan", "kontrak", "rekap-absensi", "user-management", "pengaturan"].includes(activeMenu)) {
+      setActiveMenu("karyawan");
+    }
     if (activeMenu === "user-management" && !hasPermission("menu_user_mgmt")) {
       setActiveMenu("dashboard");
     }
     if (activeMenu === "pengaturan" && !hasPermission("menu_settings")) {
       setActiveMenu("dashboard");
     }
-  }, [activePerspective, rolePermissions, activeMenu]);
+  }, [activePerspective, rolePermissions, activeMenu, isStaff]);
 
   // Hierarchy Helpers
   const getDirectSuperior = (emp: Employee): Employee | null => {
@@ -1192,6 +1259,74 @@ export default function Home() {
 
     setShowEditAttendanceModal(false);
     showToast(`✓ Rekap absensi ${editingAttendance.name} berhasil diperbarui & tercatat di log audit!`, "success");
+  };
+
+  // ─────────────────────────────────────────────────────────────
+  // MODAL & FORM TAMBAH JURNAL KERJA HARIAN (POV STAFF & KARYAWAN)
+  // ─────────────────────────────────────────────────────────────
+  const [showAddJournalModal, setShowAddJournalModal] = useState<boolean>(false);
+  const [journalForm, setJournalForm] = useState<{
+    date: string;
+    hours: string;
+    tasksText: string;
+    notes: string;
+  }>({
+    date: "17 Nov 2026",
+    hours: "8j 00m",
+    tasksText: "",
+    notes: "",
+  });
+
+  const handleSaveJournal = (e: React.FormEvent) => {
+    e.preventDefault();
+    const tasks = journalForm.tasksText
+      .split("\n")
+      .map((t) => t.trim())
+      .filter((t) => t.length > 0);
+
+    if (tasks.length === 0) {
+      showToast("Daftar aktivitas atau tugas yang dikerjakan wajib diisi!", "error");
+      return;
+    }
+
+    const newJournal: WorkJournal = {
+      id: `jrn-${Date.now()}`,
+      employeeId: currentActiveEmployee.id,
+      name: currentActiveEmployee.name,
+      dept: currentActiveEmployee.dept,
+      avatar: currentActiveEmployee.avatar,
+      date: journalForm.date || "17 Nov 2026",
+      hours: journalForm.hours || "8j 00m",
+      score: 95,
+      tasks: tasks,
+      notes: journalForm.notes.trim() || undefined,
+    };
+
+    setJournals((prev) => [newJournal, ...prev]);
+
+    // Catat ke log aktivitas sistem
+    const newLog: ActivityLog = {
+      id: `log-${Date.now()}`,
+      timestamp: `${journalForm.date || "17 Nov 2026"}, ${currentTime || "16:00 WIB"}`,
+      type: "LEAVE_APPLY",
+      title: "Pengisian Jurnal Kerja Harian",
+      description: `Laporan jurnal kerja harian (${tasks.length} aktivitas tugas) diserahkan oleh ${currentActiveEmployee.name} (${currentActiveEmployee.role})`,
+      employeeName: currentActiveEmployee.name,
+      dept: currentActiveEmployee.dept,
+      actorName: currentActiveEmployee.name,
+      actorRole: currentActiveEmployee.role,
+      isEdited: false,
+    };
+    setActivityLogs((prev) => [newLog, ...prev]);
+
+    setShowAddJournalModal(false);
+    setJournalForm({
+      date: "17 Nov 2026",
+      hours: "8j 00m",
+      tasksText: "",
+      notes: "",
+    });
+    showToast(`✓ Jurnal kerja harian ${currentActiveEmployee.name} berhasil disimpan & dilaporkan!`, "success");
   };
 
   const [confirmDialog, setConfirmDialog] = useState<{
@@ -2352,12 +2487,15 @@ export default function Home() {
 
               {openSections.kepegawaian && (
                 <div className="mt-1 space-y-0.5 pl-3 border-l-2 border-emerald-900/60 ml-4">
-                  {[
-                    { id: "karyawan", label: "Karyawan", icon: "👥", badge: visibleEmployees.length },
-                    { id: "departemen", label: "Departemen", icon: "🏢", badge: standardDepartments.length },
-                    { id: "jabatan", label: "Jabatan", icon: "💼" },
-                    { id: "kontrak", label: "Kontrak & Lifecycle", icon: "📄" },
-                  ].map((item) => (
+                  {(isStaff
+                    ? [{ id: "karyawan", label: "Profil Karyawan Saya", icon: "👤", badge: undefined }]
+                    : [
+                        { id: "karyawan", label: "Karyawan", icon: "👥", badge: visibleEmployees.length },
+                        { id: "departemen", label: "Departemen", icon: "🏢", badge: standardDepartments.length },
+                        { id: "jabatan", label: "Jabatan", icon: "💼" },
+                        { id: "kontrak", label: "Kontrak & Lifecycle", icon: "📄" },
+                      ]
+                  ).map((item) => (
                     <button
                       key={item.id}
                       onClick={() => {
@@ -2403,11 +2541,17 @@ export default function Home() {
 
               {openSections.kehadiran && (
                 <div className="mt-1 space-y-0.5 pl-3 border-l-2 border-emerald-900/60 ml-4">
-                  {[
-                    { id: "absensi", label: "Absensi", icon: "📍" },
-                    { id: "rekap-absensi", label: "Rekap Absensi", icon: "📊", badge: attendances.length },
-                    { id: "jadwal-shift", label: "Jadwal Shift", icon: "📅", badge: shifts.length },
-                  ].map((item) => (
+                  {(isStaff
+                    ? [
+                        { id: "absensi", label: "Absensi", icon: "📍" },
+                        { id: "jadwal-shift", label: "Jadwal Shift", icon: "📅", badge: shifts.length },
+                      ]
+                    : [
+                        { id: "absensi", label: "Absensi", icon: "📍" },
+                        { id: "rekap-absensi", label: "Rekap Absensi", icon: "📊", badge: attendances.length },
+                        { id: "jadwal-shift", label: "Jadwal Shift", icon: "📅", badge: shifts.length },
+                      ]
+                  ).map((item) => (
                     <button
                       key={item.id}
                       onClick={() => setActiveMenu(item.id)}
@@ -2448,8 +2592,18 @@ export default function Home() {
               {openSections.aktivitas && (
                 <div className="mt-1 space-y-0.5 pl-3 border-l-2 border-emerald-900/60 ml-4">
                   {[
-                    { id: "pengajuan-cuti", label: "Pengajuan Cuti", icon: "⛱️", badge: pendingSubordinateCount > 0 ? `${pendingSubordinateCount} Pnd` : myLeaves.length },
-                    { id: "jurnal-kerja", label: "Jurnal Kerja", icon: "📝", badge: journals.length },
+                    {
+                      id: "pengajuan-cuti",
+                      label: "Pengajuan Cuti",
+                      icon: "⛱️",
+                      badge: isStaff ? myLeaves.length : (pendingSubordinateCount > 0 ? `${pendingSubordinateCount} Pnd` : myLeaves.length),
+                    },
+                    {
+                      id: "jurnal-kerja",
+                      label: "Jurnal Kerja",
+                      icon: "📝",
+                      badge: isStaff ? journals.filter((j) => j.employeeId === currentActiveEmployee.id).length : journals.length,
+                    },
                   ].map((item) => (
                     <button
                       key={item.id}
@@ -3064,18 +3218,337 @@ export default function Home() {
           })()}
 
           {/* ===================================================== */}
-          {/* VIEW: KARYAWAN & STRUKTUR HIRARKI                     */}
+          {/* VIEW: KARYAWAN & STRUKTUR HIRARKI / PROFIL MANDIRI    */}
           {/* ===================================================== */}
           {activeMenu === "karyawan" && (
-            <div className="space-y-6">
-              {/* Header Box: Pendaftaran Karyawan Baru */}
-              <div className="bg-[#020e08] rounded-2xl p-4 border border-emerald-900/60 flex flex-col md:flex-row md:items-center justify-between gap-3">
-                <div>
-                  <h3 className="font-bold text-white text-base">Direktori Karyawan & Relasi Atasan-Bawahan</h3>
-                  <p className="text-xs text-white/70">
-                    Hirarki: CEO → GM → Supervisor → Staff. Staf melapor ke Supervisor, Supervisor ke GM, GM ke CEO. HR mendaftarkan akun, IT mengelola keamanan.
-                  </p>
+            isStaff ? (
+              <div className="space-y-6">
+                {/* Header Banner: Profil Karyawan Saya */}
+                <div className="bg-gradient-to-r from-[#062417] via-[#031d11] to-[#010b06] rounded-3xl p-6 border border-emerald-500/40 shadow-2xl relative overflow-hidden">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6">
+                    <div className="flex items-center gap-5">
+                      {/* Foto Profil / Avatar Karyawan */}
+                      <div className="relative">
+                        <div className="w-20 h-20 rounded-2xl bg-emerald-950 flex items-center justify-center font-black text-white text-3xl ring-4 ring-emerald-500/60 shadow-xl shadow-black relative">
+                          {currentActiveEmployee.avatar}
+                          <span
+                            className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-emerald-500 ring-2 ring-[#021008] flex items-center justify-center text-[10px] text-black font-black"
+                            title="Status Kepegawaian Aktif"
+                          >
+                            ✓
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="space-y-1">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <h2 className="text-xl font-extrabold text-white tracking-tight">
+                            {currentActiveEmployee.name}
+                          </h2>
+                          <span
+                            className={`text-[10px] font-black px-2.5 py-0.5 rounded-full uppercase tracking-wider border ${
+                              currentActiveEmployee.contractType === "Tetap"
+                                ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/40"
+                                : currentActiveEmployee.contractType === "Kontrak"
+                                ? "bg-blue-500/20 text-blue-300 border-blue-500/40"
+                                : currentActiveEmployee.contractType === "Magang"
+                                ? "bg-purple-500/20 text-purple-300 border-purple-500/40"
+                                : "bg-amber-500/20 text-amber-300 border-amber-500/40"
+                            }`}
+                          >
+                            {currentActiveEmployee.contractType === "Tetap"
+                              ? "Karyawan Tetap (PKWTT)"
+                              : currentActiveEmployee.contractType === "Kontrak"
+                              ? "Karyawan Kontrak (PKWT)"
+                              : currentActiveEmployee.contractType === "Magang"
+                              ? "Karyawan Magang (Internship)"
+                              : "Daily Worker (Harian Lepas)"}
+                          </span>
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                            Status: {currentActiveEmployee.status}
+                          </span>
+                        </div>
+
+                        <p className="text-xs text-white/80 font-medium">
+                          {currentActiveEmployee.role} • Departemen {currentActiveEmployee.dept}
+                        </p>
+
+                        <div className="flex items-center gap-2 pt-1">
+                          <span className="text-[11px] text-white/60 font-mono">
+                            No. KTP (NIK): {currentActiveEmployee.nik}
+                          </span>
+                          <button
+                            onClick={() => {
+                              navigator.clipboard?.writeText(currentActiveEmployee.nik);
+                              showToast("✓ Nomor KTP berhasil disalin ke clipboard!");
+                            }}
+                            className="text-emerald-400 hover:text-white text-[10px] px-2 py-0.5 rounded bg-white/5 border border-emerald-500/20 font-sans transition-all flex items-center gap-1"
+                          >
+                            <Copy className="w-3 h-3" /> Salin
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Quick Shortcuts */}
+                    <div className="flex flex-wrap sm:flex-col gap-2">
+                      <button
+                        onClick={() => setActiveMenu("absensi")}
+                        className="px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-extrabold text-xs transition-all flex items-center gap-2 shadow-md shadow-emerald-500/20"
+                      >
+                        <span>📍</span>
+                        <span>Absensi Masuk / Pulang</span>
+                      </button>
+                      <button
+                        onClick={() => setActiveMenu("jadwal-shift")}
+                        className="px-4 py-2 rounded-xl bg-[#010804] hover:bg-emerald-950 text-emerald-300 border border-emerald-500/30 font-bold text-xs transition-all flex items-center gap-2"
+                      >
+                        <span>📅</span>
+                        <span>Jadwal Shift Kerja</span>
+                      </button>
+                    </div>
+                  </div>
                 </div>
+
+                {/* Grid: 4 Cards Informasi Detail Mandiri */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                  {/* Card 1: Biodata Pribadi Karyawan */}
+                  <div className="bg-[#021209] rounded-2xl p-5 border border-emerald-900/60 space-y-4">
+                    <div className="flex items-center justify-between border-b border-emerald-900/40 pb-3">
+                      <h3 className="font-extrabold text-white text-sm flex items-center gap-2">
+                        <span className="text-base">📋</span>
+                        <span>Biodata Diri Lengkap</span>
+                      </h3>
+                      <span className="text-[10px] text-emerald-400 font-mono">Tervalidasi Dukcapil</span>
+                    </div>
+
+                    <div className="space-y-3 text-xs">
+                      <div className="flex justify-between items-start py-1 border-b border-emerald-900/20">
+                        <span className="text-white/60">Nomor KTP (16-Digit NIK):</span>
+                        <span className="font-mono font-bold text-white text-right">{currentActiveEmployee.nik}</span>
+                      </div>
+                      <div className="flex justify-between items-start py-1 border-b border-emerald-900/20">
+                        <span className="text-white/60">Nama Lengkap Sesuai KTP:</span>
+                        <span className="font-bold text-white text-right">{currentActiveEmployee.name}</span>
+                      </div>
+                      <div className="flex justify-between items-start py-1 border-b border-emerald-900/20">
+                        <span className="text-white/60">Alamat Email Perusahaan:</span>
+                        <span className="font-semibold text-emerald-300 text-right">{currentActiveEmployee.email}</span>
+                      </div>
+                      <div className="flex justify-between items-center py-1 border-b border-emerald-900/20">
+                        <span className="text-white/60">Nomor Telepon / WhatsApp:</span>
+                        <div className="flex items-center gap-2">
+                          <span className="font-mono font-semibold text-white">{currentActiveEmployee.phone}</span>
+                          <a
+                            href={`https://wa.me/${currentActiveEmployee.phone.replace(/[^0-9]/g, "")}`}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 text-[10px] font-bold hover:bg-emerald-500 hover:text-black transition-all flex items-center gap-1"
+                          >
+                            <Phone className="w-2.5 h-2.5" /> WA
+                          </a>
+                        </div>
+                      </div>
+                      <div className="flex justify-between items-start py-1 border-b border-emerald-900/20">
+                        <span className="text-white/60">Tanggal Lahir:</span>
+                        <span className="font-mono text-white text-right">{currentActiveEmployee.birthDate}</span>
+                      </div>
+                      <div className="flex justify-between items-start py-1">
+                        <span className="text-white/60">Alamat Domisili:</span>
+                        <span className="text-white text-right max-w-xs">{currentActiveEmployee.address}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Card 2: Status Hubungan Kerja & Kontrak */}
+                  <div className="bg-[#021209] rounded-2xl p-5 border border-emerald-900/60 space-y-4">
+                    <div className="flex items-center justify-between border-b border-emerald-900/40 pb-3">
+                      <h3 className="font-extrabold text-white text-sm flex items-center gap-2">
+                        <span className="text-base">📄</span>
+                        <span>Status Hubungan Kerja & Kontrak</span>
+                      </h3>
+                      <span
+                        className={`text-[10px] font-black px-2 py-0.5 rounded-full uppercase border ${
+                          currentActiveEmployee.contractType === "Tetap"
+                            ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/40"
+                            : currentActiveEmployee.contractType === "Kontrak"
+                            ? "bg-blue-500/20 text-blue-300 border-blue-500/40"
+                            : currentActiveEmployee.contractType === "Magang"
+                            ? "bg-purple-500/20 text-purple-300 border-purple-500/40"
+                            : "bg-amber-500/20 text-amber-300 border-amber-500/40"
+                        }`}
+                      >
+                        {currentActiveEmployee.contractType}
+                      </span>
+                    </div>
+
+                    <div className="space-y-3 text-xs">
+                      <div className="flex justify-between items-start py-1 border-b border-emerald-900/20">
+                        <span className="text-white/60">Tanggal Pertama Masuk (Join):</span>
+                        <span className="font-mono font-bold text-white text-right">{currentActiveEmployee.startDate}</span>
+                      </div>
+                      <div className="flex justify-between items-start py-1 border-b border-emerald-900/20">
+                        <span className="text-white/60">Tanggal Berakhir Masa Kerja:</span>
+                        <span className="font-mono font-bold text-amber-400 text-right">
+                          {currentActiveEmployee.endDate ? currentActiveEmployee.endDate : "Permanen (PKWTT Tidak Terbatas)"}
+                        </span>
+                      </div>
+                      <div className="flex justify-between items-start py-1 border-b border-emerald-900/20">
+                        <span className="text-white/60">Masa Kerja (Tenure):</span>
+                        <span className="font-bold text-white text-right">{currentActiveEmployee.tenure}</span>
+                      </div>
+                      <div className="flex justify-between items-center py-1 border-b border-emerald-900/20">
+                        <span className="text-white/60">Verifikasi Wajah Biometrik AI:</span>
+                        <div className="flex items-center gap-1.5 text-emerald-400 font-bold text-[11px]">
+                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                          <span>Terverifikasi ({currentActiveEmployee.faceScore}%)</span>
+                        </div>
+                      </div>
+                      <div className="flex justify-between items-center py-1">
+                        <span className="text-white/60">Keamanan Akses Akun:</span>
+                        <div className="flex items-center gap-1.5 text-emerald-400 font-semibold text-[11px]">
+                          <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+                          <span>Password Mandiri Aktif</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Card 3: Shift Kerja & Kuota Cuti Mandiri */}
+                  <div className="bg-[#021209] rounded-2xl p-5 border border-emerald-900/60 space-y-4">
+                    <div className="flex items-center justify-between border-b border-emerald-900/40 pb-3">
+                      <h3 className="font-extrabold text-white text-sm flex items-center gap-2">
+                        <span className="text-base">⏱️</span>
+                        <span>Shift Kerja & Kuota Cuti</span>
+                      </h3>
+                      <span className="text-[10px] text-teal-300 font-bold">Roster Mingguan</span>
+                    </div>
+
+                    <div className="space-y-3 text-xs">
+                      <div className="flex justify-between items-start py-1 border-b border-emerald-900/20">
+                        <span className="text-white/60">Jadwal Shift Utama:</span>
+                        <span className="font-bold text-white text-right">
+                          {currentActiveEmployee.shiftId === "shift-1"
+                            ? "Shift Pagi (08:00 - 17:00 WIB)"
+                            : "Shift Fleksibel Roster"}
+                        </span>
+                      </div>
+                      <div className="flex justify-between items-start py-1 border-b border-emerald-900/20">
+                        <span className="text-white/60">Pola Kerja:</span>
+                        <span className="font-medium text-white text-right">5 Hari Kerja / Roster Terjadwal</span>
+                      </div>
+                      <div className="flex justify-between items-start py-1 border-b border-emerald-900/20">
+                        <span className="text-white/60">Hak Cuti Tahunan:</span>
+                        <span className="font-mono font-bold text-white text-right">12 Hari / Tahun</span>
+                      </div>
+                      <div className="flex justify-between items-start py-1 border-b border-emerald-900/20">
+                        <span className="text-white/60">Cuti Terpakai:</span>
+                        <span className="font-mono font-bold text-emerald-400 text-right">{myUsedLeaveDays} Hari</span>
+                      </div>
+                      <div className="flex justify-between items-start py-1">
+                        <span className="text-white/60">Sisa Kuota Cuti Anda:</span>
+                        <span className="font-mono font-black text-teal-300 text-right text-sm">
+                          {myRemainingQuota} Hari Tersedia
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Card 4: Atasan Langsung (N+1 Hierarchy) */}
+                  <div className="bg-[#021209] rounded-2xl p-5 border border-emerald-900/60 space-y-4">
+                    <div className="flex items-center justify-between border-b border-emerald-900/40 pb-3">
+                      <h3 className="font-extrabold text-white text-sm flex items-center gap-2">
+                        <span className="text-base">🛡️</span>
+                        <span>Atasan Langsung Saya (N+1)</span>
+                      </h3>
+                      <span className="text-[10px] text-amber-400 font-bold">Penyetuju Izin & Shift</span>
+                    </div>
+
+                    {directSuperior ? (
+                      <div className="space-y-4">
+                        <div className="flex items-center gap-4 bg-[#010804] p-3.5 rounded-xl border border-emerald-900/40">
+                          <div className="w-12 h-12 rounded-xl bg-emerald-950 flex items-center justify-center font-black text-white text-lg ring-2 ring-emerald-500/40">
+                            {directSuperior.avatar}
+                          </div>
+                          <div>
+                            <h4 className="font-extrabold text-white text-sm leading-tight">{directSuperior.name}</h4>
+                            <p className="text-xs text-amber-300 font-medium">{directSuperior.role}</p>
+                            <p className="text-[11px] text-white/60 font-mono mt-0.5">No. KTP: {directSuperior.nik}</p>
+                          </div>
+                        </div>
+
+                        <div className="space-y-2 text-xs">
+                          <div className="flex justify-between py-1 border-b border-emerald-900/20">
+                            <span className="text-white/60">Departemen Atasan:</span>
+                            <span className="font-bold text-white">{directSuperior.dept}</span>
+                          </div>
+                          <div className="flex justify-between py-1 border-b border-emerald-900/20">
+                            <span className="text-white/60">Email Atasan:</span>
+                            <span className="font-semibold text-emerald-300">{directSuperior.email}</span>
+                          </div>
+                          <div className="flex justify-between py-1 items-center">
+                            <span className="text-white/60">Kontak WhatsApp:</span>
+                            <a
+                              href={`https://wa.me/${directSuperior.phone.replace(/[^0-9]/g, "")}`}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="px-3 py-1.5 rounded-lg bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 font-bold hover:bg-emerald-500 hover:text-black transition-all flex items-center gap-1.5"
+                            >
+                              <Phone className="w-3 h-3" /> Hubungi Atasan Langsung
+                            </a>
+                          </div>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="text-xs text-white/60 py-4 text-center">
+                        Pimpinan eksekutif tertinggi (Direktur Utama / Direksi)
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Action Bawah: Ajukan Cuti & Tulis Jurnal Harian */}
+                <div className="bg-[#020e08] rounded-2xl p-4 border border-emerald-900/60 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div className="text-xs">
+                    <span className="font-bold text-white block">Aktivitas Mandiri Karyawan</span>
+                    <span className="text-white/60">
+                      Ajukan permohonan cuti resmi atau laporkan jurnal kerja harian Anda kepada atasan langsung.
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => {
+                        setActiveMenu("pengajuan-cuti");
+                        setShowApplyLeaveModal(true);
+                      }}
+                      className="px-4 py-2 rounded-xl bg-gradient-to-r from-teal-500 to-emerald-500 hover:from-teal-400 hover:to-emerald-400 text-black font-extrabold text-xs transition-all flex items-center gap-1.5 shadow-md"
+                    >
+                      <span>🏖️</span>
+                      <span>Ajukan Cuti</span>
+                    </button>
+                    <button
+                      onClick={() => {
+                        setActiveMenu("jurnal-kerja");
+                        setShowAddJournalModal(true);
+                      }}
+                      className="px-4 py-2 rounded-xl bg-[#031d11] hover:bg-emerald-950 text-emerald-300 border border-emerald-500/40 font-extrabold text-xs transition-all flex items-center gap-1.5"
+                    >
+                      <span>📝</span>
+                      <span>Tulis Jurnal Hari Ini</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-6">
+                {/* Header Box: Pendaftaran Karyawan Baru */}
+                <div className="bg-[#020e08] rounded-2xl p-4 border border-emerald-900/60 flex flex-col md:flex-row md:items-center justify-between gap-3">
+                  <div>
+                    <h3 className="font-bold text-white text-base">Direktori Karyawan & Relasi Atasan-Bawahan</h3>
+                    <p className="text-xs text-white/70">
+                      Hirarki: CEO → GM → Supervisor → Staff. Staf melapor ke Supervisor, Supervisor ke GM, GM ke CEO. HR mendaftarkan akun, IT mengelola keamanan.
+                    </p>
+                  </div>
 
                 {hasPermission("emp_manage_hr") && (
                   <div className="flex flex-wrap items-center gap-2">
@@ -3369,6 +3842,7 @@ export default function Home() {
                 })}
               </div>
             </div>
+            )
           )}
 
           {/* ===================================================== */}
@@ -5024,22 +5498,24 @@ export default function Home() {
                   <span>Cuti Saya ({myLeaves.length})</span>
                 </button>
 
-                <button
-                  onClick={() => setLeaveActiveTab("subordinate-leaves")}
-                  className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-xs transition-all relative ${
-                    leaveActiveTab === "subordinate-leaves"
-                      ? "bg-emerald-500 text-black shadow-lg shadow-emerald-500/20"
-                      : "bg-[#021008] text-white/70 hover:text-white border border-emerald-900/60"
-                  }`}
-                >
-                  <span>✍️</span>
-                  <span>Persetujuan Cuti Bawahan</span>
-                  {pendingSubordinateCount > 0 && (
-                    <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-amber-400 text-black animate-pulse">
-                      {pendingSubordinateCount} Pending
-                    </span>
-                  )}
-                </button>
+                {!isStaff && (
+                  <button
+                    onClick={() => setLeaveActiveTab("subordinate-leaves")}
+                    className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-xs transition-all relative ${
+                      leaveActiveTab === "subordinate-leaves"
+                        ? "bg-emerald-500 text-black shadow-lg shadow-emerald-500/20"
+                        : "bg-[#021008] text-white/70 hover:text-white border border-emerald-900/60"
+                    }`}
+                  >
+                    <span>✍️</span>
+                    <span>Persetujuan Cuti Bawahan</span>
+                    {pendingSubordinateCount > 0 && (
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-amber-400 text-black animate-pulse">
+                        {pendingSubordinateCount} Pending
+                      </span>
+                    )}
+                  </button>
+                )}
               </div>
 
               {/* CONTENT TAB 1: CUTI SAYA */}
@@ -5146,7 +5622,7 @@ export default function Home() {
               )}
 
               {/* CONTENT TAB 2: PERSETUJUAN CUTI BAWAHAN */}
-              {leaveActiveTab === "subordinate-leaves" && (
+              {!isStaff && leaveActiveTab === "subordinate-leaves" && (
                 <div className="space-y-4">
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                     <div>
@@ -5290,43 +5766,125 @@ export default function Home() {
           {/* ===================================================== */}
           {/* VIEW: JURNAL KERJA                                    */}
           {/* ===================================================== */}
-          {activeMenu === "jurnal-kerja" && (
-            <div className="space-y-5">
-              <div>
-                <h3 className="font-bold text-white text-base">Jurnal Kerja Harian</h3>
-                <p className="text-xs text-white/70">Catatan aktivitas pekerjaan dan review kualitas oleh Supervisor</p>
-              </div>
+          {activeMenu === "jurnal-kerja" && (() => {
+            const displayJournals = isStaff
+              ? journals.filter((j) => j.employeeId === currentActiveEmployee.id)
+              : journals;
 
-              <div className="space-y-3">
-                {journals.map((j) => (
-                  <div key={j.id} className="bg-gradient-to-br from-[#062417] to-[#021008] rounded-2xl p-5 border border-emerald-900/60">
-                    <div className="flex items-center justify-between mb-3">
-                      <div className="flex items-center gap-3">
-                        <div className="w-9 h-9 rounded-full bg-emerald-900 flex items-center justify-center font-bold text-white text-xs ring-1 ring-emerald-500/30">
-                          {j.avatar}
-                        </div>
-                        <div>
-                          <span className="font-bold text-white text-sm">{j.name}</span>
-                          <p className="text-[10px] text-white/60">Dept: {j.dept} • {j.date}</p>
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <span className="font-mono font-bold text-white text-xs">{j.hours}</span>
-                      </div>
+            return (
+              <div className="space-y-5">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-[#021008] p-5 rounded-2xl border border-emerald-900/60 shadow-lg">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xl">📝</span>
+                      <h3 className="font-extrabold text-white text-base">Jurnal Kerja Harian</h3>
+                      {isStaff && (
+                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 font-bold border border-emerald-500/30">
+                          POV Karyawan Mandiri
+                        </span>
+                      )}
                     </div>
-                    <ul className="space-y-1.5 text-xs text-white/80 pl-2">
-                      {j.tasks.map((t, ti) => (
-                        <li key={ti} className="flex items-start gap-2">
-                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 mt-0.5 flex-shrink-0" />
-                          <span>{t}</span>
-                        </li>
-                      ))}
-                    </ul>
+                    <p className="text-xs text-white/70 mt-1 max-w-2xl">
+                      {isStaff
+                        ? `Catat dan laporkan seluruh aktivitas pekerjaan harian Anda (${currentActiveEmployee.name}). Apa saja yang dikerjakan wajib dilaporkan secara berkala kepada Supervisor ${currentActiveEmployee.dept}.`
+                        : "Catatan laporan aktivitas pekerjaan harian tim dan penilaian kualitas oleh Supervisor / Manajemen."}
+                    </p>
                   </div>
-                ))}
+
+                  <button
+                    onClick={() => setShowAddJournalModal(true)}
+                    className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-black font-extrabold text-xs flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/20 transition-all hover:scale-[1.02] active:scale-[0.98] flex-shrink-0"
+                  >
+                    <Plus className="w-4 h-4" />
+                    <span>+ Tambah Jurnal Kerja Harian</span>
+                  </button>
+                </div>
+
+                {displayJournals.length === 0 ? (
+                  <div className="bg-[#021008] rounded-2xl p-8 border border-emerald-900/60 text-center space-y-3">
+                    <div className="w-12 h-12 rounded-full bg-emerald-500/10 text-emerald-400 flex items-center justify-center mx-auto text-xl font-bold">
+                      📝
+                    </div>
+                    <h4 className="font-bold text-white text-sm">Belum Ada Jurnal Kerja Tercatat</h4>
+                    <p className="text-xs text-white/60 max-w-md mx-auto">
+                      {isStaff
+                        ? "Anda belum membuat laporan pekerjaan harian. Klik tombol di bawah untuk melaporkan apa saja yang Anda kerjakan hari ini."
+                        : "Tidak ada data jurnal kerja yang ditemukan untuk kriteria filter ini."}
+                    </p>
+                    <button
+                      onClick={() => setShowAddJournalModal(true)}
+                      className="px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-extrabold text-xs inline-flex items-center gap-1.5 transition-all shadow-md"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      Tulis Jurnal Kerja Hari Ini
+                    </button>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {displayJournals.map((j) => (
+                      <div
+                        key={j.id}
+                        className="bg-gradient-to-br from-[#062417] to-[#021008] rounded-2xl p-5 border border-emerald-900/60 shadow-md space-y-3 transition-all hover:border-emerald-500/40"
+                      >
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-emerald-900/40 pb-3">
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-xl bg-emerald-950 flex items-center justify-center font-black text-white text-xs ring-1 ring-emerald-500/40">
+                              {j.avatar}
+                            </div>
+                            <div>
+                              <div className="flex items-center gap-2">
+                                <span className="font-extrabold text-white text-sm">{j.name}</span>
+                                {j.employeeId === currentActiveEmployee.id && (
+                                  <span className="text-[9px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 font-bold border border-emerald-500/30">
+                                    Jurnal Saya
+                                  </span>
+                                )}
+                              </div>
+                              <p className="text-[10px] text-white/60">
+                                Departemen: {j.dept} • Tanggal: {j.date}
+                              </p>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-2 self-start sm:self-auto">
+                            {j.score && (
+                              <span className="px-2.5 py-1 rounded-lg bg-teal-500/10 text-teal-300 border border-teal-500/30 text-[10px] font-bold">
+                                Skor Evaluasi: {j.score}/100
+                              </span>
+                            )}
+                            <span className="font-mono font-bold text-white text-xs px-2.5 py-1 rounded-lg bg-black/40 border border-emerald-900/60">
+                              ⏱️ {j.hours}
+                            </span>
+                          </div>
+                        </div>
+
+                        <div>
+                          <span className="text-[11px] font-black uppercase tracking-wider text-emerald-400 block mb-2">
+                            Aktivitas & Tugas yang Dilaporkan ({j.tasks.length} Butir):
+                          </span>
+                          <ul className="space-y-1.5 text-xs text-white/90 pl-1">
+                            {j.tasks.map((t, ti) => (
+                              <li key={ti} className="flex items-start gap-2.5">
+                                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 mt-0.5 flex-shrink-0" />
+                                <span className="leading-relaxed">{t}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+
+                        {j.notes && (
+                          <div className="bg-[#010804] p-3 rounded-xl border border-emerald-900/40 text-[11px] text-white/70">
+                            <span className="font-bold text-amber-300 block mb-0.5">Catatan / Kendala:</span>
+                            <p>{j.notes}</p>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
-            </div>
-          )}
+            );
+          })()}
 
           {/* ===================================================== */}
           {/* VIEW: PENGATURAN TEKNIS IT (WEWENANG KHUSUS IT)       */}
@@ -7077,6 +7635,127 @@ export default function Home() {
                   className="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-400 hover:from-amber-400 hover:to-amber-300 text-black font-black text-xs transition-all shadow-lg shadow-amber-500/20"
                 >
                   ✓ Simpan Koreksi Absen
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================= */}
+      {/* MODAL: TAMBAH JURNAL KERJA HARIAN                         */}
+      {/* ========================================================= */}
+      {showAddJournalModal && (
+        <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-[#02140c] border border-emerald-500/40 rounded-3xl max-w-lg w-full p-6 shadow-2xl space-y-5 my-8 animate-in fade-in zoom-in-95 duration-200">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between border-b border-emerald-900/60 pb-3">
+              <div className="flex items-center gap-2.5">
+                <div className="w-10 h-10 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-lg font-black">
+                  📝
+                </div>
+                <div>
+                  <h3 className="font-black text-white text-base">Tambah Jurnal Kerja Harian</h3>
+                  <p className="text-[11px] text-white/60">
+                    Laporkan seluruh tugas pekerjaan yang Anda kerjakan hari ini
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowAddJournalModal(false)}
+                className="w-8 h-8 rounded-lg bg-white/5 hover:bg-white/10 text-white/60 hover:text-white flex items-center justify-center transition-all"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Profile Info Pelapor */}
+            <div className="bg-[#010804] p-3.5 rounded-2xl border border-emerald-900/60 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-full bg-emerald-950 flex items-center justify-center font-black text-white text-xs ring-1 ring-emerald-500/40">
+                  {currentActiveEmployee.avatar}
+                </div>
+                <div>
+                  <span className="font-extrabold text-white text-xs block">{currentActiveEmployee.name}</span>
+                  <span className="text-[10px] text-white/60">
+                    {currentActiveEmployee.role} • Dept: {currentActiveEmployee.dept}
+                  </span>
+                </div>
+              </div>
+              <span className="text-[10px] px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 font-bold border border-emerald-500/30">
+                {currentActiveEmployee.contractType}
+              </span>
+            </div>
+
+            <form onSubmit={handleSaveJournal} className="space-y-4 text-xs">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-white/70 block mb-1 font-semibold">Tanggal Laporan:</label>
+                  <input
+                    type="text"
+                    value={journalForm.date}
+                    onChange={(e) => setJournalForm((prev) => ({ ...prev, date: e.target.value }))}
+                    placeholder="Contoh: 17 Nov 2026"
+                    className="w-full bg-[#010804] border border-emerald-900/60 rounded-xl px-3 py-2 text-white font-mono focus:outline-none focus:border-emerald-400"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="text-white/70 block mb-1 font-semibold">Durasi Jam Kerja:</label>
+                  <input
+                    type="text"
+                    value={journalForm.hours}
+                    onChange={(e) => setJournalForm((prev) => ({ ...prev, hours: e.target.value }))}
+                    placeholder="Contoh: 8j 00m"
+                    className="w-full bg-[#010804] border border-emerald-900/60 rounded-xl px-3 py-2 text-white font-mono focus:outline-none focus:border-emerald-400"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="text-white/70 block mb-1 font-semibold">
+                  Daftar Tugas yang Dikerjakan (Wajib Dilaporkan):
+                </label>
+                <p className="text-[10px] text-white/50 mb-1.5">
+                  Tuliskan setiap tugas pekerjaan per baris (tekan Enter untuk memisahkan aktivitas):
+                </p>
+                <textarea
+                  rows={4}
+                  value={journalForm.tasksText}
+                  onChange={(e) => setJournalForm((prev) => ({ ...prev, tasksText: e.target.value }))}
+                  placeholder={`- Menyelesaikan rekonsiliasi berkas harian\n- Koordinasi tindak lanjut dengan rekan tim\n- Input rekap data aktivitas kerja ke sistem`}
+                  className="w-full bg-[#010804] border border-emerald-900/60 rounded-xl p-3 text-white placeholder-white/30 focus:outline-none focus:border-emerald-400 leading-relaxed font-sans"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="text-white/70 block mb-1 font-semibold">
+                  Catatan Tambahan / Hasil & Kendala (Opsional):
+                </label>
+                <textarea
+                  rows={2}
+                  value={journalForm.notes}
+                  onChange={(e) => setJournalForm((prev) => ({ ...prev, notes: e.target.value }))}
+                  placeholder="Contoh: Target selesai tepat waktu, berkas telah diarsipkan di drive bersama."
+                  className="w-full bg-[#010804] border border-emerald-900/60 rounded-xl p-2.5 text-white placeholder-white/30 focus:outline-none focus:border-emerald-400 text-xs"
+                />
+              </div>
+
+              <div className="flex gap-2 pt-2 border-t border-emerald-900/60">
+                <button
+                  type="button"
+                  onClick={() => setShowAddJournalModal(false)}
+                  className="flex-1 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white font-bold text-xs transition-all"
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-black font-black text-xs transition-all shadow-lg shadow-emerald-500/20"
+                >
+                  ✓ Simpan & Laporkan Jurnal
                 </button>
               </div>
             </form>
