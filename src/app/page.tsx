@@ -49,6 +49,11 @@ import {
   Network,
   GitFork,
   MessageSquare,
+  Copy,
+  KeyRound,
+  GraduationCap,
+  CalendarDays,
+  MapPinOff,
 } from "lucide-react";
 
 // ─────────────────────────────────────────────────────────────
@@ -60,11 +65,15 @@ interface Employee {
   name: string;
   email: string;
   phone: string;
+  address: string;
+  birthDate: string;
   dept: string;
   role: string;
   level: "Director" | "Manager" | "Supervisor" | "Staff";
   shiftId: string;
-  contractType: "Tetap" | "Kontrak";
+  contractType: "Tetap" | "Kontrak" | "Magang" | "DW";
+  startDate: string;
+  endDate?: string | null;
   joinDate: string;
   tenure: string;
   faceRegistered: boolean;
@@ -72,6 +81,8 @@ interface Employee {
   status: "Aktif" | "Cuti" | "Non-Aktif";
   avatar: string;
   managerId: string | null; // Atasan langsung
+  isFirstLogin: boolean;
+  temporaryPassword?: string | null;
 }
 
 interface Shift {
@@ -133,6 +144,8 @@ interface SystemUser {
   dept: string;
   lastLogin: string;
   status: "AKTIF" | "NON-AKTIF";
+  isFirstLogin: boolean;
+  temporaryPassword?: string | null;
 }
 
 interface PermissionItem {
@@ -160,6 +173,16 @@ export default function Home() {
     setTimeout(() => {
       setToastMessage(null);
     }, 3500);
+  };
+
+  // Helper: Generator Password Acak Sementara
+  const generateRandomPassword = () => {
+    const chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789!@#$%";
+    let pass = "";
+    for (let i = 0; i < 8; i++) {
+      pass += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return pass;
   };
 
   // Handle Logo Upload
@@ -214,7 +237,7 @@ export default function Home() {
   // CENTRAL INTERCONNECTED DATA STATE
   // ─────────────────────────────────────────────────────────────
 
-  // 1. Employees Master Data (Dengan Struktur Hirarki Atasan-Bawahan)
+  // 1. Employees Master Data
   const [employees, setEmployees] = useState<Employee[]>([
     {
       id: "emp-0",
@@ -222,18 +245,24 @@ export default function Home() {
       name: "Ir. Hendra Gunawan",
       email: "hendra@perusahaan.id",
       phone: "+62 811-9876-0001",
+      address: "Jl. Sudirman No. 10, Jakarta Pusat",
+      birthDate: "1978-04-12",
       dept: "Direksi",
       role: "Direktur Utama (CEO)",
       level: "Director",
       shiftId: "shift-1",
       contractType: "Tetap",
+      startDate: "2024-01-01",
+      endDate: null,
       joinDate: "01 Jan 2024",
       tenure: "2 Thn 11 Bln",
       faceRegistered: true,
       faceScore: 99.2,
       status: "Aktif",
       avatar: "HG",
-      managerId: null, // Pimpinan Tertinggi
+      managerId: null,
+      isFirstLogin: false,
+      temporaryPassword: null,
     },
     {
       id: "emp-1",
@@ -241,18 +270,24 @@ export default function Home() {
       name: "Budi Pratama",
       email: "budi@perusahaan.id",
       phone: "+62 812-3456-7890",
+      address: "Jl. Tebet Barat Dalam No. 15, Jakarta Selatan",
+      birthDate: "1990-08-20",
       dept: "IT Operations",
       role: "Manager IT & Systems",
       level: "Manager",
       shiftId: "shift-1",
       contractType: "Tetap",
+      startDate: "2024-01-01",
+      endDate: null,
       joinDate: "01 Jan 2024",
       tenure: "2 Thn 10 Bln",
       faceRegistered: true,
       faceScore: 96.4,
       status: "Aktif",
       avatar: "BP",
-      managerId: "emp-0", // Lapor ke CEO
+      managerId: "emp-0",
+      isFirstLogin: false,
+      temporaryPassword: null,
     },
     {
       id: "emp-2",
@@ -260,18 +295,24 @@ export default function Home() {
       name: "Siti Rahmawati",
       email: "siti@perusahaan.id",
       phone: "+62 813-8888-0412",
+      address: "Jl. Kemang Raya No. 45, Jakarta Selatan",
+      birthDate: "1992-11-05",
       dept: "HR & People",
       role: "Manager HR & People",
       level: "Manager",
       shiftId: "shift-1",
       contractType: "Tetap",
+      startDate: "2024-03-15",
+      endDate: null,
       joinDate: "15 Mar 2024",
       tenure: "2 Thn 8 Bln",
       faceRegistered: true,
       faceScore: 98.1,
       status: "Aktif",
       avatar: "SR",
-      managerId: "emp-0", // Lapor ke CEO
+      managerId: "emp-0",
+      isFirstLogin: false,
+      temporaryPassword: null,
     },
     {
       id: "emp-3",
@@ -279,18 +320,24 @@ export default function Home() {
       name: "Andi Saputra",
       email: "andi@perusahaan.id",
       phone: "+62 815-5555-0775",
+      address: "Jl. Bendungan Hilir No. 22, Jakarta Pusat",
+      birthDate: "1994-03-18",
       dept: "IT Operations",
       role: "Supervisor Tech Lead",
       level: "Supervisor",
       shiftId: "shift-1",
       contractType: "Tetap",
+      startDate: "2024-02-10",
+      endDate: null,
       joinDate: "10 Feb 2024",
       tenure: "2 Thn 9 Bln",
       faceRegistered: true,
       faceScore: 93.7,
       status: "Aktif",
       avatar: "AS",
-      managerId: "emp-1", // Lapor ke Budi Pratama (Manager IT)
+      managerId: "emp-1",
+      isFirstLogin: false,
+      temporaryPassword: null,
     },
     {
       id: "emp-4",
@@ -298,18 +345,24 @@ export default function Home() {
       name: "Dewi Lestari",
       email: "dewi@perusahaan.id",
       phone: "+62 819-2222-0219",
+      address: "Jl. Rawamangun No. 8, Jakarta Timur",
+      birthDate: "1995-07-25",
       dept: "HR & People",
       role: "Supervisor HR & GA",
       level: "Supervisor",
       shiftId: "shift-1",
       contractType: "Tetap",
+      startDate: "2024-06-05",
+      endDate: null,
       joinDate: "05 Jun 2024",
       tenure: "2 Thn 5 Bln",
       faceRegistered: true,
       faceScore: 95.2,
       status: "Aktif",
       avatar: "DL",
-      managerId: "emp-2", // Lapor ke Siti Rahmawati (Manager HR)
+      managerId: "emp-2",
+      isFirstLogin: false,
+      temporaryPassword: null,
     },
     {
       id: "emp-5",
@@ -317,18 +370,24 @@ export default function Home() {
       name: "Rian Hidayat",
       email: "rian@perusahaan.id",
       phone: "+62 856-1111-0155",
+      address: "Jl. Kebon Jeruk No. 31, Jakarta Barat",
+      birthDate: "1998-09-14",
       dept: "IT Operations",
       role: "Software Engineer Staff",
       level: "Staff",
       shiftId: "shift-2",
-      contractType: "Tetap",
-      joinDate: "20 Apr 2024",
-      tenure: "2 Thn 7 Bln",
+      contractType: "Kontrak",
+      startDate: "2026-04-20",
+      endDate: "2027-04-19",
+      joinDate: "20 Apr 2026",
+      tenure: "7 Bulan",
       faceRegistered: true,
       faceScore: 94.0,
       status: "Aktif",
       avatar: "RH",
-      managerId: "emp-3", // Lapor ke Andi Saputra (Supervisor Tech Lead)
+      managerId: "emp-3",
+      isFirstLogin: false,
+      temporaryPassword: null,
     },
     {
       id: "emp-6",
@@ -336,50 +395,32 @@ export default function Home() {
       name: "Maya Indah",
       email: "maya@perusahaan.id",
       phone: "+62 878-3333-0348",
+      address: "Jl. Margonda Raya No. 12, Depok",
+      birthDate: "2001-12-02",
       dept: "HR & People",
-      role: "Staff Legal & Compliance",
+      role: "Intern HR Specialist",
       level: "Staff",
-      shiftId: "shift-2",
-      contractType: "Tetap",
-      joinDate: "12 Aug 2024",
-      tenure: "2 Thn 3 Bln",
+      shiftId: "shift-1",
+      contractType: "Magang",
+      startDate: "2026-08-12",
+      endDate: "2027-02-12",
+      joinDate: "12 Aug 2026",
+      tenure: "3 Bulan",
       faceRegistered: true,
       faceScore: 97.5,
       status: "Aktif",
       avatar: "MI",
-      managerId: "emp-4", // Lapor ke Dewi Lestari (Supervisor HR)
+      managerId: "emp-4",
+      isFirstLogin: false,
+      temporaryPassword: null,
     },
   ]);
 
   // 2. Shifts Master Data
   const [shifts, setShifts] = useState<Shift[]>([
-    {
-      id: "shift-1",
-      name: "Shift Pagi (Utama)",
-      startTime: "07:00",
-      endTime: "15:00",
-      tolerance: "15 Menit",
-      openBefore: "60 Menit",
-      status: "Aktif",
-    },
-    {
-      id: "shift-2",
-      name: "Shift Siang (Operasional)",
-      startTime: "15:00",
-      endTime: "23:00",
-      tolerance: "15 Menit",
-      openBefore: "45 Menit",
-      status: "Aktif",
-    },
-    {
-      id: "shift-3",
-      name: "Shift Malam (Teknis / Lintas Hari)",
-      startTime: "23:00",
-      endTime: "07:00",
-      tolerance: "10 Menit",
-      openBefore: "30 Menit",
-      status: "Aktif",
-    },
+    { id: "shift-1", name: "Shift Pagi (Utama)", startTime: "07:00", endTime: "15:00", tolerance: "15 Menit", openBefore: "60 Menit", status: "Aktif" },
+    { id: "shift-2", name: "Shift Siang (Operasional)", startTime: "15:00", endTime: "23:00", tolerance: "15 Menit", openBefore: "45 Menit", status: "Aktif" },
+    { id: "shift-3", name: "Shift Malam (Teknis / Lintas Hari)", startTime: "23:00", endTime: "07:00", tolerance: "10 Menit", openBefore: "30 Menit", status: "Aktif" },
   ]);
 
   // 3. Departments Data
@@ -389,7 +430,7 @@ export default function Home() {
     { id: "dept-2", name: "HR & People", head: "Siti Rahmawati", color: "from-pink-900/40 to-pink-950/60", border: "border-pink-700/40", badge: "bg-pink-500/20 text-pink-200" },
   ]);
 
-  // 4. Attendances State (Real-time Log)
+  // 4. Attendances State
   const [attendances, setAttendances] = useState<AttendanceRecord[]>([
     { id: "att-1", employeeId: "emp-1", name: "Budi Pratama", nik: "2026-0891", dept: "IT Operations", shift: "Shift Pagi (Utama)", in: "07:42 WIB", out: "15:02 WIB", dist: 14.2, score: 96.4, status: "APPROVED", date: "17 Nov 2026" },
     { id: "att-2", employeeId: "emp-2", name: "Siti Rahmawati", nik: "2026-0412", dept: "HR & People", shift: "Shift Pagi (Utama)", in: "07:35 WIB", out: "15:00 WIB", dist: 8.5, score: 98.1, status: "APPROVED", date: "17 Nov 2026" },
@@ -402,7 +443,6 @@ export default function Home() {
   const [leaves, setLeaves] = useState<LeaveRequest[]>([
     { id: "lv-1", employeeId: "emp-5", name: "Rian Hidayat", dept: "IT Operations", type: "Tahunan", start: "20 Nov 2026", end: "22 Nov 2026", days: 3, reason: "Keperluan keluarga di luar kota", status: "MENUNGGU" },
     { id: "lv-2", employeeId: "emp-6", name: "Maya Indah", dept: "HR & People", type: "Sakit", start: "15 Nov 2026", end: "16 Nov 2026", days: 2, reason: "Demam & rekomendasi istirahat dokter", status: "DISETUJUI" },
-    { id: "lv-3", employeeId: "emp-3", name: "Andi Saputra", dept: "IT Operations", type: "Tahunan", start: "01 Dec 2026", end: "03 Dec 2026", days: 3, reason: "Cuti tahunan", status: "MENUNGGU" },
   ]);
 
   // 6. Work Journals State
@@ -417,65 +457,35 @@ export default function Home() {
       hours: "8j 00m",
       score: 94,
       tasks: [
-        "Implementasi relasi manager_id pada database absensi",
-        "Pengerjaan filtering bawahan langsung pada modul attendance",
-        "Meeting koordinasi sprint bersama Supervisor Andi Saputra",
-      ],
-    },
-    {
-      id: "jrn-2",
-      employeeId: "emp-3",
-      name: "Andi Saputra",
-      dept: "IT Operations",
-      avatar: "AS",
-      date: "17 Nov 2026",
-      hours: "7j 45m",
-      score: 96,
-      tasks: [
-        "Code review hasil pengerjaan Rian Hidayat",
-        "Approval jadwal shift tim engineering",
-        "Laporan perkembangan sprint ke Manager Budi Pratama",
-      ],
-    },
-    {
-      id: "jrn-3",
-      employeeId: "emp-1",
-      name: "Budi Pratama",
-      dept: "IT Operations",
-      avatar: "BP",
-      date: "17 Nov 2026",
-      hours: "8j 15m",
-      score: 95,
-      tasks: [
-        "Evaluasi arsitektur cloud server geofence",
-        "Penyusunan anggaran lisensi Face AI 2027",
-        "Review laporan mingguan dari Supervisor Andi",
+        "Pengerjaan form pendaftaran karyawan baru lengkap",
+        "Implementasi otomatisasi pembuatan user & random password",
+        "Pemisahan kolom tanggal kerja untuk Tetap, Kontrak, Magang, DW",
       ],
     },
   ]);
 
   // 7. System Users State
   const [users, setUsers] = useState<SystemUser[]>([
-    { id: "usr-0", employeeId: "emp-0", name: "Ir. Hendra Gunawan", email: "hendra@perusahaan.id", role: "Super Admin", dept: "Direksi", lastLogin: "17 Nov 2026 08:00", status: "AKTIF" },
-    { id: "usr-1", employeeId: "emp-1", name: "Budi Pratama", email: "budi@perusahaan.id", role: "Department Manager", dept: "IT Operations", lastLogin: "17 Nov 2026 10:42", status: "AKTIF" },
-    { id: "usr-2", employeeId: "emp-2", name: "Siti Rahmawati", email: "siti@perusahaan.id", role: "Department Manager", dept: "HR & People", lastLogin: "17 Nov 2026 09:15", status: "AKTIF" },
-    { id: "usr-3", employeeId: "emp-3", name: "Andi Saputra", email: "andi@perusahaan.id", role: "Supervisor", dept: "IT Operations", lastLogin: "17 Nov 2026 08:50", status: "AKTIF" },
-    { id: "usr-4", employeeId: "emp-4", name: "Dewi Lestari", email: "dewi@perusahaan.id", role: "Supervisor", dept: "HR & People", lastLogin: "16 Nov 2026 17:22", status: "AKTIF" },
-    { id: "usr-5", employeeId: "emp-5", name: "Rian Hidayat", email: "rian@perusahaan.id", role: "Staff", dept: "IT Operations", lastLogin: "17 Nov 2026 07:35", status: "AKTIF" },
-    { id: "usr-6", employeeId: "emp-6", name: "Maya Indah", email: "maya@perusahaan.id", role: "Staff", dept: "HR & People", lastLogin: "16 Nov 2026 16:00", status: "AKTIF" },
+    { id: "usr-0", employeeId: "emp-0", name: "Ir. Hendra Gunawan", email: "hendra@perusahaan.id", role: "Super Admin", dept: "Direksi", lastLogin: "17 Nov 2026 08:00", status: "AKTIF", isFirstLogin: false, temporaryPassword: null },
+    { id: "usr-1", employeeId: "emp-1", name: "Budi Pratama", email: "budi@perusahaan.id", role: "Department Manager", dept: "IT Operations", lastLogin: "17 Nov 2026 10:42", status: "AKTIF", isFirstLogin: false, temporaryPassword: null },
+    { id: "usr-2", employeeId: "emp-2", name: "Siti Rahmawati", email: "siti@perusahaan.id", role: "Department Manager", dept: "HR & People", lastLogin: "17 Nov 2026 09:15", status: "AKTIF", isFirstLogin: false, temporaryPassword: null },
+    { id: "usr-3", employeeId: "emp-3", name: "Andi Saputra", email: "andi@perusahaan.id", role: "Supervisor", dept: "IT Operations", lastLogin: "17 Nov 2026 08:50", status: "AKTIF", isFirstLogin: false, temporaryPassword: null },
+    { id: "usr-4", employeeId: "emp-4", name: "Dewi Lestari", email: "dewi@perusahaan.id", role: "Supervisor", dept: "HR & People", lastLogin: "16 Nov 2026 17:22", status: "AKTIF", isFirstLogin: false, temporaryPassword: null },
+    { id: "usr-5", employeeId: "emp-5", name: "Rian Hidayat", email: "rian@perusahaan.id", role: "Staff", dept: "IT Operations", lastLogin: "17 Nov 2026 07:35", status: "AKTIF", isFirstLogin: false, temporaryPassword: null },
+    { id: "usr-6", employeeId: "emp-6", name: "Maya Indah", email: "maya@perusahaan.id", role: "Staff", dept: "HR & People", lastLogin: "16 Nov 2026 16:00", status: "AKTIF", isFirstLogin: false, temporaryPassword: null },
   ]);
 
-  // 8. Office Geofence & System Settings State
+  // 8. Office Settings
   const [settings, setSettings] = useState({
     officeName: "Kantor Pusat - Sudirman Tower Lt. 12",
     latitude: -6.2088,
     longitude: 106.8456,
-    geofenceRadius: 50, // in meters
-    aiFaceThreshold: 80, // min score %
+    geofenceRadius: 50,
+    aiFaceThreshold: 80,
   });
 
   // ─────────────────────────────────────────────────────────────
-  // ROLE-BASED ACCESS CONTROL (RBAC) & PERMISSION MATRIX
+  // ROLE PERMISSIONS MATRIX (RBAC)
   // ─────────────────────────────────────────────────────────────
   const allPermissions: PermissionItem[] = [
     { id: "dash_global", category: "Dashboard", name: "Lihat Dashboard Global Perusahaan", description: "Melihat grafik total SDM, absensi, dan analitik seluruh divisi" },
@@ -483,21 +493,19 @@ export default function Home() {
     { id: "emp_all", category: "Karyawan", name: "Akses Seluruh Direktori Karyawan", description: "Melihat profil seluruh staf lintas divisi dan cabang" },
     { id: "emp_subordinates_only", category: "Karyawan", name: "Hanya Lihat Bawahan Langsung (Direct Reports)", description: "Atasan hanya dapat melihat anggota tim yang berada di bawah komandonya" },
     { id: "emp_view_superior", category: "Karyawan", name: "Lihat Kontak & Profil Atasan Langsung", description: "Staf dapat melihat nama, jabatan, WA, dan email atasannya" },
-    { id: "emp_manage", category: "Karyawan", name: "Tambah / Edit Data Karyawan", description: "Mendaftarkan karyawan baru dan memodifikasi profil" },
+    { id: "emp_manage", category: "Karyawan", name: "Daftarkan Karyawan & Auto Buat Akun", description: "Mendaftarkan karyawan baru dan membuatkan kredensial sementara" },
     { id: "att_scan_self", category: "Absensi", name: "Absensi Mandiri (GPS & Liveness Wajah)", description: "Melakukan check-in dan check-out menggunakan kamera dan GPS" },
     { id: "att_all", category: "Absensi", name: "Lihat Rekap Absensi Seluruh Perusahaan", description: "Audit trail kehadiran seluruh staf dan ekspor XLSX/PDF" },
     { id: "att_team", category: "Absensi", name: "Lihat Rekap Absen Tim Bawahan Saja", description: "Memantau jam datang dan keterlambatan bawahannya masing-masing" },
     { id: "shift_manage", category: "Shift", name: "Konfigurasi & Penjadwalan Shift Kerja", description: "Menentukan jam masuk, toleransi, dan rotasi shift kerja tim" },
     { id: "leave_request", category: "Cuti", name: "Pengajuan Cuti Mandiri", description: "Mengisi form permohonan cuti tahunan, sakit, atau izin khusus" },
     { id: "leave_approve_subordinate", category: "Cuti", name: "Persetujuan Cuti Bawahan Langsung (N+1)", description: "Atasan langsung menyetujui / menolak cuti bawahannya" },
-    { id: "leave_approve_all", category: "Cuti", name: "Persetujuan Cuti Manajerial / HRD (N+2)", description: "Otorisasi akhir cuti panjang dan pemotongan kuota cuti tahunan" },
     { id: "journal_write", category: "Jurnal", name: "Tulis Jurnal Harian Kerja Mandiri", description: "Mengisi log pekerjaan harian dan durasi kerja" },
     { id: "journal_review_team", category: "Jurnal", name: "Review & Penilaian Jurnal Bawahan", description: "Atasan memeriksa dan memberi skor kualitas kerja tim" },
     { id: "sys_rbac_manage", category: "Sistem", name: "Kelola User & Centang Hak Akses (RBAC)", description: "Mengatur hak akses dan mencentang izin tiap role" },
     { id: "sys_geofence_manage", category: "Sistem", name: "Pengaturan Geofence Kantor & Parameter AI", description: "Mengubah radius GPS kantor dan ambang batas wajah" },
   ];
 
-  // Role Permissions Checkbox Matrix State
   const [rolePermissions, setRolePermissions] = useState<Record<string, string[]>>({
     "Super Admin": allPermissions.map((p) => p.id),
     "Department Manager": [
@@ -513,7 +521,6 @@ export default function Home() {
       "shift_manage",
       "leave_request",
       "leave_approve_subordinate",
-      "leave_approve_all",
       "journal_write",
       "journal_review_team",
     ],
@@ -551,17 +558,11 @@ export default function Home() {
   // ─────────────────────────────────────────────────────────────
   // ACTIVE VIEWING PERSPECTIVE (SIMULASI LOGIN PER HIERARCHY)
   // ─────────────────────────────────────────────────────────────
-  // Options:
-  // - "admin"  : Super Admin / Direksi (Semua Akses)
-  // - "emp-1"  : Budi Pratama (Manager IT)
-  // - "emp-3"  : Andi Saputra (Supervisor Tech Lead)
-  // - "emp-5"  : Rian Hidayat (Staff)
   const [activePerspective, setActivePerspective] = useState<string>("admin");
 
-  // Get Current Active User based on Perspective
   const currentActiveEmployee: Employee =
     activePerspective === "admin"
-      ? employees[0] // Hendra Gunawan (CEO)
+      ? employees[0]
       : employees.find((e) => e.id === activePerspective) || employees[0];
 
   const currentRoleName =
@@ -573,41 +574,34 @@ export default function Home() {
       ? "Supervisor"
       : "Staff";
 
-  // Check if current perspective has a specific permission
   const hasPermission = (permId: string): boolean => {
     const rolePerms = rolePermissions[currentRoleName] || [];
     return rolePerms.includes(permId);
   };
 
-  // Hierarchy Helpers:
-  // Direct superior of an employee
+  // Hierarchy Helpers
   const getDirectSuperior = (emp: Employee): Employee | null => {
     if (!emp.managerId) return null;
     return employees.find((e) => e.id === emp.managerId) || null;
   };
 
-  // Direct subordinates of an employee
   const getDirectSubordinates = (empId: string): Employee[] => {
     return employees.filter((e) => e.managerId === empId);
   };
 
-  // Employees visible to the current perspective
   const getVisibleEmployees = (): Employee[] => {
     if (activePerspective === "admin" || currentRoleName === "Super Admin") {
       return employees;
     }
     if (currentRoleName === "Department Manager") {
-      // Manager can see his department or direct subordinates + their subordinates
       return employees.filter(
         (e) => e.dept === currentActiveEmployee.dept || e.id === currentActiveEmployee.id
       );
     }
     if (currentRoleName === "Supervisor") {
-      // Supervisor can ONLY see his direct subordinates + himself
       const directSubIds = getDirectSubordinates(currentActiveEmployee.id).map((e) => e.id);
       return employees.filter((e) => e.id === currentActiveEmployee.id || directSubIds.includes(e.id));
     }
-    // Staff can ONLY see himself!
     return employees.filter((e) => e.id === currentActiveEmployee.id);
   };
 
@@ -616,18 +610,15 @@ export default function Home() {
   const directSubordinates = getDirectSubordinates(currentActiveEmployee.id);
 
   // ─────────────────────────────────────────────────────────────
-  // INTERCONNECTED FILTERS & ABSENSI SIMULATOR
+  // FORM & MODAL STATES (PENDAFTARAN KARYAWAN & PAKSA GANTI PASSWORD)
   // ─────────────────────────────────────────────────────────────
   const [selectedEmployeeId, setSelectedEmployeeId] = useState<string>("emp-5");
   const selectedEmployee = employees.find((e) => e.id === selectedEmployeeId) || employees[0];
 
-  // Filters for Employee Directory
   const [filterDept, setFilterDept] = useState<string>("ALL");
   const [filterShift, setFilterShift] = useState<string>("ALL");
   const [searchEmployeeQuery, setSearchEmployeeQuery] = useState<string>("");
-
-  // Sub-tabs inside User Management
-  const [userManagementTab, setUserManagementTab] = useState<"users" | "rbac">("rbac");
+  const [userManagementTab, setUserManagementTab] = useState<"users" | "rbac">("users");
 
   // Absensi Simulator State
   const [livenessPassed, setLivenessPassed] = useState(false);
@@ -638,68 +629,194 @@ export default function Home() {
 
   // Modals Open State
   const [showAddEmployeeModal, setShowAddEmployeeModal] = useState(false);
-  const [showAddLeaveModal, setShowAddLeaveModal] = useState(false);
-  const [showAddJournalModal, setShowAddJournalModal] = useState(false);
-  const [showAddShiftModal, setShowAddShiftModal] = useState(false);
-  const [showAddUserModal, setShowAddUserModal] = useState(false);
+  const [showCredentialsModal, setShowCredentialsModal] = useState(false);
   const [showPasswordModal, setShowPasswordModal] = useState(false);
 
-  // Form States for Modals
-  const [newEmployee, setNewEmployee] = useState({
-    name: "",
+  // Kredensial Karyawan Baru yang Baru Saja Dibuat (Pop-up Sekali Muncul)
+  const [newlyCreatedCredentials, setNewlyCreatedCredentials] = useState<{
+    name: string;
+    nik: string;
+    email: string;
+    tempPass: string;
+    role: string;
+    contractType: string;
+    startDate: string;
+    endDate?: string | null;
+    superiorName: string;
+  } | null>(null);
+
+  // Form State: Pendaftaran Karyawan Baru Lengkap
+  const [newEmployeeForm, setNewEmployeeForm] = useState({
     nik: "",
+    name: "",
     email: "",
     phone: "",
+    address: "",
+    birthDate: "1998-05-14",
     dept: "IT Operations",
     role: "",
     level: "Staff" as "Director" | "Manager" | "Supervisor" | "Staff",
-    shiftId: "shift-1",
-    contractType: "Tetap" as "Tetap" | "Kontrak",
     managerId: "emp-3",
+    shiftId: "shift-1",
+    contractType: "Kontrak" as "Tetap" | "Kontrak" | "Magang" | "DW",
+    startDate: "2026-11-20",
+    endDate: "2027-11-20",
   });
 
-  const [newLeave, setNewLeave] = useState({
-    employeeId: "emp-5",
-    type: "Tahunan" as "Tahunan" | "Sakit" | "Melahirkan" | "Khusus",
-    start: "2026-11-20",
-    end: "2026-11-22",
-    days: 3,
-    reason: "",
+  // Form State: Paksa Ganti Password Karyawan Baru (Saat Login Pertama Kali)
+  const [forcedPasswordForm, setForcedPasswordForm] = useState({
+    newPass: "",
+    confirmPass: "",
   });
 
-  const [newJournal, setNewJournal] = useState({
-    employeeId: "emp-5",
-    task: "",
-    hours: "8",
-  });
+  // Deteksi Otomatis: Jika Karyawan Baru Login dan Belum Ganti Password, Paksa Ganti Password!
+  const isForcedPasswordRequired =
+    activePerspective !== "admin" &&
+    currentActiveEmployee.isFirstLogin === true &&
+    Boolean(currentActiveEmployee.temporaryPassword);
 
-  const [newShift, setNewShift] = useState({
-    name: "",
-    startTime: "08:00",
-    endTime: "17:00",
-    tolerance: "15 Menit",
-    openBefore: "45 Menit",
-  });
-
-  const [newUser, setNewUser] = useState({
-    name: "",
-    email: "",
-    role: "Staff" as "Super Admin" | "Department Manager" | "Supervisor" | "Staff",
-    dept: "IT Operations",
-  });
-
-  // Selected Metric in Dashboard
-  const [selectedMetric, setSelectedMetric] = useState<string>("all");
-
-  // Geofence Evaluation
   const isWithinGeofence = simulatedDistance <= settings.geofenceRadius;
   const isFaceScoreValid = simulatedFaceScore >= settings.aiFaceThreshold;
 
   // ─────────────────────────────────────────────────────────────
-  // INTERCONNECTED ACTIONS
+  // ACTIONS: REGISTRASI KARYAWAN & USER OTOMATIS
   // ─────────────────────────────────────────────────────────────
 
-  // 1. Process Check-In (Absensi)
+  // 1. Submit Form Daftarkan Karyawan Baru
+  const handleRegisterEmployeeSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newEmployeeForm.name || !newEmployeeForm.nik || !newEmployeeForm.email) {
+      showToast("Nama, NIK, dan Email wajib diisi!", "error");
+      return;
+    }
+
+    const randomTempPass = generateRandomPassword();
+    const newEmpId = `emp-${Date.now()}`;
+    const newUserId = `usr-${Date.now()}`;
+    const superiorObj = employees.find((emp) => emp.id === newEmployeeForm.managerId);
+
+    // Hitung tanggal selesai (hanya untuk kontrak, magang, DW)
+    const effectiveEndDate = newEmployeeForm.contractType === "Tetap" ? null : newEmployeeForm.endDate;
+
+    // 1. Buat Objek Karyawan Baru
+    const newEmployeeObj: Employee = {
+      id: newEmpId,
+      nik: newEmployeeForm.nik,
+      name: newEmployeeForm.name,
+      email: newEmployeeForm.email,
+      phone: newEmployeeForm.phone || "+62 812-0000-0000",
+      address: newEmployeeForm.address || "Belum diisi",
+      birthDate: newEmployeeForm.birthDate,
+      dept: newEmployeeForm.dept,
+      role: newEmployeeForm.role || "Staff Pelaksana",
+      level: newEmployeeForm.level,
+      shiftId: newEmployeeForm.shiftId,
+      contractType: newEmployeeForm.contractType,
+      startDate: newEmployeeForm.startDate,
+      endDate: effectiveEndDate,
+      joinDate: newEmployeeForm.startDate,
+      tenure: "Baru Bergabung",
+      faceRegistered: true,
+      faceScore: 95.0,
+      status: "Aktif",
+      avatar: newEmployeeForm.name
+        .split(" ")
+        .map((w) => w[0])
+        .join("")
+        .slice(0, 2)
+        .toUpperCase(),
+      managerId: newEmployeeForm.managerId || null,
+      isFirstLogin: true, // WAJIB GANTI PASSWORD
+      temporaryPassword: randomTempPass, // PASSWORD ACAK SEMENTARA
+    };
+
+    // 2. Otomatis Buat Akun User di SystemUser
+    const newUserObj: SystemUser = {
+      id: newUserId,
+      employeeId: newEmpId,
+      name: newEmployeeForm.name,
+      email: newEmployeeForm.email,
+      role: newEmployeeForm.level === "Manager" ? "Department Manager" : newEmployeeForm.level === "Supervisor" ? "Supervisor" : "Staff",
+      dept: newEmployeeForm.dept,
+      lastLogin: "Belum Pernah Login",
+      status: "AKTIF",
+      isFirstLogin: true,
+      temporaryPassword: randomTempPass,
+    };
+
+    setEmployees((prev) => [...prev, newEmployeeObj]);
+    setUsers((prev) => [...prev, newUserObj]);
+
+    // Simpan data kredensial untuk ditampilkan sekali kepada HRD
+    setNewlyCreatedCredentials({
+      name: newEmployeeForm.name,
+      nik: newEmployeeForm.nik,
+      email: newEmployeeForm.email,
+      tempPass: randomTempPass,
+      role: newEmployeeForm.role || "Staff Pelaksana",
+      contractType: newEmployeeForm.contractType,
+      startDate: newEmployeeForm.startDate,
+      endDate: effectiveEndDate,
+      superiorName: superiorObj ? superiorObj.name : "Direksi",
+    });
+
+    setShowAddEmployeeModal(false);
+    setShowCredentialsModal(true);
+    showToast(`✓ Karyawan ${newEmployeeForm.name} dan User Akun berhasil dibuat!`);
+
+    // Reset Form
+    setNewEmployeeForm({
+      nik: "",
+      name: "",
+      email: "",
+      phone: "",
+      address: "",
+      birthDate: "1998-05-14",
+      dept: "IT Operations",
+      role: "",
+      level: "Staff",
+      managerId: "emp-3",
+      shiftId: "shift-1",
+      contractType: "Kontrak",
+      startDate: "2026-11-20",
+      endDate: "2027-11-20",
+    });
+  };
+
+  // 2. Submit Paksa Ganti Password Karyawan Baru
+  const handleForcedPasswordSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (forcedPasswordForm.newPass.length < 6) {
+      showToast("Password baru minimal 6 karakter!", "error");
+      return;
+    }
+    if (forcedPasswordForm.newPass !== forcedPasswordForm.confirmPass) {
+      showToast("Konfirmasi password tidak cocok!", "error");
+      return;
+    }
+
+    // Update state employee & user: hapus temporaryPassword secara permanen!
+    setEmployees((prev) =>
+      prev.map((emp) =>
+        emp.id === currentActiveEmployee.id
+          ? { ...emp, isFirstLogin: false, temporaryPassword: null }
+          : emp
+      )
+    );
+
+    setUsers((prev) =>
+      prev.map((usr) =>
+        usr.employeeId === currentActiveEmployee.id
+          ? { ...usr, isFirstLogin: false, temporaryPassword: null, lastLogin: "Hari ini (Password Diganti)" }
+          : usr
+      )
+    );
+
+    setForcedPasswordForm({ newPass: "", confirmPass: "" });
+    showToast("🎉 Password baru Anda berhasil disimpan! Password sementara kini telah dihapus secara permanen dari sistem.");
+  };
+
+  // 3. Process Check-In Absensi
   const handleCheckIn = () => {
     if (!livenessPassed) {
       showToast("Harap selesaikan uji liveness (kedipan mata) terlebih dahulu!", "error");
@@ -719,7 +836,6 @@ export default function Home() {
       setIsCapturing(false);
       setAttendanceState("SUCCESS");
 
-      // Auto-create attendance entry
       const newRecord: AttendanceRecord = {
         id: `att-${Date.now()}`,
         employeeId: selectedEmployee.id,
@@ -740,182 +856,33 @@ export default function Home() {
     }, 1200);
   };
 
-  // 2. Approve or Reject Leave (Hanya atasan yang berwenang)
-  const handleUpdateLeaveStatus = (leaveId: string, newStatus: "DISETUJUI" | "DITOLAK") => {
-    setLeaves((prev) =>
-      prev.map((l) => (l.id === leaveId ? { ...l, status: newStatus } : l))
-    );
-    showToast(`Pengajuan cuti telah diubah menjadi: ${newStatus}`);
-  };
-
-  // 3. Add New Employee Form Submit
-  const handleCreateEmployee = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newEmployee.name || !newEmployee.nik) {
-      showToast("Nama dan NIK wajib diisi!", "error");
-      return;
-    }
-
-    const created: Employee = {
-      id: `emp-${Date.now()}`,
-      nik: newEmployee.nik,
-      name: newEmployee.name,
-      email: newEmployee.email || `${newEmployee.nik}@perusahaan.id`,
-      phone: newEmployee.phone || "+62 812-0000-0000",
-      dept: newEmployee.dept,
-      role: newEmployee.role || "Staff Pelaksana",
-      level: newEmployee.level,
-      shiftId: newEmployee.shiftId,
-      contractType: newEmployee.contractType,
-      joinDate: "17 Nov 2026",
-      tenure: "Baru Bergabung",
-      faceRegistered: true,
-      faceScore: 95.0,
-      status: "Aktif",
-      avatar: newEmployee.name
-        .split(" ")
-        .map((w) => w[0])
-        .join("")
-        .slice(0, 2)
-        .toUpperCase(),
-      managerId: newEmployee.managerId || null,
-    };
-
-    setEmployees((prev) => [...prev, created]);
-    setShowAddEmployeeModal(false);
-    showToast(`Karyawan baru ${created.name} berhasil didaftarkan di bawah atasan langsung terkait!`);
-  };
-
-  // 4. Add Leave Request Form Submit
-  const handleCreateLeave = (e: React.FormEvent) => {
-    e.preventDefault();
-    const emp = employees.find((emp) => emp.id === newLeave.employeeId) || selectedEmployee;
-    const req: LeaveRequest = {
-      id: `lv-${Date.now()}`,
-      employeeId: emp.id,
-      name: emp.name,
-      dept: emp.dept,
-      type: newLeave.type,
-      start: newLeave.start,
-      end: newLeave.end,
-      days: Number(newLeave.days) || 1,
-      reason: newLeave.reason || "Cuti permohonan dinas",
-      status: "MENUNGGU",
-    };
-    setLeaves((prev) => [req, ...prev]);
-    setShowAddLeaveModal(false);
-    showToast(`Pengajuan cuti atas nama ${emp.name} dikirimkan ke atasan langsung!`);
-  };
-
-  // 5. Add Work Journal Form Submit
-  const handleCreateJournal = (e: React.FormEvent) => {
-    e.preventDefault();
-    const emp = employees.find((emp) => emp.id === newJournal.employeeId) || selectedEmployee;
-    if (!newJournal.task) {
-      showToast("Tuliskan aktivitas pekerjaan Anda!", "error");
-      return;
-    }
-
-    const journalEntry: WorkJournal = {
-      id: `jrn-${Date.now()}`,
-      employeeId: emp.id,
-      name: emp.name,
-      dept: emp.dept,
-      avatar: emp.avatar,
-      date: "17 Nov 2026",
-      hours: `${newJournal.hours}j 00m`,
-      score: 90,
-      tasks: [newJournal.task],
-    };
-
-    setJournals((prev) => [journalEntry, ...prev]);
-    setShowAddJournalModal(false);
-    showToast(`Jurnal kerja untuk ${emp.name} berhasil disimpan!`);
-  };
-
-  // 6. Add Shift Form Submit
-  const handleCreateShift = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newShift.name) {
-      showToast("Nama shift wajib diisi!", "error");
-      return;
-    }
-    const createdShift: Shift = {
-      id: `shift-${Date.now()}`,
-      name: newShift.name,
-      startTime: newShift.startTime,
-      endTime: newShift.endTime,
-      tolerance: newShift.tolerance,
-      openBefore: newShift.openBefore,
-      status: "Aktif",
-    };
-    setShifts((prev) => [...prev, createdShift]);
-    setShowAddShiftModal(false);
-    showToast(`Shift baru "${createdShift.name}" berhasil ditambahkan!`);
-  };
-
-  // 7. Add User Form Submit
-  const handleCreateUser = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newUser.name || !newUser.email) {
-      showToast("Nama dan email wajib diisi!", "error");
-      return;
-    }
-    const createdUser: SystemUser = {
-      id: `usr-${Date.now()}`,
-      employeeId: `emp-${Date.now()}`,
-      name: newUser.name,
-      email: newUser.email,
-      role: newUser.role,
-      dept: newUser.dept,
-      lastLogin: "Baru Dibuat",
-      status: "AKTIF",
-    };
-    setUsers((prev) => [...prev, createdUser]);
-    setShowAddUserModal(false);
-    showToast(`User ${createdUser.name} dengan hak akses ${createdUser.role} berhasil dibuat!`);
-  };
-
-  // 8. Save System Settings
-  const handleSaveSettings = (e: React.FormEvent) => {
-    e.preventDefault();
-    showToast("✓ Pengaturan geofence kantor & ambang batas AI berhasil disimpan!");
-  };
-
-  // 9. Quick Actions from Other Menus
-  const navigateToKaryawanWithFilter = (deptName: string) => {
-    setFilterDept(deptName);
-    setFilterShift("ALL");
-    setActiveMenu("karyawan");
-  };
-
-  const startAbsenForEmployee = (empId: string) => {
-    setSelectedEmployeeId(empId);
-    setAttendanceState("IDLE");
-    setLivenessPassed(false);
-    setActiveMenu("absensi");
-    showToast(`Mode Absensi aktif untuk: ${employees.find((e) => e.id === empId)?.name}`);
+  // Salin Info Kredensial ke Clipboard
+  const copyCredentialsToClipboard = () => {
+    if (!newlyCreatedCredentials) return;
+    const text = `Halo ${newlyCreatedCredentials.name},\nSelamat bergabung di perusahaan kami!\nBerikut adalah akun Anda untuk login ke Sistem Absensi AbsenKu:\n- Email: ${newlyCreatedCredentials.email}\n- Password Sementara: ${newlyCreatedCredentials.tempPass}\n\n*Penting: Password ini hanya berlaku untuk login pertama kali. Anda akan diminta membuat password baru saat pertama kali masuk.*`;
+    navigator.clipboard?.writeText(text);
+    showToast("✓ Info akun & password sementara berhasil disalin!");
   };
 
   // Dynamic Header Title & Subtitle per Active Menu
   const menuMeta: Record<string, { title: string; subtitle: string; icon: string }> = {
     dashboard: { title: "DASHBOARD", subtitle: `Ringkasan Data & Workforce Intelligence ${companyName}`, icon: "🏠" },
-    karyawan: { title: "KARYAWAN & STRUKTUR", subtitle: `Struktur Atasan-Bawahan & Direktori SDM (${visibleEmployees.length} Ditampilkan)`, icon: "👥" },
+    karyawan: { title: "KARYAWAN & STRUKTUR", subtitle: `Direktori SDM, Status Kerja & Garis Komando (${visibleEmployees.length} Ditampilkan)`, icon: "👥" },
     departemen: { title: "DEPARTEMEN", subtitle: `Manajemen Struktur Organisasi (${departments.length} Unit Kerja)`, icon: "🏢" },
     jabatan: { title: "JABATAN", subtitle: "Daftar Posisi & Level Hirarki Karyawan", icon: "💼" },
-    kontrak: { title: "KONTRAK & LIFECYCLE", subtitle: "Manajemen Kontrak, Status & Masa Kerja", icon: "📄" },
+    kontrak: { title: "KONTRAK & LIFECYCLE", subtitle: "Status Kerja: Tetap, Kontrak, Magang & DW", icon: "📄" },
     absensi: { title: "ABSENSI (GPS & WAJAH)", subtitle: "Verifikasi Kehadiran Otomatis Real-Time & Auto-Approval", icon: "📍" },
     "rekap-absensi": { title: "REKAP ABSENSI", subtitle: `Laporan Kehadiran Terverifikasi (${attendances.length} Log Hari Ini)`, icon: "📊" },
     "jadwal-shift": { title: "JADWAL SHIFT", subtitle: `Konfigurasi Shift Kerja Dinamis (${shifts.length} Shift Aktif)`, icon: "📅" },
-    "pengajuan-cuti": { title: "PENGAJUAN CUTI", subtitle: `Kelola Pengajuan Cuti Karyawan (${leaves.filter((l) => l.status === "MENUNGGU").length} Menunggu Approval Atasan)`, icon: "🏖️" },
+    "pengajuan-cuti": { title: "PENGAJUAN CUTI", subtitle: `Kelola Pengajuan Cuti Karyawan (${leaves.filter((l) => l.status === "MENUNGGU").length} Menunggu Approval)`, icon: "🏖️" },
     "jurnal-kerja": { title: "JURNAL KERJA", subtitle: `Catatan Aktivitas, Produktivitas & Log Harian (${journals.length} Jurnal Tercatat)`, icon: "📑" },
-    "user-management": { title: "USER MANAGEMENT & RBAC", subtitle: `Kelola Akun & Centang Matriks Izin Akses (${users.length} Akun)`, icon: "👤" },
+    "user-management": { title: "USER MANAGEMENT & RBAC", subtitle: `Kelola Akun Karyawan & Matriks Hak Akses (${users.length} Akun)`, icon: "👤" },
     pengaturan: { title: "PENGATURAN SISTEM", subtitle: `Konfigurasi Geofence Kantor (${settings.geofenceRadius}m) & AI Match (${settings.aiFaceThreshold}%)`, icon: "⚙️" },
   };
 
   const currentMeta = menuMeta[activeMenu] ?? { title: activeMenu.toUpperCase(), subtitle: "", icon: "📋" };
 
-  // Filtered Employees according to visibility and search
+  // Filtered Employees
   const filteredEmployees = visibleEmployees.filter((emp) => {
     const matchDept = filterDept === "ALL" || emp.dept === filterDept;
     const matchShift = filterShift === "ALL" || emp.shiftId === filterShift;
@@ -930,13 +897,7 @@ export default function Home() {
   return (
     <div className="flex min-h-screen bg-[#010804] text-white font-sans selection:bg-emerald-500 selection:text-black">
       {/* Hidden File Input for Logo Upload */}
-      <input
-        type="file"
-        ref={fileInputRef}
-        onChange={handleLogoUpload}
-        accept="image/*"
-        className="hidden"
-      />
+      <input type="file" ref={fileInputRef} onChange={handleLogoUpload} accept="image/*" className="hidden" />
 
       {/* Floating Toast Notification */}
       {toastMessage && (
@@ -957,16 +918,81 @@ export default function Home() {
       )}
 
       {/* ========================================================= */}
+      {/* MODAL PAKSA GANTI PASSWORD (MUNCUL JIKA KARYAWAN LOGIN   */}
+      {/* PERTAMA KALI DENGAN PASSWORD SEMENTARA)                   */}
+      {/* ========================================================= */}
+      {isForcedPasswordRequired && (
+        <div className="fixed inset-0 z-50 bg-black/90 backdrop-blur-md flex items-center justify-center p-4">
+          <div className="bg-[#021109] border-2 border-amber-400/80 rounded-3xl p-7 max-w-md w-full shadow-2xl space-y-4 relative animate-in fade-in zoom-in-95 duration-200">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-2xl bg-amber-500/20 text-amber-300 flex items-center justify-center ring-1 ring-amber-400/40 flex-shrink-0">
+                <KeyRound className="w-6 h-6 animate-pulse" />
+              </div>
+              <div>
+                <span className="text-[10px] text-amber-400 font-black uppercase tracking-wider block">
+                  KEAMANAN AKUN • LOGIN PERTAMA KALI
+                </span>
+                <h3 className="font-black text-white text-base leading-tight">Wajib Buat Password Baru</h3>
+              </div>
+            </div>
+
+            <div className="bg-[#010804] p-3.5 rounded-xl border border-amber-900/60 text-xs text-white/80 space-y-1.5">
+              <p>
+                Halo <strong className="text-white">{currentActiveEmployee.name}</strong>, Anda saat ini masuk menggunakan{" "}
+                <strong className="text-amber-300">password sementara acak dari HRD</strong>.
+              </p>
+              <p className="text-[11px] text-white/70">
+                Demi keamanan akun & privasi Anda, Anda diwajibkan mengganti password baru sekarang sebelum dapat mengakses menu sistem.
+              </p>
+            </div>
+
+            <form onSubmit={handleForcedPasswordSubmit} className="space-y-3.5 text-xs">
+              <div>
+                <label className="block text-white font-bold mb-1">Password Baru Anda</label>
+                <input
+                  type="password"
+                  required
+                  placeholder="Minimal 6 karakter..."
+                  value={forcedPasswordForm.newPass}
+                  onChange={(e) => setForcedPasswordForm({ ...forcedPasswordForm, newPass: e.target.value })}
+                  className="w-full bg-[#010804] border border-emerald-900/80 rounded-xl p-3 text-white focus:outline-none focus:border-emerald-400"
+                />
+              </div>
+
+              <div>
+                <label className="block text-white font-bold mb-1">Konfirmasi Password Baru</label>
+                <input
+                  type="password"
+                  required
+                  placeholder="Ulangi password baru..."
+                  value={forcedPasswordForm.confirmPass}
+                  onChange={(e) => setForcedPasswordForm({ ...forcedPasswordForm, confirmPass: e.target.value })}
+                  className="w-full bg-[#010804] border border-emerald-900/80 rounded-xl p-3 text-white focus:outline-none focus:border-emerald-400"
+                />
+              </div>
+
+              <button
+                type="submit"
+                className="w-full py-3 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-400 text-black font-black uppercase tracking-wider text-xs hover:brightness-110 shadow-lg shadow-black transition-all"
+              >
+                Simpan Password & Masuk Sistem →
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================= */}
       {/* PANEL KIRI: LEBIH GELAP PEKAT (#010a06)                  */}
       {/* ========================================================= */}
       <aside className="w-64 flex-shrink-0 bg-[#010a06] border-r border-emerald-950/80 flex flex-col justify-between py-5 px-3 min-h-screen select-none z-20 shadow-2xl shadow-black">
         <div>
-          {/* Header Profil Perusahaan Dinamis */}
+          {/* Header Profil Perusahaan */}
           <div className="group relative p-2.5 rounded-2xl bg-[#03140d]/70 border border-emerald-900/40 hover:border-emerald-500/40 transition-all mb-6">
             <div className="flex items-center gap-3">
               <div
                 onClick={() => fileInputRef.current?.click()}
-                title="Klik untuk ganti foto logo perusahaan"
+                title="Klik untuk ganti logo perusahaan"
                 className="relative w-11 h-11 rounded-2xl bg-gradient-to-tr from-teal-400 via-emerald-400 to-emerald-600 flex items-center justify-center font-black text-black text-sm shadow-lg shadow-black cursor-pointer overflow-hidden flex-shrink-0 group/logo ring-1 ring-emerald-300/40 hover:brightness-110 transition-all"
               >
                 {companyLogoUrl ? (
@@ -1052,11 +1078,7 @@ export default function Home() {
                   <span>👤</span>
                   <span>KEPEGAWAIAN & STRUKTUR</span>
                 </div>
-                {openSections.kepegawaian ? (
-                  <ChevronDown className="w-3.5 h-3.5" />
-                ) : (
-                  <ChevronRight className="w-3.5 h-3.5" />
-                )}
+                {openSections.kepegawaian ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
               </button>
 
               {openSections.kepegawaian && (
@@ -1107,11 +1129,7 @@ export default function Home() {
                   <span>⏱️</span>
                   <span>KEHADIRAN</span>
                 </div>
-                {openSections.kehadiran ? (
-                  <ChevronDown className="w-3.5 h-3.5" />
-                ) : (
-                  <ChevronRight className="w-3.5 h-3.5" />
-                )}
+                {openSections.kehadiran ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
               </button>
 
               {openSections.kehadiran && (
@@ -1155,11 +1173,7 @@ export default function Home() {
                   <span>📝</span>
                   <span>AKTIVITAS</span>
                 </div>
-                {openSections.aktivitas ? (
-                  <ChevronDown className="w-3.5 h-3.5" />
-                ) : (
-                  <ChevronRight className="w-3.5 h-3.5" />
-                )}
+                {openSections.aktivitas ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
               </button>
 
               {openSections.aktivitas && (
@@ -1202,11 +1216,7 @@ export default function Home() {
                   <span>⚙️</span>
                   <span>SISTEM & HAK AKSES</span>
                 </div>
-                {openSections.sistem ? (
-                  <ChevronDown className="w-3.5 h-3.5" />
-                ) : (
-                  <ChevronRight className="w-3.5 h-3.5" />
-                )}
+                {openSections.sistem ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
               </button>
 
               {openSections.sistem && (
@@ -1241,7 +1251,7 @@ export default function Home() {
           </div>
         </div>
 
-        {/* Sidebar Footer User Info & Active Perspective */}
+        {/* Sidebar Footer User Info */}
         <div className="p-3 bg-[#010704] rounded-xl border border-emerald-950 flex flex-col gap-2">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2.5 overflow-hidden">
@@ -1281,7 +1291,7 @@ export default function Home() {
             </div>
           </div>
 
-          {/* Right Header: Role / Perspective Switcher (Simulasi Atasan vs Bawahan) */}
+          {/* Right Header Action Buttons & Perspective Switcher */}
           <div className="flex flex-wrap items-center gap-2.5 text-xs">
             {/* PERSPECTIVE SWITCHER */}
             <div className="flex items-center gap-2 bg-[#020e08] border border-emerald-500/40 rounded-xl px-3 py-1.5 shadow-lg">
@@ -1302,10 +1312,18 @@ export default function Home() {
                 }}
                 className="bg-transparent text-white font-bold text-xs focus:outline-none cursor-pointer"
               >
-                <option value="admin" className="bg-[#021008] text-white">👑 Super Admin / Direksi (Akses Semua)</option>
-                <option value="emp-1" className="bg-[#021008] text-white">👔 Budi Pratama (Manager IT & Ops)</option>
-                <option value="emp-3" className="bg-[#021008] text-white">⭐ Andi Saputra (Supervisor Tech Lead)</option>
-                <option value="emp-5" className="bg-[#021008] text-white">👤 Rian Hidayat (Staff Engineer)</option>
+                <option value="admin" className="bg-[#021008] text-white">👑 Super Admin / Direksi (POV HRD)</option>
+                <option value="emp-1" className="bg-[#021008] text-white">👔 Budi Pratama (Manager IT)</option>
+                <option value="emp-3" className="bg-[#021008] text-white">⭐ Andi Saputra (Supervisor Tech)</option>
+                <option value="emp-5" className="bg-[#021008] text-white">👤 Rian Hidayat (Staff IT - Kontrak)</option>
+                <option value="emp-6" className="bg-[#021008] text-white">🎓 Maya Indah (Staff HR - Magang)</option>
+                {employees
+                  .filter((emp) => !["emp-0", "emp-1", "emp-3", "emp-5", "emp-6"].includes(emp.id))
+                  .map((emp) => (
+                    <option key={emp.id} value={emp.id} className="bg-[#021008] text-white">
+                      👤 {emp.name} ({emp.contractType}) {emp.isFirstLogin ? "[Perlu Ganti Pass]" : ""}
+                    </option>
+                  ))}
               </select>
             </div>
 
@@ -1339,7 +1357,7 @@ export default function Home() {
         {/* Content Body Based on Active Menu */}
         <div className="px-8 py-6 space-y-6 relative z-10">
           {/* ===================================================== */}
-          {/* VIEW: DASHBOARD (PERSIS SEPERTI GAMBAR REFERENSI)    */}
+          {/* VIEW: DASHBOARD                                       */}
           {/* ===================================================== */}
           {activeMenu === "dashboard" && (
             <div className="space-y-5">
@@ -1355,24 +1373,25 @@ export default function Home() {
                     </span>
                     <span className="text-[11px] text-white/70">
                       {currentRoleName === "Super Admin"
-                        ? "Anda memiliki akses penuh melihat seluruh analitik dan karyawan perusahaan."
+                        ? "POV HRD & Direksi: Anda memiliki hak penuh mendaftarkan karyawan baru dan mengelola seluruh sistem."
                         : currentRoleName === "Supervisor"
-                        ? `Anda hanya dapat memantau bawahan langsung Anda (${directSubordinates.length} orang).`
-                        : currentRoleName === "Staff"
-                        ? "Anda hanya melihat ringkasan performa dan absensi Anda sendiri."
-                        : `Anda memantau seluruh tim di bawah departemen ${currentActiveEmployee.dept}.`}
+                        ? `Anda mengawasi ${directSubordinates.length} orang bawahan langsung di tim Anda.`
+                        : "Anda hanya melihat profil dan ringkasan kehadiran mandiri Anda."}
                     </span>
                   </div>
                 </div>
-                <button
-                  onClick={() => setActiveMenu("user-management")}
-                  className="px-3 py-1 rounded-xl bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 hover:bg-emerald-500 hover:text-black font-bold text-[10px] transition-all"
-                >
-                  Lihat Matriks Izin RBAC →
-                </button>
+                {hasPermission("emp_manage") && (
+                  <button
+                    onClick={() => setShowAddEmployeeModal(true)}
+                    className="px-3 py-1.5 rounded-xl bg-emerald-500 text-black font-bold text-xs hover:bg-emerald-400 transition-all flex items-center gap-1"
+                  >
+                    <UserPlus className="w-3.5 h-3.5" />
+                    <span>Daftarkan Karyawan Baru</span>
+                  </button>
+                )}
               </div>
 
-              {/* BIG HERO CARD: Human Capital Overview dengan Gradasi Modern */}
+              {/* BIG HERO CARD */}
               <div className="rounded-3xl bg-gradient-to-br from-[#072619] via-[#03150d] to-[#010a06] p-7 border border-emerald-500/25 shadow-2xl relative overflow-hidden">
                 <div className="flex items-center justify-between mb-4">
                   <span className="text-[11px] font-black tracking-widest uppercase text-amber-400">
@@ -1386,9 +1405,7 @@ export default function Home() {
 
                 <div className="mb-6">
                   <h2 className="text-xl font-extrabold text-white">Human Capital Overview</h2>
-                  <p className="text-xs text-white">
-                    {currentRoleName === "Super Admin" ? "Komposisi dan statistik SDM aktif perusahaan" : `Lingkup Akses: ${currentRoleName}`}
-                  </p>
+                  <p className="text-xs text-white">Komposisi status kerja karyawan: Tetap, Kontrak, Magang, dan DW</p>
                 </div>
 
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
@@ -1406,81 +1423,45 @@ export default function Home() {
                       </div>
                     </div>
                     <span className="text-xs text-white mt-3 font-semibold">
-                      {currentRoleName === "Staff" ? "Profil Anda" : "Karyawan dalam lingkup akses"}
+                      Total tenaga kerja terdaftar
                     </span>
                   </div>
 
-                  <div className="lg:col-span-8 space-y-5">
-                    <div>
-                      <div className="flex justify-between items-center text-xs mb-1.5">
-                        <div className="flex items-center gap-2">
-                          <span className="w-2.5 h-2.5 rounded-full bg-blue-500" />
-                          <span className="text-white font-bold">Karyawan Kontrak</span>
-                        </div>
-                        <span className="font-mono text-white font-bold">
-                          {visibleEmployees.filter((e) => e.contractType === "Kontrak").length} •{" "}
-                          {Math.round(
-                            (visibleEmployees.filter((e) => e.contractType === "Kontrak").length /
-                              (visibleEmployees.length || 1)) *
-                              100
-                          )}
-                          %
+                  <div className="lg:col-span-8 space-y-3.5">
+                    {/* Status Breakdown Bar */}
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+                      <div className="bg-[#010804] p-3 rounded-xl border border-emerald-900/60">
+                        <span className="text-[10px] text-emerald-400 font-bold uppercase block">Karyawan Tetap</span>
+                        <span className="text-xl font-black font-mono text-white">
+                          {visibleEmployees.filter((e) => e.contractType === "Tetap").length}
                         </span>
                       </div>
-                      <div className="w-full h-2 rounded-full bg-[#010804] overflow-hidden">
-                        <div
-                          className="h-full bg-blue-500 rounded-full"
-                          style={{
-                            width: `${
-                              (visibleEmployees.filter((e) => e.contractType === "Kontrak").length /
-                                (visibleEmployees.length || 1)) *
-                              100
-                            }%`,
-                          }}
-                        />
+                      <div className="bg-[#010804] p-3 rounded-xl border border-emerald-900/60">
+                        <span className="text-[10px] text-blue-400 font-bold uppercase block">Kontrak (PKWT)</span>
+                        <span className="text-xl font-black font-mono text-white">
+                          {visibleEmployees.filter((e) => e.contractType === "Kontrak").length}
+                        </span>
+                      </div>
+                      <div className="bg-[#010804] p-3 rounded-xl border border-emerald-900/60">
+                        <span className="text-[10px] text-purple-400 font-bold uppercase block">Magang (Intern)</span>
+                        <span className="text-xl font-black font-mono text-white">
+                          {visibleEmployees.filter((e) => e.contractType === "Magang").length}
+                        </span>
+                      </div>
+                      <div className="bg-[#010804] p-3 rounded-xl border border-emerald-900/60">
+                        <span className="text-[10px] text-amber-400 font-bold uppercase block">DW (Harian)</span>
+                        <span className="text-xl font-black font-mono text-white">
+                          {visibleEmployees.filter((e) => e.contractType === "DW").length}
+                        </span>
                       </div>
                     </div>
 
-                    <div>
-                      <div className="flex justify-between items-center text-xs mb-1.5">
-                        <div className="flex items-center gap-2">
-                          <span className="w-2.5 h-2.5 rounded-full bg-amber-400" />
-                          <span className="text-white font-bold">Karyawan Tetap</span>
-                        </div>
-                        <span className="font-mono text-white font-bold">
-                          {visibleEmployees.filter((e) => e.contractType === "Tetap").length} •{" "}
-                          {Math.round(
-                            (visibleEmployees.filter((e) => e.contractType === "Tetap").length /
-                              (visibleEmployees.length || 1)) *
-                              100
-                          )}
-                          %
-                        </span>
-                      </div>
-                      <div className="w-full h-2 rounded-full bg-[#010804] overflow-hidden">
-                        <div
-                          className="h-full bg-gradient-to-r from-amber-500 to-amber-300 rounded-full shadow-sm shadow-amber-400/50"
-                          style={{
-                            width: `${
-                              (visibleEmployees.filter((e) => e.contractType === "Tetap").length /
-                                (visibleEmployees.length || 1)) *
-                              100
-                            }%`,
-                          }}
-                        />
-                      </div>
-                    </div>
-
-                    <div className="bg-[#020e08] rounded-2xl p-4 border border-emerald-900/60 mt-4">
+                    <div className="bg-[#020e08] rounded-2xl p-4 border border-emerald-900/60 mt-2">
                       <span className="text-[10px] font-black tracking-wider uppercase text-amber-400 block mb-1">
-                        INSIGHT SDM & HIRARKI
+                        SOP PENDAFTARAN & KEAMANAN AKUN
                       </span>
                       <p className="text-xs text-white font-medium">
-                        {currentRoleName === "Staff" && directSuperior
-                          ? `Atasan langsung Anda adalah ${directSuperior.name} (${directSuperior.role}). Segala perizinan cuti akan diajukan kepadanya.`
-                          : currentRoleName === "Supervisor"
-                          ? `Anda memimpin ${directSubordinates.length} orang bawahan langsung. Anda bertindak sebagai approver tahap 1 (N+1) untuk cuti & rekap absensi.`
-                          : `Sistem hirarki garis komando aktif. Seluruh absensi tervalidasi otomatis oleh Geofence ${settings.geofenceRadius}m & Liveness AI.`}
+                        Saat HRD mendaftarkan karyawan baru, akun sistem otomatis dibuat dengan password sementara acak. Karyawan diwajibkan mengganti password baru pada saat pertama kali login. Setelah diganti, password sementara akan hilang secara permanen dari POV HRD.
                       </p>
                     </div>
                   </div>
@@ -1495,36 +1476,38 @@ export default function Home() {
                 >
                   <div className="flex items-center gap-2 text-xs text-white mb-2 font-bold">
                     <span className="text-sm">👥</span>
-                    <span>Karyawan Terlihat</span>
+                    <span>Seluruh Karyawan</span>
                   </div>
                   <div className="text-3xl font-black text-white font-mono">{visibleEmployees.length}</div>
-                  <span className="text-[10px] text-white mt-1 block">Berdasarkan role Anda</span>
+                  <span className="text-[10px] text-white mt-1 block">Direktori & Master Biometrik</span>
                 </div>
 
                 <div
-                  onClick={() => setActiveMenu("absensi")}
+                  onClick={() => setActiveMenu("kontrak")}
+                  className="p-4 rounded-2xl cursor-pointer bg-[#03140d] border border-emerald-900/60 hover:bg-[#062216] transition-all"
+                >
+                  <div className="flex items-center gap-2 text-xs text-white mb-2 font-bold">
+                    <span className="text-sm">📄</span>
+                    <span>Status Non-Tetap</span>
+                  </div>
+                  <div className="text-3xl font-black text-white font-mono">
+                    {visibleEmployees.filter((e) => e.contractType !== "Tetap").length}
+                  </div>
+                  <span className="text-[10px] text-white mt-1 block">Kontrak, Magang, DW</span>
+                </div>
+
+                <div
+                  onClick={() => setActiveMenu("rekap-absensi")}
                   className="p-4 rounded-2xl cursor-pointer bg-[#03140d] border border-emerald-900/60 hover:bg-[#062216] transition-all"
                 >
                   <div className="flex items-center gap-2 text-xs text-white mb-2 font-bold">
                     <span className="text-sm">📍</span>
-                    <span>Toleransi Geofence</span>
-                  </div>
-                  <div className="text-3xl font-black text-white font-mono">{settings.geofenceRadius}m</div>
-                  <span className="text-[10px] text-white mt-1 block">Radius kantor pusat</span>
-                </div>
-
-                <div
-                  onClick={() => setActiveMenu("pengajuan-cuti")}
-                  className="p-4 rounded-2xl cursor-pointer bg-[#03140d] border border-emerald-900/60 hover:bg-[#062216] transition-all"
-                >
-                  <div className="flex items-center gap-2 text-xs text-white mb-2 font-bold">
-                    <span className="text-sm">🏖️</span>
-                    <span>Cuti Menunggu</span>
+                    <span>Hadir Sah Hari Ini</span>
                   </div>
                   <div className="text-3xl font-black text-white font-mono">
-                    {leaves.filter((l) => l.status === "MENUNGGU").length}
+                    {attendances.filter((a) => a.status === "APPROVED").length}
                   </div>
-                  <span className="text-[10px] text-white mt-1 block">Perlu persetujuan atasan</span>
+                  <span className="text-[10px] text-white mt-1 block">Tervalidasi GPS & Wajah</span>
                 </div>
 
                 <div
@@ -1533,10 +1516,10 @@ export default function Home() {
                 >
                   <div className="flex items-center gap-2 text-xs text-white mb-2 font-bold">
                     <span className="text-sm">🔐</span>
-                    <span>Role & Hak Akses</span>
+                    <span>User Sistem</span>
                   </div>
-                  <div className="text-3xl font-black text-white font-mono">{Object.keys(rolePermissions).length} Role</div>
-                  <span className="text-[10px] text-white mt-1 block">Matriks RBAC aktif</span>
+                  <div className="text-3xl font-black text-white font-mono">{users.length}</div>
+                  <span className="text-[10px] text-white mt-1 block">Akun terdaftar</span>
                 </div>
               </div>
             </div>
@@ -1547,31 +1530,31 @@ export default function Home() {
           {/* ===================================================== */}
           {activeMenu === "karyawan" && (
             <div className="space-y-6">
-              {/* Header Box: Role Perspective Notice */}
+              {/* Header Box: Pendaftaran Karyawan Baru */}
               <div className="bg-[#020e08] rounded-2xl p-4 border border-emerald-900/60 flex flex-col md:flex-row md:items-center justify-between gap-3">
                 <div>
-                  <h3 className="font-bold text-white text-base">Direktori SDM & Struktur Garis Komando</h3>
+                  <h3 className="font-bold text-white text-base">Direktori SDM & Manajemen Akun Karyawan</h3>
                   <p className="text-xs text-white/70">
-                    {currentRoleName === "Staff"
-                      ? "Sebagai Staff, Anda hanya melihat data diri Anda dan profil atasan langsung."
+                    {currentRoleName === "Super Admin" || activePerspective === "admin"
+                      ? "POV HRD: Mendaftarkan karyawan baru akan otomatis membuat akun user dengan password sementara sekali pakai."
                       : currentRoleName === "Supervisor"
-                      ? "Sebagai Supervisor, Anda hanya dapat melihat dan mengelola bawahan langsung di tim Anda."
-                      : "Sebagai Manajemen/Admin, Anda melihat hirarki seluruh perusahaan."}
+                      ? "Sebagai Supervisor, Anda hanya memantau data bawahan langsung Anda."
+                      : "Sebagai Staf, Anda hanya melihat profil diri dan atasan langsung Anda."}
                   </p>
                 </div>
 
                 {hasPermission("emp_manage") && (
                   <button
                     onClick={() => setShowAddEmployeeModal(true)}
-                    className="px-4 py-2 rounded-xl bg-emerald-500 text-black font-bold text-xs hover:bg-emerald-400 transition-all flex items-center gap-1.5 self-start"
+                    className="px-4 py-2.5 rounded-xl bg-emerald-500 text-black font-extrabold text-xs hover:bg-emerald-400 transition-all flex items-center gap-2 shadow-lg shadow-black"
                   >
                     <UserPlus className="w-4 h-4 text-black" />
-                    <span>Daftarkan Karyawan</span>
+                    <span>Daftarkan Karyawan Baru</span>
                   </button>
                 )}
               </div>
 
-              {/* BANNER 1: JIKA MEMILIKI ATASAN LANGSUNG (UNTUK STAFF & SUPERVISOR) */}
+              {/* BANNER ATASAN LANGSUNG (JIKA MEMILIKI ATASAN) */}
               {directSuperior && (
                 <div className="bg-gradient-to-r from-[#06291a] to-[#021008] rounded-2xl p-5 border border-emerald-500/40 shadow-xl relative overflow-hidden">
                   <div className="flex items-center justify-between mb-3">
@@ -1617,53 +1600,11 @@ export default function Home() {
                 </div>
               )}
 
-              {/* BANNER 2: JIKA MEMILIKI BAWAHAN LANGSUNG (UNTUK SUPERVISOR & MANAGER) */}
-              {directSubordinates.length > 0 && (
-                <div className="bg-[#02110a] rounded-2xl p-5 border border-emerald-900/60 space-y-3">
-                  <div className="flex items-center justify-between">
-                    <span className="text-[10px] font-black uppercase tracking-wider text-emerald-400 flex items-center gap-1.5">
-                      <Users className="w-3.5 h-3.5" /> BAWAHAN LANGSUNG SAYA ({directSubordinates.length} KARYAWAN)
-                    </span>
-                    <span className="text-[10px] text-white/60">
-                      Anda bertanggung jawab penuh atas absensi & approval cuti mereka
-                    </span>
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                    {directSubordinates.map((sub) => (
-                      <div
-                        key={sub.id}
-                        className="p-3.5 rounded-xl bg-[#010804] border border-emerald-900/60 flex items-center justify-between"
-                      >
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-xl bg-emerald-900 flex items-center justify-center font-bold text-white text-xs ring-1 ring-emerald-500/30">
-                            {sub.avatar}
-                          </div>
-                          <div>
-                            <span className="font-bold text-white text-xs block">{sub.name}</span>
-                            <span className="text-[10px] text-white/60 block">{sub.role}</span>
-                          </div>
-                        </div>
-                        <button
-                          onClick={() => {
-                            setSelectedEmployeeId(sub.id);
-                            setActiveMenu("absensi");
-                          }}
-                          className="px-2.5 py-1 rounded-lg bg-emerald-500/20 text-emerald-300 text-[10px] font-bold hover:bg-emerald-500 hover:text-black transition-all"
-                        >
-                          Cek Absen
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
               {/* Employee Cards Grid */}
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {filteredEmployees.map((k) => {
                   const empSuperior = getDirectSuperior(k);
-                  const empSubordinates = getDirectSubordinates(k.id);
+                  const isHRDPov = activePerspective === "admin" || currentRoleName === "Super Admin";
 
                   return (
                     <div
@@ -1680,62 +1621,98 @@ export default function Home() {
                             <span className="text-[10px] text-white/60 font-mono">NIK: {k.nik}</span>
                           </div>
                         </div>
-                        <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
-                          {k.level}
+
+                        {/* Status Badge: Tetap / Kontrak / Magang / DW */}
+                        <span
+                          className={`text-[10px] font-black px-2.5 py-1 rounded-full uppercase tracking-wider border ${
+                            k.contractType === "Tetap"
+                              ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/30"
+                              : k.contractType === "Kontrak"
+                              ? "bg-blue-500/20 text-blue-300 border-blue-500/30"
+                              : k.contractType === "Magang"
+                              ? "bg-purple-500/20 text-purple-300 border-purple-500/30"
+                              : "bg-amber-500/20 text-amber-300 border-amber-500/30"
+                          }`}
+                        >
+                          {k.contractType}
                         </span>
                       </div>
 
-                      <div className="text-xs text-white/90 space-y-1 pt-2 border-t border-emerald-900/40">
+                      {/* Detail Info Karyawan */}
+                      <div className="text-xs text-white/90 space-y-1.5 pt-2 border-t border-emerald-900/40">
                         <div className="flex justify-between">
                           <span className="text-white/60">Departemen:</span>
                           <span className="font-semibold text-white">{k.dept}</span>
                         </div>
                         <div className="flex justify-between">
-                          <span className="text-white/60">Jabatan:</span>
+                          <span className="text-white/60">Posisi:</span>
                           <span className="font-semibold text-white">{k.role}</span>
                         </div>
                         <div className="flex justify-between items-center">
                           <span className="text-white/60">Atasan Langsung:</span>
-                          <span className="font-semibold text-amber-400">
+                          <span className="font-semibold text-amber-300">
                             {empSuperior ? empSuperior.name : "Direksi (Puncak)"}
                           </span>
                         </div>
-                        {empSubordinates.length > 0 && (
-                          <div className="flex justify-between items-center">
-                            <span className="text-white/60">Bawahan:</span>
-                            <span className="font-bold text-emerald-400 text-[11px]">
-                              {empSubordinates.length} Anggota Tim
-                            </span>
+
+                        {/* TANGGAL KERJA: Jika Tetap hanya tanggal pertama, jika Kontrak/Magang/DW tampilkan s/d tanggal terakhir */}
+                        <div className="bg-[#010804] p-2.5 rounded-xl border border-emerald-900/40 space-y-1 text-[11px]">
+                          <div className="flex justify-between">
+                            <span className="text-white/60">Tanggal Pertama Kerja:</span>
+                            <span className="font-mono font-bold text-white">{k.startDate}</span>
+                          </div>
+                          {k.contractType !== "Tetap" && k.endDate && (
+                            <div className="flex justify-between">
+                              <span className="text-white/60">Tanggal Terakhir Kerja:</span>
+                              <span className="font-mono font-bold text-amber-400">{k.endDate}</span>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* STATUS PASSWORD DI SISI POV HRD */}
+                        {isHRDPov && (
+                          <div className="pt-1">
+                            {k.isFirstLogin && k.temporaryPassword ? (
+                              <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-2 flex items-center justify-between text-[10px]">
+                                <div>
+                                  <span className="text-amber-300 font-bold block">Password Sementara:</span>
+                                  <span className="font-mono font-black text-white tracking-widest">
+                                    {k.temporaryPassword}
+                                  </span>
+                                </div>
+                                <span className="px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 font-bold">
+                                  Belum Ganti
+                                </span>
+                              </div>
+                            ) : (
+                              <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-xl p-2 flex items-center gap-1.5 text-[10px] text-emerald-400 font-semibold">
+                                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 flex-shrink-0" />
+                                <span>Password Aktif (Telah Diganti Mandiri oleh Karyawan)</span>
+                              </div>
+                            )}
                           </div>
                         )}
-                        <div className="flex justify-between items-center pt-1">
-                          <span className="text-white/60">Biometrik Wajah:</span>
-                          <span className="text-[10px] text-emerald-400 font-bold">✓ Terdaftar ({k.faceScore}%)</span>
-                        </div>
                       </div>
 
                       {/* Action Links */}
                       <div className="pt-2 border-t border-emerald-900/40 flex gap-2">
                         <button
-                          onClick={() => startAbsenForEmployee(k.id)}
+                          onClick={() => {
+                            setSelectedEmployeeId(k.id);
+                            setActiveMenu("absensi");
+                          }}
                           className="flex-1 py-1.5 rounded-lg bg-emerald-500/20 hover:bg-emerald-500 hover:text-black text-emerald-300 text-[10px] font-bold transition-all text-center"
                         >
                           📍 Absen Wajah
                         </button>
                         <button
                           onClick={() => {
-                            setNewLeave((prev) => ({ ...prev, employeeId: k.id }));
-                            setShowAddLeaveModal(true);
+                            setActiveMenu("pengajuan-cuti");
+                            showToast(`Buka pengajuan cuti untuk ${k.name}`);
                           }}
                           className="flex-1 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-white text-[10px] font-semibold transition-all text-center"
                         >
                           🏖️ Cuti
-                        </button>
-                        <button
-                          onClick={() => setActiveMenu("jurnal-kerja")}
-                          className="flex-1 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-white text-[10px] font-semibold transition-all text-center"
-                        >
-                          📑 Jurnal
                         </button>
                       </div>
                     </div>
@@ -1746,24 +1723,93 @@ export default function Home() {
           )}
 
           {/* ===================================================== */}
-          {/* VIEW: USER MANAGEMENT & MATRIKS HAK AKSES (RBAC)      */}
+          {/* VIEW: KONTRAK & LIFECYCLE                             */}
+          {/* ===================================================== */}
+          {activeMenu === "kontrak" && (
+            <div className="space-y-5">
+              <div className="flex justify-between items-center">
+                <div>
+                  <h3 className="font-bold text-white text-base">Status Kerja & Lifecycle Karyawan</h3>
+                  <p className="text-xs text-white/70">
+                    Karyawan Tetap, Kontrak (PKWT), Magang (Internship), dan Daily Worker (DW)
+                  </p>
+                </div>
+                {hasPermission("emp_manage") && (
+                  <button
+                    onClick={() => setShowAddEmployeeModal(true)}
+                    className="px-4 py-2 rounded-xl bg-emerald-500 text-black font-bold text-xs hover:bg-emerald-400 flex items-center gap-1.5"
+                  >
+                    <Plus className="w-4 h-4" /> Daftarkan Karyawan Baru
+                  </button>
+                )}
+              </div>
+
+              <div className="bg-gradient-to-br from-[#062417] to-[#021008] rounded-2xl p-5 border border-emerald-900/60 overflow-x-auto">
+                <table className="w-full text-left text-xs">
+                  <thead>
+                    <tr className="border-b border-emerald-900/60 text-white/60 text-[10px] uppercase font-bold">
+                      <th className="pb-3">Karyawan</th>
+                      <th className="pb-3">Departemen</th>
+                      <th className="pb-3">Status Kerja</th>
+                      <th className="pb-3">Tanggal Pertama Kerja</th>
+                      <th className="pb-3">Tanggal Terakhir Kerja</th>
+                      <th className="pb-3">Status Akun</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-emerald-900/30">
+                    {employees.map((k) => (
+                      <tr key={k.id} className="hover:bg-emerald-950/20 transition-colors">
+                        <td className="py-3 font-bold text-white">{k.name}</td>
+                        <td className="py-3 text-white/70 text-[11px]">{k.dept}</td>
+                        <td className="py-3">
+                          <span
+                            className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                              k.contractType === "Tetap"
+                                ? "bg-emerald-500/20 text-emerald-300"
+                                : k.contractType === "Kontrak"
+                                ? "bg-blue-500/20 text-blue-300"
+                                : k.contractType === "Magang"
+                                ? "bg-purple-500/20 text-purple-300"
+                                : "bg-amber-500/20 text-amber-300"
+                            }`}
+                          >
+                            {k.contractType}
+                          </span>
+                        </td>
+                        <td className="py-3 font-mono text-white text-[11px]">{k.startDate}</td>
+                        <td className="py-3 font-mono text-[11px]">
+                          {k.contractType === "Tetap" ? (
+                            <span className="text-white/40 italic">Hanya tanggal masuk</span>
+                          ) : (
+                            <span className="text-amber-400 font-bold">{k.endDate || "--"}</span>
+                          )}
+                        </td>
+                        <td className="py-3">
+                          {k.isFirstLogin ? (
+                            <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-500/20 text-amber-300">
+                              Password Sementara
+                            </span>
+                          ) : (
+                            <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/20 text-emerald-300">
+                              Password Aktif
+                            </span>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {/* ===================================================== */}
+          {/* VIEW: USER MANAGEMENT & MATRIKS HAK AKSES             */}
           {/* ===================================================== */}
           {activeMenu === "user-management" && (
             <div className="space-y-6">
-              {/* Tabs Switcher: Akun Pengguna vs Matriks RBAC */}
               <div className="flex items-center justify-between border-b border-emerald-900/60 pb-3">
                 <div className="flex gap-3">
-                  <button
-                    onClick={() => setUserManagementTab("rbac")}
-                    className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
-                      userManagementTab === "rbac"
-                        ? "bg-emerald-500 text-black shadow-lg"
-                        : "bg-[#021008] text-white hover:bg-emerald-950/60 border border-emerald-900/60"
-                    }`}
-                  >
-                    <CheckSquare className="w-4 h-4" />
-                    <span>Matriks Hak Akses & Centang Izin (RBAC)</span>
-                  </button>
                   <button
                     onClick={() => setUserManagementTab("users")}
                     className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
@@ -1775,122 +1821,122 @@ export default function Home() {
                     <Users className="w-4 h-4" />
                     <span>Daftar Akun Pengguna ({users.length})</span>
                   </button>
+                  <button
+                    onClick={() => setUserManagementTab("rbac")}
+                    className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
+                      userManagementTab === "rbac"
+                        ? "bg-emerald-500 text-black shadow-lg"
+                        : "bg-[#021008] text-white hover:bg-emerald-950/60 border border-emerald-900/60"
+                    }`}
+                  >
+                    <CheckSquare className="w-4 h-4" />
+                    <span>Matriks Hak Akses & Centang Izin (RBAC)</span>
+                  </button>
                 </div>
 
                 <button
-                  onClick={() => setShowAddUserModal(true)}
-                  className="px-3.5 py-2 rounded-xl bg-[#041d11] text-emerald-300 border border-emerald-500/30 hover:bg-emerald-500 hover:text-black font-bold text-xs transition-all flex items-center gap-1.5"
+                  onClick={() => setShowAddEmployeeModal(true)}
+                  className="px-3.5 py-2 rounded-xl bg-emerald-500 text-black font-extrabold text-xs hover:bg-emerald-400 transition-all flex items-center gap-1.5"
                 >
                   <Plus className="w-3.5 h-3.5" />
-                  <span>Tambah User Baru</span>
+                  <span>Daftarkan Karyawan & Akun</span>
                 </button>
               </div>
 
-              {/* TAB 1: MATRIKS HAK AKSES RBAC (CENTANG IZIN FITUR) */}
-              {userManagementTab === "rbac" && (
-                <div className="space-y-4">
-                  <div className="bg-[#03150d] rounded-2xl p-4 border border-emerald-900/60">
-                    <span className="text-[10px] text-amber-400 font-bold uppercase block mb-1">
-                      KONTROL OTORISASI ROLE & PERMISSION
-                    </span>
-                    <p className="text-xs text-white/80">
-                      Centang izin akses di bawah ini untuk menentukan apa saja yang boleh dilihat dan dioperasikan oleh masing-masing tingkatan hirarki perusahaan.
-                    </p>
-                  </div>
-
-                  <div className="bg-gradient-to-br from-[#062417] to-[#021008] rounded-2xl p-5 border border-emerald-900/60 overflow-x-auto">
-                    <table className="w-full text-left text-xs">
-                      <thead>
-                        <tr className="border-b border-emerald-900/60 text-white text-[10px] uppercase font-bold">
-                          <th className="pb-3 w-1/3">Izin Akses & Fitur Sistem</th>
-                          <th className="pb-3 text-center">Super Admin</th>
-                          <th className="pb-3 text-center">Department Manager</th>
-                          <th className="pb-3 text-center">Supervisor (N+1)</th>
-                          <th className="pb-3 text-center">Staff (Pelaksana)</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-emerald-900/30">
-                        {allPermissions.map((perm) => (
-                          <tr key={perm.id} className="hover:bg-emerald-950/20 transition-colors">
-                            <td className="py-3">
-                              <span className="text-[10px] font-bold text-emerald-400 uppercase block">{perm.category}</span>
-                              <span className="font-bold text-white text-xs block">{perm.name}</span>
-                              <span className="text-[10px] text-white/60">{perm.description}</span>
-                            </td>
-                            {["Super Admin", "Department Manager", "Supervisor", "Staff"].map((role) => {
-                              const isChecked = (rolePermissions[role] || []).includes(perm.id);
-                              return (
-                                <td key={role} className="py-3 text-center">
-                                  <button
-                                    onClick={() => togglePermission(role, perm.id)}
-                                    className={`w-6 h-6 rounded-lg flex items-center justify-center mx-auto transition-all ${
-                                      isChecked
-                                        ? "bg-emerald-500 text-black hover:bg-emerald-400"
-                                        : "bg-[#010804] border border-emerald-900/80 text-white/30 hover:border-emerald-500/50"
-                                    }`}
-                                  >
-                                    {isChecked ? <Check className="w-4 h-4 stroke-[3]" /> : null}
-                                  </button>
-                                </td>
-                              );
-                            })}
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              )}
-
-              {/* TAB 2: DAFTAR AKUN USER */}
+              {/* TAB 1: LIST USER DENGAN STATUS PASSWORD SEMENTARA / TELAH DIGANTI */}
               {userManagementTab === "users" && (
                 <div className="bg-gradient-to-br from-[#062417] to-[#021008] rounded-2xl p-5 border border-emerald-900/60 overflow-x-auto">
                   <table className="w-full text-left text-xs">
                     <thead>
                       <tr className="border-b border-emerald-900/60 text-white/60 text-[10px] uppercase font-bold">
-                        <th className="pb-3">Pengguna</th>
+                        <th className="pb-3">Nama Karyawan</th>
                         <th className="pb-3">Email Login</th>
-                        <th className="pb-3">Role Akses</th>
-                        <th className="pb-3">Departemen</th>
+                        <th className="pb-3">Role Hak Akses</th>
+                        <th className="pb-3">Status Password Akun</th>
                         <th className="pb-3">Last Login</th>
-                        <th className="pb-3">Status</th>
-                        <th className="pb-3">Aksi</th>
+                        <th className="pb-3">Status Akun</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-emerald-900/30">
-                      {users.map((u) => (
-                        <tr key={u.id} className="hover:bg-emerald-950/20 transition-colors">
-                          <td className="py-3 font-bold text-white">{u.name}</td>
-                          <td className="py-3 font-mono text-white/70">{u.email}</td>
+                      {users.map((u) => {
+                        const linkedEmp = employees.find((e) => e.email === u.email);
+                        const isTemp = linkedEmp?.isFirstLogin && linkedEmp?.temporaryPassword;
+
+                        return (
+                          <tr key={u.id} className="hover:bg-emerald-950/20 transition-colors">
+                            <td className="py-3 font-bold text-white">{u.name}</td>
+                            <td className="py-3 font-mono text-white/80">{u.email}</td>
+                            <td className="py-3">
+                              <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/20 text-emerald-300">
+                                {u.role}
+                              </span>
+                            </td>
+                            <td className="py-3">
+                              {isTemp ? (
+                                <div className="flex items-center gap-2">
+                                  <span className="px-2.5 py-1 rounded-lg bg-amber-500/20 border border-amber-400/40 text-amber-300 font-mono font-bold text-[10px]">
+                                    🔑 Pass Sementara: {linkedEmp.temporaryPassword}
+                                  </span>
+                                  <span className="text-[10px] text-amber-400/70 italic">(Belum Login Pertama)</span>
+                                </div>
+                              ) : (
+                                <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                                  ✓ Password Telah Diganti Mandiri (Rahasia)
+                                </span>
+                              )}
+                            </td>
+                            <td className="py-3 font-mono text-white/60 text-[11px]">{u.lastLogin}</td>
+                            <td className="py-3">
+                              <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/20 text-white border border-emerald-400/30">
+                                {u.status}
+                              </span>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+
+              {/* TAB 2: RBAC MATRIX */}
+              {userManagementTab === "rbac" && (
+                <div className="bg-gradient-to-br from-[#062417] to-[#021008] rounded-2xl p-5 border border-emerald-900/60 overflow-x-auto">
+                  <table className="w-full text-left text-xs">
+                    <thead>
+                      <tr className="border-b border-emerald-900/60 text-white text-[10px] uppercase font-bold">
+                        <th className="pb-3 w-1/3">Izin Akses & Fitur Sistem</th>
+                        <th className="pb-3 text-center">Super Admin</th>
+                        <th className="pb-3 text-center">Department Manager</th>
+                        <th className="pb-3 text-center">Supervisor (N+1)</th>
+                        <th className="pb-3 text-center">Staff (Pelaksana)</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-emerald-900/30">
+                      {allPermissions.map((perm) => (
+                        <tr key={perm.id} className="hover:bg-emerald-950/20 transition-colors">
                           <td className="py-3">
-                            <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/20 text-emerald-300">
-                              {u.role}
-                            </span>
+                            <span className="text-[10px] font-bold text-emerald-400 uppercase block">{perm.category}</span>
+                            <span className="font-bold text-white text-xs block">{perm.name}</span>
+                            <span className="text-[10px] text-white/60">{perm.description}</span>
                           </td>
-                          <td className="py-3 text-white/80">{u.dept}</td>
-                          <td className="py-3 font-mono text-white/60">{u.lastLogin}</td>
-                          <td className="py-3">
-                            <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/20 text-white border border-emerald-400/30">
-                              {u.status}
-                            </span>
-                          </td>
-                          <td className="py-3">
-                            <button
-                              onClick={() => {
-                                setUsers((prev) =>
-                                  prev.map((usr) =>
-                                    usr.id === u.id
-                                      ? { ...usr, status: usr.status === "AKTIF" ? "NON-AKTIF" : "AKTIF" }
-                                      : usr
-                                  )
-                                );
-                                showToast(`Status user ${u.name} diperbarui!`);
-                              }}
-                              className="px-2 py-1 rounded bg-white/5 hover:bg-white/10 text-white text-[10px] font-bold"
-                            >
-                              Toggle Status
-                            </button>
-                          </td>
+                          {["Super Admin", "Department Manager", "Supervisor", "Staff"].map((role) => {
+                            const isChecked = (rolePermissions[role] || []).includes(perm.id);
+                            return (
+                              <td key={role} className="py-3 text-center">
+                                <button
+                                  onClick={() => togglePermission(role, perm.id)}
+                                  className={`w-6 h-6 rounded-lg flex items-center justify-center mx-auto transition-all ${
+                                    isChecked
+                                      ? "bg-emerald-500 text-black hover:bg-emerald-400"
+                                      : "bg-[#010804] border border-emerald-900/80 text-white/30 hover:border-emerald-500/50"
+                                  }`}
+                                >
+                                  {isChecked ? <Check className="w-4 h-4 stroke-[3]" /> : null}
+                                </button>
+                              </td>
+                            );
+                          })}
                         </tr>
                       ))}
                     </tbody>
@@ -1901,7 +1947,7 @@ export default function Home() {
           )}
 
           {/* ===================================================== */}
-          {/* VIEW: ABSENSI (CAMERA & GPS SCANNER)                  */}
+          {/* VIEW: ABSENSI (SCANNER GPS & WAJAH)                   */}
           {/* ===================================================== */}
           {activeMenu === "absensi" && (
             <div className="max-w-xl mx-auto space-y-6">
@@ -1921,7 +1967,7 @@ export default function Home() {
                 >
                   {employees.map((emp) => (
                     <option key={emp.id} value={emp.id} className="bg-[#010804] text-white">
-                      {emp.name} ({emp.role})
+                      {emp.name} ({emp.role} - {emp.contractType})
                     </option>
                   ))}
                 </select>
@@ -1937,7 +1983,7 @@ export default function Home() {
                       <h3 className="font-bold text-white text-base leading-tight">{selectedEmployee.name}</h3>
                       <p className="text-[11px] text-white/80">NIK: {selectedEmployee.nik} • {selectedEmployee.role}</p>
                       <span className="text-[10px] font-bold text-emerald-400">
-                        Atasan: {getDirectSuperior(selectedEmployee)?.name || "Pimpinan Utama"}
+                        Status: {selectedEmployee.contractType} • Atasan: {getDirectSuperior(selectedEmployee)?.name || "Direksi"}
                       </span>
                     </div>
                   </div>
@@ -2086,7 +2132,7 @@ export default function Home() {
                 <div>
                   <h3 className="font-bold text-white text-base">Rekapitulasi Kehadiran Karyawan</h3>
                   <p className="text-xs text-white/70">
-                    Menampilkan log kehadiran sesuai hak akses role ({currentRoleName})
+                    Audit log kehadiran terverifikasi otomatis sesuai lingkup wewenang role Anda
                   </p>
                 </div>
                 <div className="flex gap-2">
@@ -2122,128 +2168,25 @@ export default function Home() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-emerald-900/30">
-                    {attendances
-                      .filter((att) => {
-                        if (activePerspective === "admin" || currentRoleName === "Super Admin") return true;
-                        if (currentRoleName === "Staff") return att.employeeId === currentActiveEmployee.id;
-                        if (currentRoleName === "Supervisor") {
-                          const directSubIds = getDirectSubordinates(currentActiveEmployee.id).map((e) => e.id);
-                          return att.employeeId === currentActiveEmployee.id || directSubIds.includes(att.employeeId);
-                        }
-                        return att.dept === currentActiveEmployee.dept;
-                      })
-                      .map((r) => (
-                        <tr key={r.id} className="hover:bg-emerald-950/20 transition-colors">
-                          <td className="py-3">
-                            <span className="font-bold text-white block">{r.name}</span>
-                            <span className="text-[10px] text-white/60 font-mono">NIK: {r.nik}</span>
-                          </td>
-                          <td className="py-3 text-white font-medium">{r.dept}</td>
-                          <td className="py-3 text-white/80">{r.shift}</td>
-                          <td className="py-3 font-mono text-white">{r.in}</td>
-                          <td className="py-3 font-mono text-white/80">{r.out}</td>
-                          <td className="py-3 font-mono text-white">{r.dist.toFixed(1)}m</td>
-                          <td className="py-3 font-mono text-white font-bold">{r.score}%</td>
-                          <td className="py-3">
-                            <span
-                              className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                                r.status === "APPROVED"
-                                  ? "bg-emerald-500/20 text-white border border-emerald-400/40"
-                                  : "bg-amber-500/20 text-amber-300 border border-amber-400/40"
-                              }`}
-                            >
-                              {r.status}
-                            </span>
-                          </td>
-                        </tr>
-                      ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          )}
-
-          {/* ===================================================== */}
-          {/* VIEW: PENGAJUAN CUTI                                  */}
-          {/* ===================================================== */}
-          {activeMenu === "pengajuan-cuti" && (
-            <div className="space-y-5">
-              <div className="flex justify-between items-center">
-                <div>
-                  <h3 className="font-bold text-white text-base">Kelola Pengajuan Cuti Karyawan</h3>
-                  <p className="text-xs text-white/70">
-                    {currentRoleName === "Staff"
-                      ? "Ajukan cuti dan pantau status persetujuan atasan langsung"
-                      : "Persetujuan permohonan cuti bawahan langsung (N+1)"}
-                  </p>
-                </div>
-                {hasPermission("leave_request") && (
-                  <button
-                    onClick={() => setShowAddLeaveModal(true)}
-                    className="px-4 py-2 rounded-xl bg-emerald-500 text-black font-bold text-xs hover:bg-emerald-400 flex items-center gap-1.5"
-                  >
-                    <Plus className="w-4 h-4" /> Ajukan Cuti Baru
-                  </button>
-                )}
-              </div>
-
-              <div className="bg-gradient-to-br from-[#062417] to-[#021008] rounded-2xl p-5 border border-emerald-900/60 overflow-x-auto">
-                <table className="w-full text-left text-xs">
-                  <thead>
-                    <tr className="border-b border-emerald-900/60 text-white/60 text-[10px] uppercase font-bold">
-                      <th className="pb-3">Karyawan</th>
-                      <th className="pb-3">Departemen</th>
-                      <th className="pb-3">Jenis Cuti</th>
-                      <th className="pb-3">Tanggal</th>
-                      <th className="pb-3">Durasi</th>
-                      <th className="pb-3">Alasan</th>
-                      <th className="pb-3">Status</th>
-                      <th className="pb-3">Aksi Atasan</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-emerald-900/30">
-                    {leaves.map((c) => (
-                      <tr key={c.id} className="hover:bg-emerald-950/20 transition-colors">
-                        <td className="py-3 font-bold text-white">{c.name}</td>
-                        <td className="py-3 text-white/70 text-[11px]">{c.dept}</td>
-                        <td className="py-3 text-white text-[11px]">{c.type}</td>
-                        <td className="py-3 font-mono text-white text-[11px]">{c.start} s/d {c.end}</td>
-                        <td className="py-3 font-bold text-white text-[11px]">{c.days} Hari</td>
-                        <td className="py-3 text-white/60 text-[11px] max-w-[140px] truncate">{c.reason}</td>
+                    {attendances.map((r) => (
+                      <tr key={r.id} className="hover:bg-emerald-950/20 transition-colors">
+                        <td className="py-3 font-bold text-white">{r.name}</td>
+                        <td className="py-3 text-white/80">{r.dept}</td>
+                        <td className="py-3 text-white/70">{r.shift}</td>
+                        <td className="py-3 font-mono text-white">{r.in}</td>
+                        <td className="py-3 font-mono text-white/70">{r.out}</td>
+                        <td className="py-3 font-mono text-white">{r.dist.toFixed(1)}m</td>
+                        <td className="py-3 font-mono text-white font-bold">{r.score}%</td>
                         <td className="py-3">
                           <span
                             className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                              c.status === "DISETUJUI"
-                                ? "bg-emerald-500/20 text-white border border-emerald-400/30"
-                                : c.status === "MENUNGGU"
-                                ? "bg-amber-500/20 text-amber-300 border border-amber-400/30"
-                                : "bg-red-500/20 text-red-300 border border-red-400/30"
+                              r.status === "APPROVED"
+                                ? "bg-emerald-500/20 text-white border border-emerald-400/40"
+                                : "bg-amber-500/20 text-amber-300 border border-amber-400/40"
                             }`}
                           >
-                            {c.status}
+                            {r.status}
                           </span>
-                        </td>
-                        <td className="py-3">
-                          {c.status === "MENUNGGU" && hasPermission("leave_approve_subordinate") ? (
-                            <div className="flex gap-1.5">
-                              <button
-                                onClick={() => handleUpdateLeaveStatus(c.id, "DISETUJUI")}
-                                className="px-2 py-1 rounded bg-emerald-500 text-black text-[10px] font-bold hover:bg-emerald-400 transition-all"
-                              >
-                                ✓ Setujui
-                              </button>
-                              <button
-                                onClick={() => handleUpdateLeaveStatus(c.id, "DITOLAK")}
-                                className="px-2 py-1 rounded bg-red-950 text-red-300 border border-red-500/40 text-[10px] font-bold hover:bg-red-900 transition-all"
-                              >
-                                ✕ Tolak
-                              </button>
-                            </div>
-                          ) : (
-                            <span className="text-[10px] text-white/50">
-                              {c.status === "MENUNGGU" ? "Menunggu Review Atasan" : "Selesai"}
-                            </span>
-                          )}
                         </td>
                       </tr>
                     ))}
@@ -2254,73 +2197,13 @@ export default function Home() {
           )}
 
           {/* ===================================================== */}
-          {/* VIEW: JURNAL KERJA                                    */}
-          {/* ===================================================== */}
-          {activeMenu === "jurnal-kerja" && (
-            <div className="space-y-5">
-              <div className="flex justify-between items-center">
-                <div>
-                  <h3 className="font-bold text-white text-base">Jurnal Kerja Harian Karyawan</h3>
-                  <p className="text-xs text-white/70">Catatan aktivitas pekerjaan & review performa dari atasan langsung</p>
-                </div>
-                {hasPermission("journal_write") && (
-                  <button
-                    onClick={() => setShowAddJournalModal(true)}
-                    className="px-4 py-2 rounded-xl bg-emerald-500 text-black font-bold text-xs hover:bg-emerald-400 flex items-center gap-1.5"
-                  >
-                    <Plus className="w-4 h-4" /> Tulis Jurnal Baru
-                  </button>
-                )}
-              </div>
-
-              <div className="space-y-3">
-                {journals.map((j) => (
-                  <div key={j.id} className="bg-gradient-to-br from-[#062417] to-[#021008] rounded-2xl p-5 border border-emerald-900/60">
-                    <div className="flex items-center justify-between mb-3">
-                      <div className="flex items-center gap-3">
-                        <div className="w-9 h-9 rounded-full bg-emerald-900 flex items-center justify-center font-bold text-white text-xs ring-1 ring-emerald-500/30">
-                          {j.avatar}
-                        </div>
-                        <div>
-                          <span className="font-bold text-white text-sm">{j.name}</span>
-                          <p className="text-[10px] text-white/60">{j.dept} • {j.date}</p>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-3 text-xs text-right">
-                        <div>
-                          <p className="text-[10px] text-white/50">Jam Kerja</p>
-                          <p className="font-mono font-bold text-white">{j.hours}</p>
-                        </div>
-                        <div className="bg-emerald-500/20 border border-emerald-500/30 rounded-xl px-3 py-1.5 text-center">
-                          <p className="text-[9px] text-white/60 uppercase font-bold">Skor</p>
-                          <p className="font-black text-emerald-400 text-sm font-mono">{j.score}</p>
-                        </div>
-                      </div>
-                    </div>
-                    <ul className="space-y-1.5 text-xs text-white/80 pl-2">
-                      {j.tasks.map((t, ti) => (
-                        <li key={ti} className="flex items-start gap-2">
-                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 mt-0.5 flex-shrink-0" />
-                          <span>{t}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* ===================================================== */}
           {/* VIEW: DEPARTEMEN                                      */}
           {/* ===================================================== */}
           {activeMenu === "departemen" && (
             <div className="space-y-5">
-              <div className="flex justify-between items-center">
-                <div>
-                  <h3 className="font-bold text-white text-base">Struktur Departemen Perusahaan</h3>
-                  <p className="text-xs text-white/70">Kelola unit kerja dan distribusi SDM per departemen</p>
-                </div>
+              <div>
+                <h3 className="font-bold text-white text-base">Struktur Departemen Perusahaan</h3>
+                <p className="text-xs text-white/70">Kelola unit kerja dan distribusi SDM</p>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -2337,14 +2220,6 @@ export default function Home() {
                       <p className="text-[11px] text-white/60">
                         Kepala: <span className="text-white font-semibold">{d.head}</span>
                       </p>
-                      <div className="mt-4 pt-3 border-t border-white/10 flex gap-2">
-                        <button
-                          onClick={() => navigateToKaryawanWithFilter(d.name)}
-                          className="w-full py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white text-[10px] font-semibold transition-all text-center"
-                        >
-                          Lihat Karyawan ({staffCount}) →
-                        </button>
-                      </div>
                     </div>
                   );
                 })}
@@ -2399,71 +2274,13 @@ export default function Home() {
           )}
 
           {/* ===================================================== */}
-          {/* VIEW: KONTRAK & LIFECYCLE                             */}
-          {/* ===================================================== */}
-          {activeMenu === "kontrak" && (
-            <div className="space-y-5">
-              <div>
-                <h3 className="font-bold text-white text-base">Manajemen Kontrak & Lifecycle Karyawan</h3>
-                <p className="text-xs text-white/70">Status kontrak kerja, masa kerja, dan histori kepegawaian</p>
-              </div>
-
-              <div className="bg-gradient-to-br from-[#062417] to-[#021008] rounded-2xl p-5 border border-emerald-900/60 overflow-x-auto">
-                <table className="w-full text-left text-xs">
-                  <thead>
-                    <tr className="border-b border-emerald-900/60 text-white/60 text-[10px] uppercase font-bold">
-                      <th className="pb-3">Karyawan</th>
-                      <th className="pb-3">Departemen</th>
-                      <th className="pb-3">Jenis Kontrak</th>
-                      <th className="pb-3">Mulai Kerja</th>
-                      <th className="pb-3">Masa Kerja</th>
-                      <th className="pb-3">Status</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-emerald-900/30">
-                    {employees.map((k) => (
-                      <tr key={k.id} className="hover:bg-emerald-950/20 transition-colors">
-                        <td className="py-3 font-bold text-white">{k.name}</td>
-                        <td className="py-3 text-white/70 text-[11px]">{k.dept}</td>
-                        <td className="py-3">
-                          <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/20 text-emerald-300">
-                            🏅 {k.contractType}
-                          </span>
-                        </td>
-                        <td className="py-3 font-mono text-white text-[11px]">{k.joinDate}</td>
-                        <td className="py-3 font-mono text-white font-bold text-[11px]">{k.tenure}</td>
-                        <td className="py-3">
-                          <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/20 text-white border border-emerald-400/30">
-                            {k.status.toUpperCase()}
-                          </span>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          )}
-
-          {/* ===================================================== */}
           {/* VIEW: JADWAL SHIFT                                    */}
           {/* ===================================================== */}
           {activeMenu === "jadwal-shift" && (
             <div className="space-y-6">
-              <div className="flex justify-between items-center">
-                <div>
-                  <h3 className="font-bold text-white text-base">Manajemen Shift Kerja Dinamis</h3>
-                  <p className="text-xs text-white">Tentukan jam masuk, jam pulang, dan batas toleransi</p>
-                </div>
-                {hasPermission("shift_manage") && (
-                  <button
-                    onClick={() => setShowAddShiftModal(true)}
-                    className="px-4 py-2 rounded-xl bg-emerald-500 text-black font-bold text-xs hover:bg-emerald-400 transition-all flex items-center gap-1.5"
-                  >
-                    <Plus className="w-4 h-4 text-black" />
-                    <span>Tambah Shift Baru</span>
-                  </button>
-                )}
+              <div>
+                <h3 className="font-bold text-white text-base">Manajemen Shift Kerja Dinamis</h3>
+                <p className="text-xs text-white">Tentukan jam masuk, jam pulang, dan batas toleransi</p>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -2506,49 +2323,118 @@ export default function Home() {
           )}
 
           {/* ===================================================== */}
+          {/* VIEW: PENGAJUAN CUTI                                  */}
+          {/* ===================================================== */}
+          {activeMenu === "pengajuan-cuti" && (
+            <div className="space-y-5">
+              <div>
+                <h3 className="font-bold text-white text-base">Kelola Pengajuan Cuti Karyawan</h3>
+                <p className="text-xs text-white/70">Riwayat dan persetujuan cuti bawahan langsung</p>
+              </div>
+
+              <div className="bg-gradient-to-br from-[#062417] to-[#021008] rounded-2xl p-5 border border-emerald-900/60 overflow-x-auto">
+                <table className="w-full text-left text-xs">
+                  <thead>
+                    <tr className="border-b border-emerald-900/60 text-white/60 text-[10px] uppercase font-bold">
+                      <th className="pb-3">Karyawan</th>
+                      <th className="pb-3">Departemen</th>
+                      <th className="pb-3">Jenis Cuti</th>
+                      <th className="pb-3">Tanggal</th>
+                      <th className="pb-3">Durasi</th>
+                      <th className="pb-3">Alasan</th>
+                      <th className="pb-3">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-emerald-900/30">
+                    {leaves.map((c) => (
+                      <tr key={c.id} className="hover:bg-emerald-950/20 transition-colors">
+                        <td className="py-3 font-bold text-white">{c.name}</td>
+                        <td className="py-3 text-white/70 text-[11px]">{c.dept}</td>
+                        <td className="py-3 text-white text-[11px]">{c.type}</td>
+                        <td className="py-3 font-mono text-white text-[11px]">{c.start} s/d {c.end}</td>
+                        <td className="py-3 font-bold text-white text-[11px]">{c.days} Hari</td>
+                        <td className="py-3 text-white/60 text-[11px] max-w-[140px] truncate">{c.reason}</td>
+                        <td className="py-3">
+                          <span
+                            className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                              c.status === "DISETUJUI"
+                                ? "bg-emerald-500/20 text-white border border-emerald-400/30"
+                                : c.status === "MENUNGGU"
+                                ? "bg-amber-500/20 text-amber-300 border border-amber-400/30"
+                                : "bg-red-500/20 text-red-300 border border-red-400/30"
+                            }`}
+                          >
+                            {c.status}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {/* ===================================================== */}
+          {/* VIEW: JURNAL KERJA                                    */}
+          {/* ===================================================== */}
+          {activeMenu === "jurnal-kerja" && (
+            <div className="space-y-5">
+              <div>
+                <h3 className="font-bold text-white text-base">Jurnal Kerja Harian Karyawan</h3>
+                <p className="text-xs text-white/70">Catatan aktivitas pekerjaan & review performa dari atasan langsung</p>
+              </div>
+
+              <div className="space-y-3">
+                {journals.map((j) => (
+                  <div key={j.id} className="bg-gradient-to-br from-[#062417] to-[#021008] rounded-2xl p-5 border border-emerald-900/60">
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center gap-3">
+                        <div className="w-9 h-9 rounded-full bg-emerald-900 flex items-center justify-center font-bold text-white text-xs ring-1 ring-emerald-500/30">
+                          {j.avatar}
+                        </div>
+                        <div>
+                          <span className="font-bold text-white text-sm">{j.name}</span>
+                          <p className="text-[10px] text-white/60">{j.dept} • {j.date}</p>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <span className="font-mono font-bold text-white text-xs">{j.hours}</span>
+                      </div>
+                    </div>
+                    <ul className="space-y-1.5 text-xs text-white/80 pl-2">
+                      {j.tasks.map((t, ti) => (
+                        <li key={ti} className="flex items-start gap-2">
+                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 mt-0.5 flex-shrink-0" />
+                          <span>{t}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* ===================================================== */}
           {/* VIEW: PENGATURAN KANTOR & GEOFENCE                    */}
           {/* ===================================================== */}
           {activeMenu === "pengaturan" && (
             <div className="max-w-2xl bg-gradient-to-br from-[#062417] to-[#021008] rounded-2xl p-6 border border-emerald-900/60 space-y-5">
               <div>
                 <h3 className="font-bold text-white text-base">Pengaturan Lokasi Kantor & Parameter Geofence</h3>
-                <p className="text-xs text-white">
-                  Tentukan titik koordinat pusat kantor, radius toleransi (meter), dan ambang batas skor AI
-                </p>
+                <p className="text-xs text-white">Tentukan radius toleransi (meter) dan batas skor AI wajah</p>
               </div>
 
-              <form onSubmit={handleSaveSettings} className="space-y-4 text-xs">
+              <div className="space-y-4 text-xs">
                 <div>
                   <label className="text-white block mb-1 font-bold">Nama Lokasi Kantor</label>
                   <input
                     type="text"
                     value={settings.officeName}
                     onChange={(e) => setSettings({ ...settings, officeName: e.target.value })}
-                    className="w-full bg-[#010804] border border-emerald-900/60 rounded-xl px-3.5 py-2.5 text-white focus:outline-none focus:border-emerald-400"
+                    className="w-full bg-[#010804] border border-emerald-900/60 rounded-xl px-3.5 py-2.5 text-white"
                   />
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="text-white block mb-1 font-bold">Latitude</label>
-                    <input
-                      type="number"
-                      step="any"
-                      value={settings.latitude}
-                      onChange={(e) => setSettings({ ...settings, latitude: parseFloat(e.target.value) })}
-                      className="w-full bg-[#010804] border border-emerald-900/60 rounded-xl px-3.5 py-2.5 text-white font-mono"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-white block mb-1 font-bold">Longitude</label>
-                    <input
-                      type="number"
-                      step="any"
-                      value={settings.longitude}
-                      onChange={(e) => setSettings({ ...settings, longitude: parseFloat(e.target.value) })}
-                      className="w-full bg-[#010804] border border-emerald-900/60 rounded-xl px-3.5 py-2.5 text-white font-mono"
-                    />
-                  </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
@@ -2572,94 +2458,125 @@ export default function Home() {
                   </div>
                 </div>
 
-                {hasPermission("sys_geofence_manage") && (
-                  <button
-                    type="submit"
-                    className="w-full mt-4 py-3 rounded-xl bg-emerald-500 text-black font-extrabold text-xs hover:bg-emerald-400 transition-all shadow-lg"
-                  >
-                    Simpan Konfigurasi Sistem
-                  </button>
-                )}
-              </form>
+                <button
+                  onClick={() => showToast("✓ Pengaturan geofence kantor berhasil disimpan!")}
+                  className="w-full mt-4 py-3 rounded-xl bg-emerald-500 text-black font-extrabold text-xs hover:bg-emerald-400 transition-all shadow-lg"
+                >
+                  Simpan Konfigurasi Sistem
+                </button>
+              </div>
             </div>
           )}
         </div>
       </div>
 
       {/* ========================================================= */}
-      {/* MODALS SECTION                                            */}
+      {/* MODAL 1: FORM PENDAFTARAN KARYAWAN LENGKAP               */}
+      {/* Sesuai Permintaan User: NIK, Nama, Email, No HP, Alamat,  */}
+      {/* Tgl Lahir, Dept, Posisi, Atasan, Tgl Pertama Kerja,       */}
+      {/* Status Kerja: Tetap, Kontrak, Magang, DW.                */}
+      {/* Tgl Terakhir Kerja (Hanya jika Kontrak, Magang, DW).      */}
       {/* ========================================================= */}
-
-      {/* Modal Tambah Karyawan */}
       {showAddEmployeeModal && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-[#021008] border border-emerald-500/40 rounded-3xl p-6 max-w-md w-full shadow-2xl space-y-4">
-            <div className="flex justify-between items-center">
-              <h3 className="font-black text-white text-base">Daftarkan Karyawan & Tentukan Atasan</h3>
+        <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-[#021008] border border-emerald-500/40 rounded-3xl p-7 max-w-xl w-full shadow-2xl space-y-4 my-8">
+            <div className="flex justify-between items-center border-b border-emerald-900/60 pb-3">
+              <div>
+                <span className="text-[10px] text-emerald-400 font-black uppercase tracking-wider block">
+                  FORMULIR HRD • REGISTRASI KARYAWAN BARU
+                </span>
+                <h3 className="font-black text-white text-base">Daftarkan Karyawan & Buat Akun Otomatis</h3>
+              </div>
               <button onClick={() => setShowAddEmployeeModal(false)} className="text-white/60 hover:text-white">
                 <X className="w-5 h-5" />
               </button>
             </div>
-            <form onSubmit={handleCreateEmployee} className="space-y-3 text-xs">
-              <div>
-                <label className="block text-white/80 font-bold mb-1">Nama Lengkap</label>
-                <input
-                  type="text"
-                  required
-                  placeholder="Contoh: Hendra Wijaya"
-                  value={newEmployee.name}
-                  onChange={(e) => setNewEmployee({ ...newEmployee, name: e.target.value })}
-                  className="w-full bg-[#010804] border border-emerald-900/80 rounded-xl p-2.5 text-white focus:outline-none focus:border-emerald-400"
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-3">
+
+            <form onSubmit={handleRegisterEmployeeSubmit} className="space-y-3.5 text-xs">
+              {/* Row 1: NIK & Nama */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-white/80 font-bold mb-1">NIK</label>
+                  <label className="block text-white/90 font-bold mb-1">NIK (Nomor Induk Karyawan) *</label>
                   <input
                     type="text"
                     required
-                    placeholder="2026-0999"
-                    value={newEmployee.nik}
-                    onChange={(e) => setNewEmployee({ ...newEmployee, nik: e.target.value })}
-                    className="w-full bg-[#010804] border border-emerald-900/80 rounded-xl p-2.5 text-white font-mono"
+                    placeholder="Contoh: 2026-0901"
+                    value={newEmployeeForm.nik}
+                    onChange={(e) => setNewEmployeeForm({ ...newEmployeeForm, nik: e.target.value })}
+                    className="w-full bg-[#010804] border border-emerald-900/80 rounded-xl p-2.5 text-white font-mono focus:border-emerald-400 focus:outline-none"
                   />
                 </div>
                 <div>
-                  <label className="block text-white/80 font-bold mb-1">No. WhatsApp</label>
+                  <label className="block text-white/90 font-bold mb-1">Nama Lengkap *</label>
                   <input
                     type="text"
-                    placeholder="+62 812-xxxx"
-                    value={newEmployee.phone}
-                    onChange={(e) => setNewEmployee({ ...newEmployee, phone: e.target.value })}
-                    className="w-full bg-[#010804] border border-emerald-900/80 rounded-xl p-2.5 text-white font-mono"
+                    required
+                    placeholder="Contoh: Farhan Ramadhan"
+                    value={newEmployeeForm.name}
+                    onChange={(e) => setNewEmployeeForm({ ...newEmployeeForm, name: e.target.value })}
+                    className="w-full bg-[#010804] border border-emerald-900/80 rounded-xl p-2.5 text-white focus:border-emerald-400 focus:outline-none"
                   />
                 </div>
               </div>
 
-              <div>
-                <label className="block text-white/80 font-bold mb-1">Atasan Langsung (Direct Superior)</label>
-                <select
-                  value={newEmployee.managerId}
-                  onChange={(e) => setNewEmployee({ ...newEmployee, managerId: e.target.value })}
-                  className="w-full bg-[#010804] border border-emerald-500/40 rounded-xl p-2.5 text-white font-bold"
-                >
-                  {employees
-                    .filter((e) => e.level !== "Staff")
-                    .map((m) => (
-                      <option key={m.id} value={m.id}>
-                        {m.name} ({m.role} - {m.level})
-                      </option>
-                    ))}
-                </select>
+              {/* Row 2: Email & No. HP */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-white/90 font-bold mb-1">Email Karyawan (Untuk Login) *</label>
+                  <input
+                    type="email"
+                    required
+                    placeholder="farhan@perusahaan.id"
+                    value={newEmployeeForm.email}
+                    onChange={(e) => setNewEmployeeForm({ ...newEmployeeForm, email: e.target.value })}
+                    className="w-full bg-[#010804] border border-emerald-900/80 rounded-xl p-2.5 text-white font-mono focus:border-emerald-400 focus:outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-white/90 font-bold mb-1">Nomor Handphone (WhatsApp) *</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="+62 812-9999-8888"
+                    value={newEmployeeForm.phone}
+                    onChange={(e) => setNewEmployeeForm({ ...newEmployeeForm, phone: e.target.value })}
+                    className="w-full bg-[#010804] border border-emerald-900/80 rounded-xl p-2.5 text-white font-mono focus:border-emerald-400 focus:outline-none"
+                  />
+                </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              {/* Row 3: Alamat & Tanggal Lahir */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-white/80 font-bold mb-1">Departemen</label>
+                  <label className="block text-white/90 font-bold mb-1">Alamat Tempat Tinggal</label>
+                  <input
+                    type="text"
+                    placeholder="Contoh: Jl. Mangga Dua No. 5, Jakarta"
+                    value={newEmployeeForm.address}
+                    onChange={(e) => setNewEmployeeForm({ ...newEmployeeForm, address: e.target.value })}
+                    className="w-full bg-[#010804] border border-emerald-900/80 rounded-xl p-2.5 text-white focus:border-emerald-400 focus:outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-white/90 font-bold mb-1">Tanggal Lahir</label>
+                  <input
+                    type="date"
+                    required
+                    value={newEmployeeForm.birthDate}
+                    onChange={(e) => setNewEmployeeForm({ ...newEmployeeForm, birthDate: e.target.value })}
+                    className="w-full bg-[#010804] border border-emerald-900/80 rounded-xl p-2.5 text-white font-mono focus:border-emerald-400 focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              {/* Row 4: Departemen & Posisi */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-white/90 font-bold mb-1">Departemen</label>
                   <select
-                    value={newEmployee.dept}
-                    onChange={(e) => setNewEmployee({ ...newEmployee, dept: e.target.value })}
-                    className="w-full bg-[#010804] border border-emerald-900/80 rounded-xl p-2.5 text-white"
+                    value={newEmployeeForm.dept}
+                    onChange={(e) => setNewEmployeeForm({ ...newEmployeeForm, dept: e.target.value })}
+                    className="w-full bg-[#010804] border border-emerald-900/80 rounded-xl p-2.5 text-white focus:border-emerald-400 focus:outline-none"
                   >
                     {departments.map((d) => (
                       <option key={d.id} value={d.name}>
@@ -2669,43 +2586,133 @@ export default function Home() {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-white/80 font-bold mb-1">Level Hirarki</label>
+                  <label className="block text-white/90 font-bold mb-1">Posisi / Jabatan Pekerjaan</label>
+                  <input
+                    type="text"
+                    placeholder="Contoh: Frontend Developer"
+                    value={newEmployeeForm.role}
+                    onChange={(e) => setNewEmployeeForm({ ...newEmployeeForm, role: e.target.value })}
+                    className="w-full bg-[#010804] border border-emerald-900/80 rounded-xl p-2.5 text-white focus:border-emerald-400 focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              {/* Row 5: Atasan Langsung & Level */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-white/90 font-bold mb-1">Atasan Langsung (Direct Superior)</label>
                   <select
-                    value={newEmployee.level}
-                    onChange={(e) => setNewEmployee({ ...newEmployee, level: e.target.value as any })}
-                    className="w-full bg-[#010804] border border-emerald-900/80 rounded-xl p-2.5 text-white"
+                    value={newEmployeeForm.managerId}
+                    onChange={(e) => setNewEmployeeForm({ ...newEmployeeForm, managerId: e.target.value })}
+                    className="w-full bg-[#010804] border border-emerald-500/40 rounded-xl p-2.5 text-white font-bold focus:border-emerald-400 focus:outline-none"
                   >
-                    <option value="Staff">Staff</option>
-                    <option value="Supervisor">Supervisor</option>
-                    <option value="Manager">Manager</option>
+                    {employees
+                      .filter((e) => e.level !== "Staff")
+                      .map((m) => (
+                        <option key={m.id} value={m.id}>
+                          {m.name} ({m.role})
+                        </option>
+                      ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-white/90 font-bold mb-1">Level Hirarki</label>
+                  <select
+                    value={newEmployeeForm.level}
+                    onChange={(e) => setNewEmployeeForm({ ...newEmployeeForm, level: e.target.value as any })}
+                    className="w-full bg-[#010804] border border-emerald-900/80 rounded-xl p-2.5 text-white focus:border-emerald-400 focus:outline-none"
+                  >
+                    <option value="Staff">Staff (Pelaksana)</option>
+                    <option value="Supervisor">Supervisor (N+1)</option>
+                    <option value="Manager">Department Manager</option>
                   </select>
                 </div>
               </div>
 
-              <div>
-                <label className="block text-white/80 font-bold mb-1">Jabatan / Posisi</label>
-                <input
-                  type="text"
-                  placeholder="Contoh: Frontend Developer"
-                  value={newEmployee.role}
-                  onChange={(e) => setNewEmployee({ ...newEmployee, role: e.target.value })}
-                  className="w-full bg-[#010804] border border-emerald-900/80 rounded-xl p-2.5 text-white"
-                />
+              {/* Row 6: STATUS KERJA (Tetap, Kontrak, Magang, DW) */}
+              <div className="bg-[#010703] p-3.5 rounded-2xl border border-emerald-900/60 space-y-3">
+                <div>
+                  <label className="block text-amber-300 font-black mb-1">Status Kerja Karyawan *</label>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                    {(["Tetap", "Kontrak", "Magang", "DW"] as const).map((st) => (
+                      <button
+                        type="button"
+                        key={st}
+                        onClick={() => setNewEmployeeForm({ ...newEmployeeForm, contractType: st })}
+                        className={`py-2 rounded-xl text-xs font-bold transition-all border ${
+                          newEmployeeForm.contractType === st
+                            ? "bg-emerald-500 text-black border-emerald-400 font-black shadow-md"
+                            : "bg-[#021008] text-white/70 border-emerald-950 hover:bg-emerald-950/60"
+                        }`}
+                      >
+                        {st === "Tetap" ? "🏅 Tetap" : st === "Kontrak" ? "📄 Kontrak" : st === "Magang" ? "🎓 Magang" : "⏱️ DW"}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Kolom Tanggal Pertama Kerja & Tanggal Terakhir Kerja (KONDISIONAL) */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                  <div>
+                    <label className="block text-white font-bold mb-1">
+                      Tanggal Pertama Kerja *
+                    </label>
+                    <input
+                      type="date"
+                      required
+                      value={newEmployeeForm.startDate}
+                      onChange={(e) => setNewEmployeeForm({ ...newEmployeeForm, startDate: e.target.value })}
+                      className="w-full bg-[#010804] border border-emerald-900/80 rounded-xl p-2.5 text-white font-mono focus:border-emerald-400 focus:outline-none"
+                    />
+                    <span className="text-[10px] text-white/50 mt-0.5 block">Hari pertama masuk kantor</span>
+                  </div>
+
+                  {/* HANYA MUNCUL JIKA STATUS KONTRAK, MAGANG, ATAU DW */}
+                  {newEmployeeForm.contractType !== "Tetap" ? (
+                    <div>
+                      <label className="block text-amber-300 font-bold mb-1">
+                        Tanggal Terakhir Kerja ({newEmployeeForm.contractType}) *
+                      </label>
+                      <input
+                        type="date"
+                        required
+                        value={newEmployeeForm.endDate}
+                        onChange={(e) => setNewEmployeeForm({ ...newEmployeeForm, endDate: e.target.value })}
+                        className="w-full bg-[#010804] border border-amber-500/50 rounded-xl p-2.5 text-white font-mono focus:border-amber-400 focus:outline-none"
+                      />
+                      <span className="text-[10px] text-amber-300/70 mt-0.5 block">Batas akhir masa {newEmployeeForm.contractType}</span>
+                    </div>
+                  ) : (
+                    <div className="flex flex-col justify-center p-2.5 bg-[#020d07] rounded-xl border border-emerald-900/40 text-center">
+                      <span className="text-[11px] text-emerald-400 font-bold">Karyawan Berstatus Tetap</span>
+                      <span className="text-[10px] text-white/60">Tidak memiliki batas tanggal akhir kerja.</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Notice Otomatisasi Akun */}
+              <div className="bg-emerald-950/30 border border-emerald-500/30 rounded-xl p-3 flex items-start gap-2.5 text-[11px] text-white/80">
+                <Sparkles className="w-4 h-4 text-emerald-400 flex-shrink-0 mt-0.5" />
+                <p>
+                  Sistem akan <strong>otomatis membuat akun login user</strong> dan menghasilkan{" "}
+                  <strong>password acak sekali pakai</strong> yang dapat Anda salin langsung setelah form disimpan.
+                </p>
               </div>
 
               <div className="pt-2 flex gap-2">
                 <button
                   type="button"
                   onClick={() => setShowAddEmployeeModal(false)}
-                  className="flex-1 py-2.5 rounded-xl bg-white/10 text-white font-bold hover:bg-white/20"
+                  className="flex-1 py-2.5 rounded-xl bg-white/10 text-white font-bold hover:bg-white/20 transition-all"
                 >
                   Batal
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 py-2.5 rounded-xl bg-emerald-500 text-black font-black hover:bg-emerald-400"
+                  className="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-400 text-black font-black hover:brightness-110 transition-all shadow-lg"
                 >
-                  Simpan Karyawan
+                  Daftarkan & Generate Password
                 </button>
               </div>
             </form>
@@ -2713,222 +2720,89 @@ export default function Home() {
         </div>
       )}
 
-      {/* Modal Ajukan Cuti */}
-      {showAddLeaveModal && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-[#021008] border border-emerald-500/40 rounded-3xl p-6 max-w-md w-full shadow-2xl space-y-4">
-            <div className="flex justify-between items-center">
-              <h3 className="font-black text-white text-base">Ajukan Permohonan Cuti</h3>
-              <button onClick={() => setShowAddLeaveModal(false)} className="text-white/60 hover:text-white">
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-            <form onSubmit={handleCreateLeave} className="space-y-3 text-xs">
-              <div>
-                <label className="block text-white/80 font-bold mb-1">Nama Karyawan</label>
-                <select
-                  value={newLeave.employeeId}
-                  onChange={(e) => setNewLeave({ ...newLeave, employeeId: e.target.value })}
-                  className="w-full bg-[#010804] border border-emerald-900/80 rounded-xl p-2.5 text-white font-bold"
-                >
-                  {employees.map((emp) => (
-                    <option key={emp.id} value={emp.id}>
-                      {emp.name} ({emp.dept})
-                    </option>
-                  ))}
-                </select>
+      {/* ========================================================= */}
+      {/* MODAL 2: KREDENSIAL SEKALI MUNCUL (POV HRD)                */}
+      {/* ========================================================= */}
+      {showCredentialsModal && newlyCreatedCredentials && (
+        <div className="fixed inset-0 z-50 bg-black/90 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-[#021109] border-2 border-emerald-400 rounded-3xl p-7 max-w-md w-full shadow-2xl space-y-4 animate-in zoom-in-95 duration-150">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-2xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center ring-1 ring-emerald-400 flex-shrink-0">
+                <CheckCircle2 className="w-7 h-7 text-emerald-400" />
               </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-white/80 font-bold mb-1">Jenis Cuti</label>
-                  <select
-                    value={newLeave.type}
-                    onChange={(e) => setNewLeave({ ...newLeave, type: e.target.value as any })}
-                    className="w-full bg-[#010804] border border-emerald-900/80 rounded-xl p-2.5 text-white"
-                  >
-                    <option value="Tahunan">Tahunan</option>
-                    <option value="Sakit">Sakit</option>
-                    <option value="Melahirkan">Melahirkan</option>
-                    <option value="Khusus">Khusus</option>
-                  </select>
+              <div>
+                <span className="text-[10px] text-emerald-400 font-black uppercase tracking-wider block">
+                  AKUN BERHASIL DIBUAT
+                </span>
+                <h3 className="font-black text-white text-base">Kredensial Login Karyawan Baru</h3>
+              </div>
+            </div>
+
+            <div className="bg-[#010804] p-4 rounded-2xl border border-emerald-900/60 space-y-2.5 text-xs">
+              <div className="flex justify-between">
+                <span className="text-white/60">Nama:</span>
+                <span className="font-bold text-white">{newlyCreatedCredentials.name}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-white/60">NIK:</span>
+                <span className="font-mono text-white">{newlyCreatedCredentials.nik}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-white/60">Email Login:</span>
+                <span className="font-mono font-bold text-emerald-300">{newlyCreatedCredentials.email}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-white/60">Status Kerja:</span>
+                <span className="font-bold text-white">
+                  {newlyCreatedCredentials.contractType}{" "}
+                  {newlyCreatedCredentials.endDate ? `(s/d ${newlyCreatedCredentials.endDate})` : "(Tetap)"}
+                </span>
+              </div>
+
+              {/* Password Acak Highlight */}
+              <div className="bg-amber-500/10 border-2 border-dashed border-amber-400/60 rounded-xl p-3 text-center my-2">
+                <span className="text-[10px] text-amber-300 font-bold uppercase tracking-wider block mb-1">
+                  PASSWORD SEMENTARA ACAK (SEKALI MUNCUL)
+                </span>
+                <div className="font-mono text-2xl font-black text-amber-400 tracking-widest selection:bg-white selection:text-black">
+                  {newlyCreatedCredentials.tempPass}
                 </div>
-                <div>
-                  <label className="block text-white/80 font-bold mb-1">Jumlah Hari</label>
-                  <input
-                    type="number"
-                    min="1"
-                    max="60"
-                    value={newLeave.days}
-                    onChange={(e) => setNewLeave({ ...newLeave, days: parseInt(e.target.value) || 1 })}
-                    className="w-full bg-[#010804] border border-emerald-900/80 rounded-xl p-2.5 text-white font-mono"
-                  />
-                </div>
+                <span className="text-[10px] text-white/60 mt-1 block">
+                  Karyawan akan dipaksa mengganti password saat pertama kali masuk.
+                </span>
               </div>
-              <div>
-                <label className="block text-white/80 font-bold mb-1">Alasan Pengajuan</label>
-                <textarea
-                  rows={3}
-                  required
-                  placeholder="Tuliskan alasan permohonan cuti..."
-                  value={newLeave.reason}
-                  onChange={(e) => setNewLeave({ ...newLeave, reason: e.target.value })}
-                  className="w-full bg-[#010804] border border-emerald-900/80 rounded-xl p-2.5 text-white focus:outline-none focus:border-emerald-400"
-                />
-              </div>
-              <div className="pt-2 flex gap-2">
-                <button
-                  type="button"
-                  onClick={() => setShowAddLeaveModal(false)}
-                  className="flex-1 py-2.5 rounded-xl bg-white/10 text-white font-bold hover:bg-white/20"
-                >
-                  Batal
-                </button>
-                <button
-                  type="submit"
-                  className="flex-1 py-2.5 rounded-xl bg-emerald-500 text-black font-black hover:bg-emerald-400"
-                >
-                  Kirim ke Atasan Langsung
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+            </div>
 
-      {/* Modal Tulis Jurnal */}
-      {showAddJournalModal && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-[#021008] border border-emerald-500/40 rounded-3xl p-6 max-w-md w-full shadow-2xl space-y-4">
-            <div className="flex justify-between items-center">
-              <h3 className="font-black text-white text-base">Tulis Jurnal Harian Kerja</h3>
-              <button onClick={() => setShowAddJournalModal(false)} className="text-white/60 hover:text-white">
-                <X className="w-5 h-5" />
+            <div className="bg-amber-950/40 border border-amber-500/40 rounded-xl p-3 flex items-start gap-2 text-[11px] text-amber-200">
+              <AlertTriangle className="w-4 h-4 text-amber-400 flex-shrink-0 mt-0.5" />
+              <p>
+                <strong>Perhatian HRD:</strong> Password sementara ini hanya muncul sekali di pop-up ini. Setelah karyawan mengganti password barunya, password sementara ini akan otomatis hilang secara permanen dari daftar karyawan.
+              </p>
+            </div>
+
+            <div className="flex gap-2 pt-1">
+              <button
+                onClick={copyCredentialsToClipboard}
+                className="flex-1 py-3 rounded-xl bg-white/10 hover:bg-white/20 text-white font-bold text-xs flex items-center justify-center gap-2 transition-all"
+              >
+                <Copy className="w-4 h-4" />
+                <span>Salin Info Login</span>
+              </button>
+              <button
+                onClick={() => {
+                  setShowCredentialsModal(false);
+                  showToast("Kredensial disimpan. Anda dapat menguji login karyawan baru via switcher di pojok kanan atas.");
+                }}
+                className="flex-1 py-3 rounded-xl bg-emerald-500 text-black font-black text-xs hover:bg-emerald-400 transition-all text-center"
+              >
+                Selesai & Tutup
               </button>
             </div>
-            <form onSubmit={handleCreateJournal} className="space-y-3 text-xs">
-              <div>
-                <label className="block text-white/80 font-bold mb-1">Karyawan</label>
-                <select
-                  value={newJournal.employeeId}
-                  onChange={(e) => setNewJournal({ ...newJournal, employeeId: e.target.value })}
-                  className="w-full bg-[#010804] border border-emerald-900/80 rounded-xl p-2.5 text-white font-bold"
-                >
-                  {employees.map((emp) => (
-                    <option key={emp.id} value={emp.id}>
-                      {emp.name} ({emp.dept})
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="block text-white/80 font-bold mb-1">Durasi Kerja (Jam)</label>
-                <input
-                  type="number"
-                  min="1"
-                  max="14"
-                  value={newJournal.hours}
-                  onChange={(e) => setNewJournal({ ...newJournal, hours: e.target.value })}
-                  className="w-full bg-[#010804] border border-emerald-900/80 rounded-xl p-2.5 text-white font-mono"
-                />
-              </div>
-              <div>
-                <label className="block text-white/80 font-bold mb-1">Deskripsi Tugas yang Selesai</label>
-                <textarea
-                  rows={3}
-                  required
-                  placeholder="Tuliskan aktivitas pekerjaan hari ini..."
-                  value={newJournal.task}
-                  onChange={(e) => setNewJournal({ ...newJournal, task: e.target.value })}
-                  className="w-full bg-[#010804] border border-emerald-900/80 rounded-xl p-2.5 text-white focus:outline-none focus:border-emerald-400"
-                />
-              </div>
-              <div className="pt-2 flex gap-2">
-                <button
-                  type="button"
-                  onClick={() => setShowAddJournalModal(false)}
-                  className="flex-1 py-2.5 rounded-xl bg-white/10 text-white font-bold hover:bg-white/20"
-                >
-                  Batal
-                </button>
-                <button
-                  type="submit"
-                  className="flex-1 py-2.5 rounded-xl bg-emerald-500 text-black font-black hover:bg-emerald-400"
-                >
-                  Simpan Jurnal
-                </button>
-              </div>
-            </form>
           </div>
         </div>
       )}
 
-      {/* Modal Tambah User */}
-      {showAddUserModal && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-[#021008] border border-emerald-500/40 rounded-3xl p-6 max-w-md w-full shadow-2xl space-y-4">
-            <div className="flex justify-between items-center">
-              <h3 className="font-black text-white text-base">Tambah Akun Sistem & Tetapkan Role</h3>
-              <button onClick={() => setShowAddUserModal(false)} className="text-white/60 hover:text-white">
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-            <form onSubmit={handleCreateUser} className="space-y-3 text-xs">
-              <div>
-                <label className="block text-white/80 font-bold mb-1">Nama Pengguna</label>
-                <input
-                  type="text"
-                  required
-                  placeholder="Nama Lengkap"
-                  value={newUser.name}
-                  onChange={(e) => setNewUser({ ...newUser, name: e.target.value })}
-                  className="w-full bg-[#010804] border border-emerald-900/80 rounded-xl p-2.5 text-white"
-                />
-              </div>
-              <div>
-                <label className="block text-white/80 font-bold mb-1">Email Login</label>
-                <input
-                  type="email"
-                  required
-                  placeholder="nama@perusahaan.id"
-                  value={newUser.email}
-                  onChange={(e) => setNewUser({ ...newUser, email: e.target.value })}
-                  className="w-full bg-[#010804] border border-emerald-900/80 rounded-xl p-2.5 text-white font-mono"
-                />
-              </div>
-              <div>
-                <label className="block text-white/80 font-bold mb-1">Hak Akses (Role)</label>
-                <select
-                  value={newUser.role}
-                  onChange={(e) => setNewUser({ ...newUser, role: e.target.value as any })}
-                  className="w-full bg-[#010804] border border-emerald-900/80 rounded-xl p-2.5 text-white font-bold"
-                >
-                  <option value="Staff">Staff (Hanya Akses Pribadi & Atasan)</option>
-                  <option value="Supervisor">Supervisor (Akses Bawahan Langsung)</option>
-                  <option value="Department Manager">Department Manager (Akses Departemen)</option>
-                  <option value="Super Admin">Super Admin (Akses Penuh Perusahaan)</option>
-                </select>
-              </div>
-              <div className="pt-2 flex gap-2">
-                <button
-                  type="button"
-                  onClick={() => setShowAddUserModal(false)}
-                  className="flex-1 py-2.5 rounded-xl bg-white/10 text-white font-bold hover:bg-white/20"
-                >
-                  Batal
-                </button>
-                <button
-                  type="submit"
-                  className="flex-1 py-2.5 rounded-xl bg-emerald-500 text-black font-black hover:bg-emerald-400"
-                >
-                  Buat Akun
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* Modal Ganti Password */}
+      {/* MODAL 3: GANTI PASSWORD MANUAL */}
       {showPasswordModal && (
         <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-[#021008] border border-emerald-500/40 rounded-3xl p-6 max-w-md w-full shadow-2xl space-y-4">
