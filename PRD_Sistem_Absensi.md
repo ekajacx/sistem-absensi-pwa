@@ -1,11 +1,12 @@
 # Product Requirements Document (PRD)
 ## Sistem Absensi Online Berbasis Geolokasi & Deteksi Wajah (PWA)
+### [Revisi: Sistem Auto-Approval Otomatis]
 
 ---
 
 ### Informasi Dokumen
 * **Nama Proyek:** Sistem Absensi Karyawan PWA (Geolokasi & Liveness Face Recognition)
-* **Versi:** 1.0.0
+* **Versi:** 1.1.0 (Revisi: Auto-Approval Kehadiran)
 * **Status:** Ready for Development / Approved
 * **Tanggal Penyusunan:** 17 November 2026
 * **Penyusun:** JacxBot (Principal PM & Lead System Architect)
@@ -16,18 +17,18 @@
 ## 1. Ringkasan Eksekutif & Latar Belakang
 
 ### 1.1 Masalah Bisnis
-Sistem pencatatan kehadiran konvensional (seperti mesin sidik jari fisik atau pengisian form manual) memiliki sejumlah kendala:
+Sistem pencatatan kehadiran konvensional (seperti mesin sidik jari fisik atau form manual) memiliki sejumlah kendala:
 1. **Antrean Fisik:** Menumpuknya antrean karyawan pada jam sibuk di dekat mesin absensi.
 2. **Kecurangan Kehadiran (*Buddy Punching*):** Titip absen melalui rekan kerja atau manipulasi posisi GPS saat absensi online sederhana.
 3. **Fleksibilitas Shift Kerja:** Kebutuhan operasional kantor dengan sistem kerja bergilir (Pagi, Siang, Malam) yang jam kerjanya dinamis dan perlu diatur secara mandiri oleh tim HRD.
-4. **Kebutuhan Kontrol HRD Penuh:** Manajemen mewajibkan setiap data absensi harian diverifikasi dan disetujui (*Manual Approval*) oleh HRD sebelum status kehadiran dianggap sah.
+4. **Beban Kerja HRD (*Bottleneck Manual Approval*):** Memverifikasi dan menyetujui absensi harian ratusan karyawan secara manual satu per satu sangat tidak efisien dan memperlambat pencatatan payroll.
 
 ### 1.2 Solusi
 Membangun aplikasi web berbasis **Progressive Web App (PWA)** yang dapat diakses langsung melalui browser smartphone tanpa instalasi toko aplikasi (Play Store/App Store). Sistem mengombinasikan:
 * **Validasi Geolokasi Presisi (Geofence):** Mengunci koordinat karyawan hanya dalam radius kantor yang ditentukan.
 * **Deteksi Wajah 1:1 + Liveness Test:** Pengujian kedipan/senyuman acak untuk mencegah *photo spoofing* dan pencocokan AI dengan foto master profil karyawan.
-* **Antrean Persetujuan HRD (*Approval Queue*):** Seluruh data absensi masuk dalam status `PENDING` dan wajib diaudit serta di-*approve*/*reject* oleh Admin HRD.
-* **Konfigurasi Shift Dinamis:** Admin HRD bebas membuat, mengedit, dan menetapkan jam kerja shift secara fleksibel.
+* **Mesin Persetujuan Otomatis (*Auto-Approval Engine*):** Jika seluruh parameter absensi valid (di dalam radius kantor + lulus uji liveness + skor kemiripan wajah AI memenuhi ambang batas), sistem **seketika mengesahkan kehadiran karyawan dengan status `APPROVED` (Hadir Sah)**. Karyawan langsung menerima kepastian tanpa menunggu approval manual HRD.
+* **Dashboard Monitoring HRD & Shift Dinamis:** Admin HRD fokus memantau dashboard kehadiran real-time, mengelola jam shift dinamis, dan hanya menangani kasus khusus (izin/dispensasi).
 
 ---
 
@@ -41,7 +42,7 @@ Alur kerja karyawan (*User*) dirancang *mobile-first* dengan langkah-langkah pre
             └──> [Pengecekan Geofence] 
                     └──> [Uji Liveness Wajah] 
                             └──> [Kirim Data Absen] 
-                                    └──> [Status: PENDING APPROVAL]
+                                    └──> [Validasi Otomatis] ──> [Status: APPROVED / HADIR]
 ```
 
 ### 2.1 Pendaftaran & Profil Wajah Pertama Kali (*Enrollment*)
@@ -50,15 +51,15 @@ Alur kerja karyawan (*User*) dirancang *mobile-first* dengan langkah-langkah pre
 3. Karyawan diarahkan ke halaman pendaftaran wajah:
    * Mengambil 3 sampel foto wajah dari sudut lurus dengan pencahayaan cukup.
    * Sistem mengekstraksi *face vector embeddings* dan mengunggah foto master ke penyimpanan aman.
-   * Status profil wajah menunggu verifikasi verifikator HRD.
+   * Status profil wajah otomatis aktif setelah verifikasi kualitas foto.
 
 ### 2.2 Alur Absensi Masuk (*Check-In*)
 1. **Akses Dashboard Karyawan:**
    * Karyawan membuka PWA pada smartphone.
-   * Layar menampilkan informasi tanggal hari ini, shift kerja yang aktif, serta sisa waktu sebelum jam masuk shift dimulai.
+   * Layar menampilkan informasi tanggal hari ini, shift kerja yang aktif, serta status kehadiran saat ini.
 2. **Inisialisasi Sensor Perangkat (Kamera & GPS):**
    * PWA meminta izin browser untuk mengakses `Geolocation API` dan `MediaDevices.getUserMedia` (Kamera Depan).
-   * Jika izin ditolak, sistem menampilkan panduan instruksi cara mengaktifkan izin di pengaturan browser.
+   * Jika izin ditolak, sistem menampilkan panduan visual instruksi cara mengaktifkan izin di pengaturan browser.
 3. **Validasi Geofence (Radius Lokasi Kantor):**
    * PWA mengambil titik koordinat GPS (`latitude`, `longitude`, `accuracy`).
    * Sistem menghitung jarak ke titik kantor menggunakan rumus *Haversine Formula*.
@@ -76,30 +77,32 @@ Alur kerja karyawan (*User*) dirancang *mobile-first* dengan langkah-langkah pre
    * Foto dikompresi di sisi browser (< 300 KB).
    * Data dikirim ke backend API: ID User, ID Shift, Koordinat GPS, Foto Selfie, Skor Kemiripan AI, serta *Idempotency Key* untuk mencegah klik ganda.
    * Waktu absensi dicatat menggunakan **Server NTP Timestamp** (bukan jam lokal HP).
-7. **Pembaruan Status Awal:**
-   * Layar menampilkan notifikasi sukses kirim: *"Absensi Masuk Berhasil Dikirim. Menunggu Persetujuan HRD."*
-   * Status tiket absensi berubah menjadi **`PENDING`**.
+7. **Persetujuan Otomatis (*Instant Auto-Approval*):**
+   * Backend memverifikasi: `Jarak <= Radius Kantor` DAN `Liveness == True` DAN `Face Score >= 80%`.
+   * **Jika semua valid:** Sistem seketika menyimpan absensi dengan status **`APPROVED`** (Hadir).
+   * Karyawan langsung melihat notifikasi sukses:  
+     🎉 *"Absensi Masuk Berhasil! Status: Terverifikasi (Hadir Tepat Waktu / Terlambat X Menit)."*
 
 ### 2.3 Alur Absensi Pulang (*Check-Out*)
-* Mengikuti prosedur yang identik dengan Check-In (validasi radius kantor + verifikasi wajah).
-* Catatan jam pulang diikatkan pada record absensi yang sama di hari/shift tersebut.
+* Mengikuti prosedur yang identik dengan Check-In (validasi radius kantor + verifikasi wajah liveness).
+* Waktu check-out dicatat dan langsung berstatus terverifikasi pada record kehadiran yang sama.
 
-### 2.4 Monitoring Tiket & Notifikasi
+### 2.4 Monitoring Riwayat Kehadiran
 * Karyawan dapat memantau status absensi di menu **Riwayat Kehadiran**:
-  * Tag Kuning: **`PENDING`** (Menunggu review HRD).
-  * Tag Hijau: **`APPROVED`** (Diterima resmi, tercatat masuk).
-  * Tag Merah: **`REJECTED`** (Ditolak HRD, disertai alasan penolakan dari admin).
+  * Tag Hijau: **`APPROVED`** (Hadir sah terverifikasi otomatis oleh sistem).
+  * Tag Merah: **`REJECTED`** (Gagal verifikasi wajah atau di luar lokasi).
+  * Tag Biru: **`DISPENSATION`** (Disetujui khusus oleh HRD untuk dinas luar/izin).
 
 ---
 
 ## 3. Alur Kerja Aplikasi di Sisi Admin HRD (Admin Workflow Detail)
 
-Alur kerja admin difokuskan pada manajemen shift dinamis dan eksekusi antrean persetujuan absensi harian.
+Karena absensi berjalan otomatis, tim HRD tidak dibebani pekerjaan approval manual harian dan dapat fokus pada monitoring serta konfigurasi sistem.
 
 ### 3.1 Manajemen Pengaturan Kantor & Geofence
 1. Admin membuka menu **Master Data > Lokasi Kantor**.
 2. Admin menentukan titik pusat kantor pada peta interaktif (Latitude & Longitude).
-3. Admin menentukan parameter radius toleransi (misalnya: 50 meter) dan akurasi GPS maksimum yang diterima (misal: akurasi < 20 meter untuk mencegah koordinat kabur).
+3. Admin menentukan parameter radius toleransi (misalnya: 50 meter) dan akurasi GPS maksimum yang diterima (misal: akurasi < 20 meter untuk mencegah Fake GPS).
 
 ### 3.2 Manajemen Shift Kerja Dinamis
 Admin memiliki kontrol penuh untuk menentukan jam kerja sesuai kebutuhan operasional:
@@ -112,35 +115,24 @@ Admin memiliki kontrol penuh untuk menentukan jam kerja sesuai kebutuhan operasi
    * **Jendela Absen Dibuka:** (Contoh: `60 menit` sebelum jam masuk).
 3. Admin menetapkan jadwal shift ke karyawan secara individu atau per divisi.
 
-### 3.3 Dashboard Antrean Persetujuan (*Approval Queue*)
-Semua absensi karyawan masuk ke menu **Approval Kehadiran**:
-1. **Tampilan Antrean Absensi (Tabel & Kartu Verifikasi):**
-   Admin melihat daftar absensi berstatus `PENDING` yang diurutkan berdasarkan waktu submit terbaru.
-   Setiap kartu menampilkan informasi komparatif lengkap:
-   * **Identitas Karyawan:** Nama, NIK, Divisi, dan Nama Shift.
-   * **Komparasi Wajah Berdampingan (*Side-by-side Photo Comparison*):**
-     * Foto Master Profil Karyawan vs Foto Selfie Hasil Liveness Hari Ini.
-     * Indikator skor kemiripan AI (misal: *"Kecocokan: 92% (Tinggi)"*).
-   * **Verifikasi Lokasi:**
-     * Koordinat tercatat, jarak dari titik kantor (misal: *"18 meter dari kantor"*), dan link peta mini interaktif.
-   * **Waktu Kehadiran:** Jam submit server vs Jam shift (disertai indikator "Tepat Waktu" atau "Terlambat X menit").
-2. **Tindakan Persetujuan (*Single Approval*):**
-   * **Tombol `Approve`:** Mengubah status menjadi `APPROVED`. Jam kerja karyawan sah dihitung ke dalam sistem payroll.
-   * **Tombol `Reject`:** Muncul modal dialog yang **wajib mengisi alasan penolakan** (opsi cepat: *"Wajah tidak cocok"*, *"Di luar radius"*, *"Foto buram"*, atau isi catatan bebas). Status berubah menjadi `REJECTED`.
-3. **Persetujuan Massal (*Bulk Approval with Filter*):**
-   * Untuk menghemat waktu tanpa mengorbankan keamanan, admin dapat menggunakan filter:
-     * *Filter:* Skor wajah >= 90% DAN Jarak <= 30 meter.
-   * Admin menyeleksi absensi yang lolos filter, lalu menekan **"Approve Selected"**. Absensi dengan skor anomali tetap diaudit manual satu per satu.
+### 3.3 Dashboard Monitoring Kehadiran Real-Time (Tanpa Approval Manual)
+1. **Ringkasan Statistik Harian:**
+   * Kartu ringkasan: Total Karyawan, Jumlah Hadir Tepat Waktu, Jumlah Terlambat, dan Karyawan Belum Hadir.
+2. **Tabel Log Kehadiran Real-Time:**
+   * Setiap kali karyawan absen, data langsung muncul di tabel dashboard secara live.
+   * Kolom tabel: Nama Karyawan, Shift, Jam Masuk, Skor Kecocokan AI (misal 94%), Jarak ke Kantor (misal 12 meter), dan Foto Selfie (bisa diklik untuk audit visual).
+3. **Pemberian Dispensasi / Izin Khusus (Jika Diperlukan):**
+   * Jika ada karyawan yang harus dinas luar, sakit, atau mengalami kendala perangkat, HRD dapat menginput izin atau memberikan status **`DISPENSATION`** secara manual melalui dashboard.
 
 ### 3.4 Rekapitulasi & Audit Trail
-* **Menu Laporan:** Filter per tanggal, per shift, dan per divisi untuk melihat persentase kehadiran, jumlah keterlambatan, dan daftar penolakan. Ekspor data ke Excel (XLSX) dan PDF.
-* **Audit Trail Log:** Mencatat jejak digital setiap aksi (Admin siapa yang menyetujui, tanggal & jam persetujuan, alamat IP admin).
+* **Menu Laporan:** Filter per tanggal, per shift, dan per divisi untuk melihat persentase kehadiran, jumlah keterlambatan, dan jam kerja efektif. Ekspor data ke Excel (XLSX) dan PDF untuk keperluan penggajian (*payroll*).
+* **Audit Trail Log:** Mencatat jejak digital sistem dan admin (waktu pencatatan server, IP address, perubahan shift).
 
 ---
 
 ## 4. Diagram Alur Sistem (Flowchart)
 
-Diagram alir berikut menggambarkan proses dari saat user membuka PWA hingga keputusan persetujuan diambil oleh Admin HRD:
+Diagram alir berikut menggambarkan proses absensi instan dengan validasi otomatis:
 
 ```mermaid
 flowchart TD
@@ -164,27 +156,20 @@ flowchart TD
     LivenessPassed -- "Ya" --> CaptureFrame["Ambil Foto Wajah & Ekstrak Fitur"]
     CaptureFrame --> MatchFace["Hitung AI Similarity Score vs Foto Master"]
     
-    MatchFace --> SubmitAPI["Kirim Payload Absensi ke Backend API"]
-    SubmitAPI --> SaveDB[("Simpan Database: Status = PENDING")]
-    SaveDB --> ShowUserPending["Tampilan User: Tiket Absen PENDING"]
+    MatchFace --> CheckAllValid{"Semua Data Valid?\n(Jarak OK + Liveness OK + AI Score >= 80%)"}
     
-    ShowUserPending --> AdminNotice["Absensi Masuk Antrean Dashboard Admin"]
-    AdminNotice --> AdminReview["Admin HRD Review: Foto, AI Score, Jarak & Jam"]
-    AdminReview --> AdminDecision{"Keputusan HRD?"}
+    CheckAllValid -- "Tidak" --> RejectFail["Tolak Absensi: Data Tidak Sesuai"]
     
-    AdminDecision -- "Tolak (Reject)" --> InputRejectReason["Admin Wajib Isi Alasan Penolakan"]
-    InputRejectReason --> UpdateRejected[("Update Status: REJECTED")]
-    UpdateRejected --> UserNotifyReject["Status Karyawan: DITOLAK (+ Alasan)"]
-    
-    AdminDecision -- "Setujui (Approve)" --> UpdateApproved[("Update Status: APPROVED")]
-    UpdateApproved --> UserNotifyApproved["Status Karyawan: TERVERIFIKASI / HADIR"]
+    CheckAllValid -- "Ya" --> SaveApproved[("Simpan Database: Status = APPROVED (Auto)")]
+    SaveApproved --> ShowUserSuccess["Tampilan Karyawan:\nSukses Terverifikasi (Hadir Sah)"]
+    SaveApproved --> UpdateDashboard["Live Update Dashboard Monitoring HRD"]
 ```
 
 ---
 
 ## 5. Entity Relationship Diagram (ERD)
 
-Struktur data dirancang untuk mendukung multi-shift dinamis, profil biometrik wajah, pelacakan geolokasi, dan pencatatan riwayat persetujuan HRD:
+Struktur data mendukung validasi otomatis, multi-shift dinamis, profil wajah, dan audit pelaporan:
 
 ```mermaid
 erDiagram
@@ -193,7 +178,7 @@ erDiagram
     SHIFTS ||--o{ USER_SHIFTS : "diterapkan_ke"
     SHIFTS ||--o{ ATTENDANCES : "menjadi_rujukan"
     USERS ||--o{ ATTENDANCES : "melakukan"
-    USERS ||--o{ ATTENDANCES : "menyetujui"
+    USERS ||--o{ ATTENDANCES : "memberikan_dispensasi"
     OFFICE_LOCATIONS ||--o{ ATTENDANCES : "lokasi_target"
     USERS ||--o{ AUDIT_LOGS : "mencatat_aktivitas"
 
@@ -216,7 +201,6 @@ erDiagram
         string master_photo_url
         jsonb face_embeddings "Vector representasi wajah 128/512 dimensi"
         boolean is_verified
-        uuid verified_by FK
         datetime created_at
         datetime updated_at
     }
@@ -272,10 +256,9 @@ erDiagram
         string check_out_photo_url
         decimal check_out_face_score
         boolean check_out_liveness_verified
-        enum status "PENDING / APPROVED / REJECTED"
-        uuid approved_by FK "ID Admin yang memproses"
+        enum status "APPROVED / REJECTED / DISPENSATION"
+        uuid approved_by FK "SYSTEM (null) atau ID Admin jika dispensasi"
         datetime approved_at
-        text rejection_reason "Alasan jika ditolak"
         string idempotency_key UK
         datetime created_at
         datetime updated_at
@@ -284,7 +267,7 @@ erDiagram
     AUDIT_LOGS {
         uuid id PK
         uuid user_id FK "Pelaku aksi"
-        string action_name "Contoh: APPROVE_ATTENDANCE / CREATE_SHIFT"
+        string action_name "Contoh: AUTO_APPROVE / UPDATE_SHIFT"
         string target_entity "Nama tabel terkait"
         uuid target_id "ID record terkait"
         jsonb old_values
@@ -300,39 +283,40 @@ erDiagram
 ## 6. Kebutuhan Fungsional & Non-Fungsional
 
 ### 6.1 Kebutuhan Fungsional (Functional Requirements)
-* **FR-01 (PWA Compatibility):** Aplikasi web harus memiliki Service Worker dan Web App Manifest (`manifest.json`) agar dapat diinstal (*Add to Home Screen*) dan memiliki tampilan layar penuh (*standalone*).
-* **FR-02 (Hardware Sensor Integration):** PWA wajib mengakses GPS akurat (`enableHighAccuracy: true`) dan streaming kamera depan resolusi minimal 720p.
-* **FR-03 (Liveness Detection Engine):** Sistem mendeteksi respons kedipan atau gerakan kepala acak secara real-time di sisi browser (menggunakan WebAssembly / TensorFlow.js atau model visi ringan) sebelum foto di-capture.
-* **FR-04 (1:1 Face Verification):** Sistem menghitung jarak euklidian / cosine similarity antara vektor wajah saat ini dengan foto master; menghasilkan persentase skor kemiripan.
-* **FR-05 (Geofence Calculation):** Menggunakan kalkulasi jarak Haversine di backend untuk memvalidasi posisi karyawan terhadap koordinat kantor.
+* **FR-01 (PWA Compatibility):** Aplikasi web harus memiliki Service Worker dan Web App Manifest (`manifest.json`) agar dapat diinstal di homescreen smartphone (*Add to Home Screen*) dan beroperasi dalam mode *standalone*.
+* **FR-02 (Hardware Sensor Integration):** PWA wajib mengakses GPS akurat (`enableHighAccuracy: true`) dan kamera depan secara langsung melalui browser.
+* **FR-03 (Liveness Detection Engine):** Sistem mendeteksi respons kedipan atau gerakan kepala acak secara real-time di sisi browser sebelum foto diambil.
+* **FR-04 (1:1 Face Verification):** Sistem menghitung jarak euklidian / cosine similarity antara vektor wajah saat ini dengan foto master profil; menghasilkan persentase skor kemiripan.
+* **FR-05 (Instant Auto-Approval Engine):** Backend memverifikasi seluruh syarat kehadiran (Geofence + Liveness + Skor Wajah) dalam satu transaksi atomik dan langsung memberikan status `APPROVED`.
 * **FR-06 (Dynamic Shift Engine):** Admin HRD dapat menambah, mengubah, mengaktifkan/menonaktifkan shift kerja (jam masuk, jam pulang, toleransi keterlambatan) kapan saja melalui antarmuka web.
-* **FR-07 (Approval Queue & Bulk Action):** Antarmuka dashboard admin untuk meninjau data komparasi foto wajah dan koordinat, lengkap dengan tombol Approve, Reject (wajib alasan), dan Bulk Approve berdasarkan filter parameter.
-* **FR-08 (Reporting & Export):** Fitur unduh rekap absensi harian dan bulanan dalam format XLSX dan PDF.
+* **FR-07 (Live Monitoring Dashboard):** Antarmuka dashboard admin untuk memantau kehadiran secara live (siapa yang hadir, terlambat, belum hadir) tanpa perlu klik tombol approval harian.
+* **FR-08 (Reporting & Export):** Fitur unduh rekap absensi harian dan bulanan dalam format XLSX dan PDF untuk keperluan payroll.
 
 ### 6.2 Kebutuhan Non-Fungsional (Non-Functional Requirements)
 * **NFR-01 (Integritas Waktu - Server NTP):** Jam absensi wajib menggunakan waktu server backend yang tersinkronisasi NTP, mengabaikan jam lokal perangkat browser.
-* **NFR-02 (Performa & Kompresi):** Waktu respons verifikasi wajah tidak boleh melebihi 2 detik. Gambar selfie wajib dikompresi di browser menjadi < 300 KB sebelum diunggah.
+* **NFR-02 (Performa Cepat):** Seluruh proses dari capture wajah hingga notifikasi sukses harus selesai dalam waktu **kurang dari 3 detik**.
 * **NFR-03 (Keamanan Biometrik & Privasi Data):** Foto wajah disimpan pada cloud storage privat (*presigned URL* berdurasi terbatas). Vektor biometrik dienkripsi dalam database sesuai prinsip perlindungan data pribadi (UU PDP).
-* **NFR-04 (Keandalan Jaringan):** PWA harus menangani kondisi jaringan terputus (*offline/weak network*) dengan pesan yang jelas tanpa menyebabkan data duplikat (*Idempotent API*).
+* **NFR-04 (Keandalan Jaringan & Idempotensi):** Implementasi *Idempotency Key* untuk memastikan tidak ada data ganda saat jaringan lemot.
 
 ---
 
 ## 7. User Stories & Acceptance Criteria (Gherkin Format)
 
-### US-01: Absensi Masuk dengan Liveness dan Geofence
+### US-01: Absensi Masuk Otomatis Disetujui (Auto-Approved)
 * **Sebagai** Karyawan,  
 * **Saya ingin** melakukan absen masuk melalui browser HP menggunakan verifikasi wajah dan GPS,  
-* **Agar** kehadiran saya tercatat akurat dan siap diaudit oleh HRD.
+* **Agar** kehadiran saya langsung sah tercatat otomatis tanpa harus menunggu persetujuan HRD.
 
 ```gherkin
-Scenario: Absensi masuk berhasil dan masuk antrean approval
+Scenario: Absensi masuk memenuhi syarat dan langsung disetujui otomatis
   Given Karyawan telah login di PWA dan berada di dalam radius 50 meter kantor
   And Karyawan memiliki Face Master Profile yang terverifikasi
-  When Karyawan membuka menu absen masuk dan berhasil menyelesaikan tantangan liveness
+  When Karyawan membuka menu absen masuk dan berhasil menyelesaikan uji liveness
   And Skor kemiripan wajah AI melebihi ambang batas 80%
   Then Sistem mencatat koordinat, waktu server, dan foto selfie
-  And Status absensi berubah menjadi "PENDING"
-  And Karyawan melihat notifikasi "Absensi Masuk Terkirim, Menunggu Persetujuan HRD"
+  And Status absensi langsung menjadi "APPROVED"
+  And Karyawan langsung melihat notifikasi "Absensi Masuk Berhasil! Status: Terverifikasi"
+  And Dashboard HRD langsung menampilkan data kehadiran karyawan secara real-time
 
 Scenario: Karyawan mencoba absen di luar radius geofence
   Given Karyawan berada 150 meter dari titik kantor
@@ -341,26 +325,17 @@ Scenario: Karyawan mencoba absen di luar radius geofence
   And Tombol kamera dan absen dinonaktifkan
 ```
 
-### US-02: HRD Melakukan Review dan Persetujuan Absensi
+### US-02: HRD Memantau Kehadiran Real-Time & Audit
 * **Sebagai** Admin HRD,  
-* **Saya ingin** memeriksa foto komparasi wajah dan lokasi absensi karyawan,  
-* **Agar** saya dapat menyetujui kehadiran yang valid dan menolak yang tidak sesuai aturan.
+* **Saya ingin** melihat ringkasan kehadiran karyawan secara live di dashboard,  
+* **Agar** saya mengetahui siapa saja yang hadir tepat waktu, terlambat, atau belum absen tanpa harus melakukan approval manual.
 
 ```gherkin
-Scenario: Admin menyetujui absensi yang valid
-  Given Terdapat daftar absensi berstatus "PENDING" di dashboard HRD
-  When Admin membuka detail tiket absensi dan melihat foto selfie cocok dengan foto master
-  And Jarak lokasi karyawan berada di dalam radius kantor
-  And Admin menekan tombol "Approve"
-  Then Status tiket berubah menjadi "APPROVED"
-  And Waktu absensi masuk secara sah ke rekapitulasi kehadiran
-
-Scenario: Admin menolak absensi karena foto tidak cocok
-  Given Admin menemukan skor kemiripan wajah rendah atau foto buram
-  When Admin menekan tombol "Reject"
-  And Admin mengisi alasan penolakan "Wajah tidak jelas / foto orang lain"
-  Then Status tiket berubah menjadi "REJECTED"
-  And Karyawan menerima pembaruan status beserta alasan penolakan di riwayat kehadiran
+Scenario: Admin melihat pembaruan data absensi secara real-time
+  Given Karyawan baru saja berhasil melakukan absen masuk otomatis
+  When Admin membuka dashboard monitoring HRD
+  Then Admin melihat nama karyawan muncul di daftar "Hadir Tepat Waktu"
+  And Admin dapat melihat foto selfie dan skor kecocokan AI untuk keperluan audit
 ```
 
 ---
@@ -387,8 +362,7 @@ Response: { "token": "jwt_token", "user": { "id": "uuid", "role": "EMPLOYEE", "n
 
 POST /api/v1/attendance/check-in
 Headers:  Authorization: Bearer <token>, X-Idempotency-Key: <uuid>
-Request (Multipart/JSON): 
-          {
+Request:  {
             "shift_id": "uuid_shift_pagi",
             "latitude": -6.2088,
             "longitude": 106.8456,
@@ -396,11 +370,23 @@ Request (Multipart/JSON):
             "liveness_passed": true,
             "photo_base64": "data:image/jpeg;base64,..."
           }
-Response: { "status": "success", "data": { "attendance_id": "uuid", "state": "PENDING" } }
-
-GET /api/v1/admin/attendances/pending?date=2026-11-17&page=1&limit=20
 Response: { 
-            "total": 45, 
+            "status": "success", 
+            "message": "Attendance successfully verified and recorded",
+            "data": { 
+              "attendance_id": "uuid", 
+              "state": "APPROVED",
+              "is_late": false,
+              "check_in_time": "2026-11-17T07:55:12Z"
+            } 
+          }
+
+GET /api/v1/admin/attendances/live-today
+Response: { 
+            "total_employees": 120,
+            "total_present": 95,
+            "total_late": 8,
+            "total_absent": 17,
             "items": [
               {
                 "id": "uuid_absen",
@@ -409,15 +395,11 @@ Response: {
                 "check_in_time": "2026-11-17T07:55:12Z",
                 "distance_meters": 14.2,
                 "face_score": 93.4,
-                "photo_selfie_url": "https://storage.../selfie.jpg",
-                "photo_master_url": "https://storage.../master.jpg"
+                "status": "APPROVED",
+                "photo_selfie_url": "https://storage.../selfie.jpg"
               }
             ]
           }
-
-POST /api/v1/admin/attendances/:id/decision
-Request:  { "action": "APPROVE" } ATAU { "action": "REJECT", "rejection_reason": "Wajah tidak jelas" }
-Response: { "status": "success", "message": "Attendance record updated to APPROVED" }
 
 POST /api/v1/admin/shifts
 Request:  { "shift_name": "Shift Malam", "start_time": "22:00:00", "end_time": "06:00:00", "late_tolerance_minutes": 10 }
@@ -428,7 +410,7 @@ Response: { "status": "success", "data": { "id": "uuid_shift_baru" } }
 
 ## 10. Metrik Keberhasilan (Success Metrics / KPI)
 
-1. **Tingkat Akurasi Verifikasi Wajah (False Acceptance Rate / FAR):** FAR < 0.1% (tidak ada orang lain yang berhasil lolos menggunakan identitas orang lain).
-2. **Efisiensi Waktu Approval HRD:** Rata-rata waktu admin HRD menyelesaikan approval harian < 15 menit per 100 karyawan dengan bantuan fitur komparasi visual & *bulk filter*.
-3. **Waktu Proses Absensi Pengguna (*Time-to-Check-In*):** Dari buka kamera hingga submit berhasil diselesaikan dalam waktu < 5 detik.
+1. **Efisiensi Waktu HRD:** Beban waktu approval absensi harian berkurang 100% (otomatis).
+2. **Kecepatan Respons Pengguna (*Instant Feedback*):** Karyawan mendapatkan kepastian status absensi dalam waktu < 3 detik.
+3. **Tingkat Akurasi Verifikasi Wajah (False Acceptance Rate / FAR):** FAR < 0.1% (mencegah kecurangan titip absen).
 4. **Tingkat Keberhasilan PWA:** Kompatibilitas 99% pada Chrome (Android) dan Safari (iOS).

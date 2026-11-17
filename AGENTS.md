@@ -15,9 +15,10 @@ File ini adalah **sumber kebenaran tunggal (*Single Source of Truth*)** untuk se
 
 Setiap agent atau developer yang menulis kode untuk fitur baru harus mematuhi aturan berikut:
 
-1. **Skema Persetujuan (Full Manual Approval):**
-   * Semua absensi masuk dalam status `PENDING`.
-   * Tidak boleh ada *auto-approval* otomatis kecuali ada instruksi baru dari tim HRD. Status sah hanya diberikan setelah Admin menekan `APPROVE`.
+1. **Skema Persetujuan (Auto-Approval / Validasi Otomatis):**
+   * Semua absensi yang memenuhi kriteria validasi (berada di dalam radius geofence kantor + lulus uji liveness wajah + skor kemiripan wajah AI >= threshold) akan **langsung otomatis disetujui (Status: `APPROVED`)**.
+   * Karyawan langsung mendapatkan kepastian status kehadiran sah secara instan tanpa menunggu approval manual.
+   * Tim HRD tidak perlu menyetujui absensi harian satu per satu, melainkan fokus pada monitoring dashboard real-time, audit rekapan, dan penanganan kasus anomali/izin khusus.
 2. **Verifikasi Wajah & Anti-Spoofing:**
    * Wajib melalui uji **Liveness Detection** (kedipan mata/senyum acak) sebelum foto dikirim.
    * Wajib melakukan pencocokan 1:1 (*Face Matching*) terhadap *Face Master Profile* karyawan.
