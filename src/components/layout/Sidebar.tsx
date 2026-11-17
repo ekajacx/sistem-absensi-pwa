@@ -16,6 +16,7 @@ export default function Sidebar() {
     fileInputRef,
     hasPermission,
     isEditingCompany,
+    isMobileSidebarOpen,
     isStaff,
     journals,
     myLeaves,
@@ -26,6 +27,7 @@ export default function Sidebar() {
     setFilterDept,
     setFilterShift,
     setIsEditingCompany,
+    setIsMobileSidebarOpen,
     setTempCompanyName,
     shifts,
     standardDepartments,
@@ -36,7 +38,21 @@ export default function Sidebar() {
   } = useApp();
 
   return (
-    <aside className="w-72 flex-shrink-0 bg-[#010a06] border-r border-emerald-950/80 flex flex-col justify-between py-5 px-3 h-screen overflow-y-auto select-none z-20 shadow-2xl shadow-black sticky top-0">
+    <>
+      {/* Mobile Drawer Backdrop Overlay */}
+      {isMobileSidebarOpen && (
+        <div
+          onClick={() => setIsMobileSidebarOpen(false)}
+          className="fixed inset-0 bg-black/75 backdrop-blur-sm z-30 md:hidden animate-fade-in"
+          aria-hidden="true"
+        />
+      )}
+
+      <aside
+        className={`w-72 flex-shrink-0 bg-[#010a06] border-r border-emerald-950/80 flex flex-col justify-between py-5 px-3 h-screen overflow-y-auto select-none shadow-2xl shadow-black transition-transform duration-300 ease-in-out fixed inset-y-0 left-0 z-40 md:static md:translate-x-0 md:sticky md:top-0 ${
+          isMobileSidebarOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"
+        }`}
+      >
         <div>
           {/* Header Profil Perusahaan */}
           <div className="group relative p-2.5 rounded-2xl bg-[#03140d]/70 border border-emerald-900/40 hover:border-emerald-500/40 transition-all mb-6">
@@ -96,6 +112,16 @@ export default function Sidebar() {
                         {currentMeta.title}
                       </span>
                     </div>
+
+                    {/* Mobile Close Drawer Button */}
+                    <button
+                      type="button"
+                      onClick={() => setIsMobileSidebarOpen(false)}
+                      className="md:hidden p-1.5 rounded-lg bg-[#041910] text-emerald-400 hover:text-white hover:bg-emerald-900/60 border border-emerald-900/40 transition-all flex-shrink-0 ml-1"
+                      title="Tutup Menu"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
                   </div>
                 )}
               </div>
@@ -105,7 +131,10 @@ export default function Sidebar() {
           {/* Menu 1: Dashboard */}
           <div className="px-1 mb-4">
             <button
-              onClick={() => setActiveMenu("dashboard")}
+              onClick={() => {
+                setActiveMenu("dashboard");
+                setIsMobileSidebarOpen(false);
+              }}
               className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all ${
                 activeMenu === "dashboard"
                   ? "bg-[#0a261a] text-white border border-emerald-500/30 shadow-lg shadow-black/80"
@@ -151,6 +180,7 @@ export default function Sidebar() {
                           setFilterShift("ALL");
                         }
                         setActiveMenu(item.id);
+                        setIsMobileSidebarOpen(false);
                       }}
                       className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs transition-all ${
                         activeMenu === item.id
@@ -201,7 +231,10 @@ export default function Sidebar() {
                   ).map((item) => (
                     <button
                       key={item.id}
-                      onClick={() => setActiveMenu(item.id)}
+                      onClick={() => {
+                        setActiveMenu(item.id);
+                        setIsMobileSidebarOpen(false);
+                      }}
                       className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs transition-all ${
                         activeMenu === item.id
                           ? "bg-emerald-950 text-white font-bold border-l-2 border-emerald-400 shadow-sm"
@@ -254,7 +287,10 @@ export default function Sidebar() {
                   ].map((item) => (
                     <button
                       key={item.id}
-                      onClick={() => setActiveMenu(item.id)}
+                      onClick={() => {
+                        setActiveMenu(item.id);
+                        setIsMobileSidebarOpen(false);
+                      }}
                       className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs transition-all ${
                         activeMenu === item.id
                           ? "bg-emerald-950 text-white font-bold border-l-2 border-emerald-400 shadow-sm"
@@ -305,7 +341,10 @@ export default function Sidebar() {
                       {systemMenuItems.map((item) => (
                         <button
                           key={item.id}
-                          onClick={() => setActiveMenu(item.id)}
+                          onClick={() => {
+                            setActiveMenu(item.id);
+                            setIsMobileSidebarOpen(false);
+                          }}
                           className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs transition-all ${
                             activeMenu === item.id
                               ? "bg-emerald-950 text-white font-bold border-l-2 border-emerald-400 shadow-sm"
@@ -350,5 +389,6 @@ export default function Sidebar() {
           </div>
         </div>
       </aside>
+    </>
   );
 }

@@ -14,6 +14,7 @@ import DeleteShiftModal from "./DeleteShiftModal";
 import CutiOverrideModal from "./CutiOverrideModal";
 import EditAttendanceModal from "./EditAttendanceModal";
 import AddJournalModal from "./AddJournalModal";
+import LogoutModal from "./LogoutModal";
 
 export default function AllModals() {
   return (
@@ -31,6 +32,7 @@ export default function AllModals() {
       <CutiOverrideModal />
       <EditAttendanceModal />
       <AddJournalModal />
+      <LogoutModal />
     </>
   );
 }

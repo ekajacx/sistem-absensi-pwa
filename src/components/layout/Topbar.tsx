@@ -2,7 +2,7 @@
 
 import React from "react";
 import { useApp } from "@/context/AppContext";
-import { Shield, Clock } from "lucide-react";
+import { Shield, Clock, Menu } from "lucide-react";
 import { ServerClock } from "@/hooks/useClock";
 
 export default function Topbar() {
@@ -10,14 +10,26 @@ export default function Topbar() {
     activePerspective,
     currentMeta,
     employees,
+    isMobileSidebarOpen,
+    setIsMobileSidebarOpen,
     setActivePerspective,
     setShowPasswordModal,
+    setShowLogoutConfirm,
     showToast,
   } = useApp();
 
   return (
-    <header className="px-8 pt-6 pb-4 flex flex-col md:flex-row md:items-center justify-between gap-4 sticky top-0 z-30 bg-[#021008]/90 backdrop-blur-md border-b border-emerald-950/40">
+    <header className="px-4 md:px-8 pt-4 md:pt-6 pb-4 flex flex-col md:flex-row md:items-center justify-between gap-4 sticky top-0 z-30 bg-[#021008]/90 backdrop-blur-md border-b border-emerald-950/40">
       <div className="flex items-center gap-3.5">
+        <button
+          type="button"
+          onClick={() => setIsMobileSidebarOpen(!isMobileSidebarOpen)}
+          className="p-2 rounded-xl bg-[#041910] text-emerald-300 border border-emerald-900/60 md:hidden hover:bg-[#072518] hover:text-white transition-all shadow-md focus:outline-none"
+          aria-label="Toggle Menu Navigasi"
+          title="Buka Navigasi"
+        >
+          <Menu className="w-5 h-5" />
+        </button>
         <span className="text-3xl leading-none select-none">{currentMeta.icon}</span>
         <div>
           <h1 className="text-2xl font-black text-white tracking-tight leading-tight transition-all duration-300">
@@ -87,11 +99,8 @@ export default function Topbar() {
           Ganti Password
         </button>
         <button
-          onClick={() => {
-            if (confirm("Apakah Anda yakin ingin keluar dari sistem?")) {
-              showToast("Anda telah keluar dari sesi kerja.", "info");
-            }
-          }}
+          type="button"
+          onClick={() => setShowLogoutConfirm(true)}
           className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#041910] text-amber-300 border border-emerald-900/60 hover:bg-[#072518] transition-all font-semibold"
         >
           <span>🚪</span>

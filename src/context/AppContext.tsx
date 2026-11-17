@@ -36,6 +36,8 @@ import { getFormattedServerTime } from "@/hooks/useClock";
 function useAppProviderValue() {
 // Navigation State
   const [activeMenu, setActiveMenu] = useState<string>("dashboard");
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState<boolean>(false);
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState<boolean>(false);
 
   // Dynamic Company Profile State
   const [companyName, setCompanyName] = useState<string>("AbsenKu");
@@ -63,10 +65,17 @@ function useAppProviderValue() {
     return pass;
   };
 
-  // Handle Logo Upload
+  // Handle Logo Upload (dengan revoke URL lama untuk mencegah memory leak)
   const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      if (companyLogoUrl && companyLogoUrl.startsWith("blob:")) {
+        try {
+          URL.revokeObjectURL(companyLogoUrl);
+        } catch (err) {
+          console.warn("Failed to revoke previous company logo URL:", err);
+        }
+      }
       const url = URL.createObjectURL(file);
       setCompanyLogoUrl(url);
       showToast("Logo perusahaan berhasil diperbarui!");
@@ -1687,6 +1696,7 @@ function useAppProviderValue() {
     isEditingCompany,
     isFaceScoreValid,
     isForcedPasswordRequired,
+    isMobileSidebarOpen,
     isMobileSimulated,
     isStaff,
     isWebcamActive,
@@ -1779,6 +1789,7 @@ function useAppProviderValue() {
     setShiftActiveTab,
     setShiftForm,
     setShifts,
+    setIsMobileSidebarOpen,
     setShowAddEmployeeModal,
     setShowAddJournalModal,
     setShowApplyLeaveModal,
@@ -1787,6 +1798,7 @@ function useAppProviderValue() {
     setShowEditAttendanceModal,
     setShowEditEmployeeModal,
     setShowPasswordModal,
+    setShowLogoutConfirm,
     setShowShiftModal,
     setSimulatedDeviceId,
     setSimulatedDistance,
@@ -1810,6 +1822,7 @@ function useAppProviderValue() {
     showEditAttendanceModal,
     showEditEmployeeModal,
     showPasswordModal,
+    showLogoutConfirm,
     showShiftModal,
     showToast,
     simulatedDeviceId,

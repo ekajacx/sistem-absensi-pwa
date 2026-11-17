@@ -40,7 +40,7 @@ function MainApp() {
         <Topbar />
 
         {/* View Konten Sesuai Menu Aktif */}
-        <div className="px-8 py-6 space-y-6 relative z-10">
+        <div className="px-4 md:px-8 py-4 md:py-6 space-y-6 relative z-10">
           {activeMenu === "dashboard" && <DashboardView />}
           {activeMenu === "karyawan" && <KaryawanView />}
           {activeMenu === "departemen" && <DepartemenView />}
