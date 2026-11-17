@@ -128,6 +128,9 @@ interface LeaveRequest {
   days: number;
   reason: string;
   status: "MENUNGGU" | "DISETUJUI" | "DITOLAK";
+  approverId?: string;
+  approverName?: string;
+  approvedAt?: string;
 }
 
 interface WorkJournal {
@@ -638,9 +641,63 @@ export default function Home() {
 
   // Leave Requests State
   const [leaves, setLeaves] = useState<LeaveRequest[]>([
-    { id: "lv-1", employeeId: "emp-mkt-stf", name: "Aditya Pratama", dept: "Marketing", type: "Sakit", start: "18 Nov 2026", end: "19 Nov 2026", days: 2, reason: "Flu & demam, istirahat dokter", status: "MENUNGGU" },
-    { id: "lv-2", employeeId: "emp-fin-stf", name: "Farhan Ramadhan", dept: "Finance", type: "Tahunan", start: "24 Nov 2026", end: "26 Nov 2026", days: 3, reason: "Keperluan keluarga di luar kota", status: "MENUNGGU" },
-    { id: "lv-3", employeeId: "emp-hr-stf", name: "Maya Indah", dept: "HR", type: "Tahunan", start: "10 Nov 2026", end: "12 Nov 2026", days: 3, reason: "Acara wisuda saudara", status: "DISETUJUI" },
+    {
+      id: "lv-1",
+      employeeId: "emp-mkt-stf",
+      name: "Aditya Pratama",
+      dept: "Marketing",
+      type: "Sakit",
+      start: "2026-11-18",
+      end: "2026-11-19",
+      days: 2,
+      reason: "Flu & demam tinggi, istirahat dokter",
+      status: "MENUNGGU",
+      approverId: "emp-mkt-spv",
+      approverName: "Dewi Lestari (Marketing Supervisor)",
+    },
+    {
+      id: "lv-2",
+      employeeId: "emp-fin-stf",
+      name: "Farhan Ramadhan",
+      dept: "Finance",
+      type: "Tahunan",
+      start: "2026-11-24",
+      end: "2026-11-26",
+      days: 3,
+      reason: "Keperluan keluarga mendesak di luar kota",
+      status: "MENUNGGU",
+      approverId: "emp-fin-spv",
+      approverName: "Andi Saputra (Finance Supervisor)",
+    },
+    {
+      id: "lv-3",
+      employeeId: "emp-hr-stf",
+      name: "Maya Indah",
+      dept: "HR",
+      type: "Tahunan",
+      start: "2026-11-10",
+      end: "2026-11-12",
+      days: 3,
+      reason: "Acara wisuda saudara kandung",
+      status: "DISETUJUI",
+      approverId: "emp-hr-spv",
+      approverName: "Siti Rahmawati (HR Supervisor)",
+      approvedAt: "08 Nov 2026 (Disetujui)",
+    },
+    {
+      id: "lv-4",
+      employeeId: "emp-it-spv",
+      name: "Budi Pratama",
+      dept: "IT",
+      type: "Tahunan",
+      start: "2026-12-01",
+      end: "2026-12-02",
+      days: 2,
+      reason: "Cuti tahunan riset sertifikasi Cloud Enterprise",
+      status: "MENUNGGU",
+      approverId: "emp-gm",
+      approverName: "Dr. Kartika Sari, S.E., M.M. (General Manager)",
+    },
   ]);
 
   // Work Journals State
@@ -865,6 +922,138 @@ export default function Home() {
   const [showAddEmployeeModal, setShowAddEmployeeModal] = useState(false);
   const [showCredentialsModal, setShowCredentialsModal] = useState(false);
   const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [showApplyLeaveModal, setShowApplyLeaveModal] = useState(false);
+  const [leaveActiveTab, setLeaveActiveTab] = useState<"my-leaves" | "subordinate-leaves">("my-leaves");
+  const [newLeaveForm, setNewLeaveForm] = useState<{
+    type: "Tahunan" | "Sakit" | "Melahirkan" | "Khusus";
+    start: string;
+    end: string;
+    reason: string;
+  }>({
+    type: "Tahunan",
+    start: "2026-11-25",
+    end: "2026-11-27",
+    reason: "",
+  });
+
+  const handleApplyLeaveSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newLeaveForm.reason.trim()) {
+      showToast("Alasan pengajuan cuti wajib diisi!", "error");
+      return;
+    }
+    const startDate = new Date(newLeaveForm.start);
+    const endDate = new Date(newLeaveForm.end);
+    if (endDate < startDate) {
+      showToast("Tanggal selesai cuti tidak boleh lebih awal dari tanggal mulai!", "error");
+      return;
+    }
+    const diffTime = Math.abs(endDate.getTime() - startDate.getTime());
+    const calculatedDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+
+    const targetApprover = directSuperior;
+    const approverTitle = targetApprover
+      ? `${targetApprover.name} (${targetApprover.role})`
+      : "Direktur Utama / Dewan Direksi";
+
+    const newLeave: LeaveRequest = {
+      id: `lv-${Date.now()}`,
+      employeeId: currentActiveEmployee.id,
+      name: currentActiveEmployee.name,
+      dept: currentActiveEmployee.dept,
+      type: newLeaveForm.type,
+      start: newLeaveForm.start,
+      end: newLeaveForm.end,
+      days: calculatedDays,
+      reason: newLeaveForm.reason,
+      status: "MENUNGGU",
+      approverId: targetApprover?.id,
+      approverName: approverTitle,
+    };
+
+    setLeaves((prev) => [newLeave, ...prev]);
+    setShowApplyLeaveModal(false);
+    setNewLeaveForm({
+      type: "Tahunan",
+      start: "2026-11-25",
+      end: "2026-11-27",
+      reason: "",
+    });
+    showToast(`✓ Permohonan cuti diajukan ke: ${targetApprover ? targetApprover.name : "Direksi"}!`);
+  };
+
+  const handleApproveLeave = (leaveId: string) => {
+    const nowStr = new Date().toLocaleDateString("id-ID", { day: "2-digit", month: "short", year: "numeric" });
+    setLeaves((prev) =>
+      prev.map((l) =>
+        l.id === leaveId
+          ? {
+              ...l,
+              status: "DISETUJUI",
+              approverId: currentActiveEmployee.id,
+              approverName: `${currentActiveEmployee.name} (${currentActiveEmployee.role})`,
+              approvedAt: `${nowStr} (Disetujui)`,
+            }
+          : l
+      )
+    );
+    showToast("✓ Permohonan cuti bawahan telah DISETUJUI (APPROVED)!");
+  };
+
+  const handleRejectLeave = (leaveId: string) => {
+    const nowStr = new Date().toLocaleDateString("id-ID", { day: "2-digit", month: "short", year: "numeric" });
+    setLeaves((prev) =>
+      prev.map((l) =>
+        l.id === leaveId
+          ? {
+              ...l,
+              status: "DITOLAK",
+              approverId: currentActiveEmployee.id,
+              approverName: `${currentActiveEmployee.name} (${currentActiveEmployee.role})`,
+              approvedAt: `${nowStr} (Ditolak)`,
+            }
+          : l
+      )
+    );
+    showToast("Permohonan cuti bawahan telah DITOLAK.", "error");
+  };
+
+  // Leave Calculations
+  const myLeaves = leaves.filter((leave) => leave.employeeId === currentActiveEmployee.id);
+  const myUsedLeaveDays = myLeaves
+    .filter((l) => l.type === "Tahunan" && l.status === "DISETUJUI")
+    .reduce((acc, curr) => acc + curr.days, 0);
+  const myRemainingQuota = Math.max(0, 12 - myUsedLeaveDays);
+  const myPendingLeavesCount = myLeaves.filter((l) => l.status === "MENUNGGU").length;
+
+  const subordinateLeaves = leaves.filter((leave) => {
+    if (activePerspective === "admin" || currentRoleName === "Super Admin") {
+      return true; // Super Admin audit view
+    }
+    if (currentActiveEmployee.level === "Director") {
+      return leave.employeeId === "emp-gm" || directSubordinates.some((s) => s.id === leave.employeeId);
+    }
+    if (currentActiveEmployee.level === "GeneralManager") {
+      // GM evaluates all 6 Supervisors
+      return directSubordinates.some((s) => s.id === leave.employeeId);
+    }
+    if (currentActiveEmployee.level === "Supervisor") {
+      // Supervisor evaluates staff in department
+      return (
+        directSubordinates.some((s) => s.id === leave.employeeId) ||
+        (leave.dept === currentActiveEmployee.dept && leave.employeeId !== currentActiveEmployee.id)
+      );
+    }
+    return false;
+  });
+
+  const pendingSubordinateCount = subordinateLeaves.filter((l) => l.status === "MENUNGGU").length;
+  const canApproveLeaves =
+    hasPermission("leave_approve_subordinate") ||
+    directSubordinates.length > 0 ||
+    currentActiveEmployee.level === "Director" ||
+    currentActiveEmployee.level === "GeneralManager" ||
+    currentActiveEmployee.level === "Supervisor";
 
   // Pop-up Kredensial Sekali Muncul untuk HRD
   const [newlyCreatedCredentials, setNewlyCreatedCredentials] = useState<{
@@ -1305,7 +1494,7 @@ export default function Home() {
     absensi: { title: "ABSENSI", subtitle: "Verifikasi Kehadiran Otomatis Real-Time (GPS & AI Liveness)", icon: "📍" },
     "rekap-absensi": { title: "REKAP ABSENSI", subtitle: `Audit Log Kehadiran Terverifikasi (${attendances.length} Log Hari Ini)`, icon: "📊" },
     "jadwal-shift": { title: "JADWAL SHIFT", subtitle: `Konfigurasi Shift Kerja Dinamis (${shifts.length} Shift Aktif)`, icon: "📅" },
-    "pengajuan-cuti": { title: "PENGAJUAN CUTI", subtitle: `Persetujuan Cuti oleh Supervisor Departemen Masing-Masing (${leaves.filter((l) => l.status === "MENUNGGU").length} Pending)`, icon: "⛱️" },
+    "pengajuan-cuti": { title: "PENGAJUAN CUTI", subtitle: `Self-Service Permohonan Cuti & Persetujuan Berjenjang N+1 (${pendingSubordinateCount} Pending Approval)`, icon: "⛱️" },
     "jurnal-kerja": { title: "JURNAL KERJA", subtitle: `Catatan Produktivitas Harian & Penilaian Supervisor (${journals.length} Jurnal Tercatat)`, icon: "📝" },
     "user-management": { title: "USER MANAGEMENT", subtitle: `Kelola Akun, Wewenang Khusus HR & IT (${users.length} Akun)`, icon: "👤" },
     pengaturan: { title: "PENGATURAN", subtitle: `Konfigurasi Geofence Kantor (${settings.geofenceRadius}m) & AI Match (${settings.aiFaceThreshold}%)`, icon: "⚙️" },
@@ -1606,7 +1795,7 @@ export default function Home() {
               {openSections.aktivitas && (
                 <div className="mt-1 space-y-0.5 pl-3 border-l-2 border-emerald-900/60 ml-4">
                   {[
-                    { id: "pengajuan-cuti", label: "Pengajuan Cuti", icon: "⛱️", badge: leaves.length },
+                    { id: "pengajuan-cuti", label: "Pengajuan Cuti", icon: "⛱️", badge: pendingSubordinateCount > 0 ? `${pendingSubordinateCount} Pnd` : myLeaves.length },
                     { id: "jurnal-kerja", label: "Jurnal Kerja", icon: "📝", badge: journals.length },
                   ].map((item) => (
                     <button
@@ -3142,57 +3331,364 @@ export default function Home() {
           )}
 
           {/* ===================================================== */}
-          {/* VIEW: PENGAJUAN CUTI                                  */}
+          {/* VIEW: PENGAJUAN CUTI & PERSETUJUAN BERJENJANG         */}
           {/* ===================================================== */}
           {activeMenu === "pengajuan-cuti" && (
-            <div className="space-y-5">
-              <div>
-                <h3 className="font-bold text-white text-base">Pengajuan Cuti Karyawan</h3>
-                <p className="text-xs text-white/70">
-                  Supervisor masing-masing departemen bertanggung jawab menyetujui permohonan cuti bawahannya.
-                </p>
+            <div className="space-y-6">
+              {/* Header Bar dengan Profil, Atasan Penyetuju & Quota */}
+              <div className="bg-gradient-to-r from-[#062417] via-[#041910] to-[#021008] rounded-3xl p-6 border border-emerald-900/60 shadow-xl">
+                <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xl">🏖️</span>
+                      <h3 className="font-black text-white text-lg tracking-wide">
+                        Sistem Pengajuan & Persetujuan Cuti Mandiri
+                      </h3>
+                      <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                        N+1 Hierarchy Auto-Linked
+                      </span>
+                    </div>
+                    <p className="text-xs text-white/70 max-w-2xl leading-relaxed">
+                      Karyawan dapat mengajukan permohonan cuti secara mandiri. Sistem otomatis menghubungkan permohonan ke atasan langsung Anda ({directSuperior ? `${directSuperior.name} — ${directSuperior.role}` : "Direktur Utama / Direksi"}). Atasan dapat menyetujui atau menolak permohonan bawahan secara real-time.
+                    </p>
+                    
+                    {/* Ringkasan Profil & Atasan */}
+                    <div className="flex flex-wrap items-center gap-3 pt-1 text-xs">
+                      <div className="bg-[#010804] px-3 py-1.5 rounded-xl border border-emerald-900/60 flex items-center gap-2">
+                        <span className="text-white/60">Pemohon Aktif:</span>
+                        <span className="font-bold text-white">{currentActiveEmployee.name}</span>
+                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-white/10 text-emerald-300 font-bold">
+                          {currentActiveEmployee.role}
+                        </span>
+                      </div>
+                      <div className="bg-[#010804] px-3 py-1.5 rounded-xl border border-amber-900/40 flex items-center gap-2">
+                        <span className="text-amber-400 font-bold">🔒 Atasan Penyetuju (N+1):</span>
+                        <span className="font-bold text-white">
+                          {directSuperior ? `${directSuperior.name} (${directSuperior.role})` : "Direktur Utama (CEO)"}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Tombol Ajukan Cuti Baru */}
+                  <div className="flex flex-col sm:flex-row gap-3">
+                    <button
+                      onClick={() => setShowApplyLeaveModal(true)}
+                      className="px-5 py-3 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-black font-black text-xs flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/20 transition-all hover:scale-[1.02] active:scale-[0.98]"
+                    >
+                      <Plus className="w-4 h-4" />
+                      Ajukan Cuti Baru
+                    </button>
+                  </div>
+                </div>
+
+                {/* 4 Quick Stat Cards */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-6 pt-6 border-t border-emerald-900/50">
+                  <div className="bg-[#010804]/80 p-3.5 rounded-2xl border border-emerald-900/50">
+                    <span className="text-[10px] text-white/60 font-bold uppercase block">Hak Cuti Tahunan</span>
+                    <div className="flex items-baseline gap-1.5 mt-1">
+                      <span className="text-xl font-black text-white font-mono">12</span>
+                      <span className="text-xs text-white/50">Hari/Tahun</span>
+                    </div>
+                  </div>
+                  <div className="bg-[#010804]/80 p-3.5 rounded-2xl border border-emerald-900/50">
+                    <span className="text-[10px] text-emerald-400 font-bold uppercase block">Cuti Terpakai</span>
+                    <div className="flex items-baseline gap-1.5 mt-1">
+                      <span className="text-xl font-black text-emerald-400 font-mono">{myUsedLeaveDays}</span>
+                      <span className="text-xs text-white/50">Hari Disetujui</span>
+                    </div>
+                  </div>
+                  <div className="bg-[#010804]/80 p-3.5 rounded-2xl border border-emerald-900/50">
+                    <span className="text-[10px] text-teal-400 font-bold uppercase block">Sisa Kuota Cuti</span>
+                    <div className="flex items-baseline gap-1.5 mt-1">
+                      <span className="text-xl font-black text-teal-300 font-mono">{myRemainingQuota}</span>
+                      <span className="text-xs text-white/50">Hari Tersedia</span>
+                    </div>
+                  </div>
+                  <div className="bg-[#010804]/80 p-3.5 rounded-2xl border border-amber-900/40">
+                    <span className="text-[10px] text-amber-400 font-bold uppercase block">Menunggu Konfirmasi</span>
+                    <div className="flex items-baseline gap-1.5 mt-1">
+                      <span className="text-xl font-black text-amber-300 font-mono">{myPendingLeavesCount}</span>
+                      <span className="text-xs text-white/50">Pengajuan</span>
+                    </div>
+                  </div>
+                </div>
               </div>
 
-              <div className="bg-gradient-to-br from-[#062417] to-[#021008] rounded-2xl p-5 border border-emerald-900/60 overflow-x-auto">
-                <table className="w-full text-left text-xs">
-                  <thead>
-                    <tr className="border-b border-emerald-900/60 text-white/60 text-[10px] uppercase font-bold">
-                      <th className="pb-3">Karyawan</th>
-                      <th className="pb-3">Departemen</th>
-                      <th className="pb-3">Jenis Cuti</th>
-                      <th className="pb-3">Tanggal</th>
-                      <th className="pb-3">Durasi</th>
-                      <th className="pb-3">Alasan</th>
-                      <th className="pb-3">Status</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-emerald-900/30">
-                    {leaves.map((c) => (
-                      <tr key={c.id} className="hover:bg-emerald-950/20 transition-colors">
-                        <td className="py-3 font-bold text-white">{c.name}</td>
-                        <td className="py-3 font-black text-white">{c.dept}</td>
-                        <td className="py-3 text-white text-[11px]">{c.type}</td>
-                        <td className="py-3 font-mono text-white text-[11px]">{c.start} s/d {c.end}</td>
-                        <td className="py-3 font-bold text-white text-[11px]">{c.days} Hari</td>
-                        <td className="py-3 text-white/60 text-[11px] max-w-[140px] truncate">{c.reason}</td>
-                        <td className="py-3">
-                          <span
-                            className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                              c.status === "DISETUJUI"
-                                ? "bg-emerald-500/20 text-white border border-emerald-400/30"
-                                : c.status === "MENUNGGU"
-                                ? "bg-amber-500/20 text-amber-300 border border-amber-400/30"
-                                : "bg-red-500/20 text-red-300 border border-red-400/30"
-                            }`}
-                          >
-                            {c.status}
-                          </span>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+              {/* Tab Selector: [🏖️ Cuti Saya] vs [✍️ Persetujuan Cuti Bawahan] */}
+              <div className="flex items-center gap-3 border-b border-emerald-900/60 pb-3">
+                <button
+                  onClick={() => setLeaveActiveTab("my-leaves")}
+                  className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-xs transition-all ${
+                    leaveActiveTab === "my-leaves"
+                      ? "bg-emerald-500 text-black shadow-lg shadow-emerald-500/20"
+                      : "bg-[#021008] text-white/70 hover:text-white border border-emerald-900/60"
+                  }`}
+                >
+                  <span>🏖️</span>
+                  <span>Cuti Saya ({myLeaves.length})</span>
+                </button>
+
+                <button
+                  onClick={() => setLeaveActiveTab("subordinate-leaves")}
+                  className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-xs transition-all relative ${
+                    leaveActiveTab === "subordinate-leaves"
+                      ? "bg-emerald-500 text-black shadow-lg shadow-emerald-500/20"
+                      : "bg-[#021008] text-white/70 hover:text-white border border-emerald-900/60"
+                  }`}
+                >
+                  <span>✍️</span>
+                  <span>Persetujuan Cuti Bawahan</span>
+                  {pendingSubordinateCount > 0 && (
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-amber-400 text-black animate-pulse">
+                      {pendingSubordinateCount} Pending
+                    </span>
+                  )}
+                </button>
               </div>
+
+              {/* CONTENT TAB 1: CUTI SAYA */}
+              {leaveActiveTab === "my-leaves" && (
+                <div className="space-y-4">
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <h4 className="font-bold text-white text-sm">Riwayat Pengajuan Cuti Mandiri</h4>
+                      <p className="text-xs text-white/60">
+                        Daftar seluruh cuti yang diajukan oleh akun aktif Anda ({currentActiveEmployee.name}) beserta status persetujuan dari atasan.
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => setShowApplyLeaveModal(true)}
+                      className="text-xs px-3 py-1.5 rounded-lg bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/20 font-bold transition-all"
+                    >
+                      + Tambah Pengajuan
+                    </button>
+                  </div>
+
+                  {myLeaves.length === 0 ? (
+                    <div className="bg-[#021008] rounded-2xl p-8 border border-emerald-900/60 text-center space-y-3">
+                      <div className="w-12 h-12 rounded-full bg-emerald-950 flex items-center justify-center mx-auto text-2xl">
+                        🏖️
+                      </div>
+                      <h5 className="font-bold text-white text-sm">Belum Ada Pengajuan Cuti</h5>
+                      <p className="text-xs text-white/60 max-w-sm mx-auto">
+                        Anda belum pernah mengajukan cuti. Gunakan tombol di bawah ini untuk mengajukan cuti tahunan, sakit, atau izin khusus.
+                      </p>
+                      <button
+                        onClick={() => setShowApplyLeaveModal(true)}
+                        className="px-4 py-2 rounded-xl bg-emerald-500 text-black font-bold text-xs hover:bg-emerald-400 transition-all"
+                      >
+                        Ajukan Cuti Sekarang
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="bg-gradient-to-br from-[#062417] to-[#021008] rounded-2xl p-5 border border-emerald-900/60 overflow-x-auto shadow-xl">
+                      <table className="w-full text-left text-xs">
+                        <thead>
+                          <tr className="border-b border-emerald-900/60 text-white/60 text-[10px] uppercase font-bold">
+                            <th className="pb-3">ID & Jenis Cuti</th>
+                            <th className="pb-3">Periode Tanggal</th>
+                            <th className="pb-3">Durasi</th>
+                            <th className="pb-3">Atasan Penyetuju (N+1)</th>
+                            <th className="pb-3">Alasan Pengajuan</th>
+                            <th className="pb-3">Status Permohonan</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-emerald-900/30">
+                          {myLeaves.map((c) => (
+                            <tr key={c.id} className="hover:bg-emerald-950/20 transition-colors">
+                              <td className="py-3">
+                                <div className="font-bold text-white flex items-center gap-2">
+                                  <span>{c.type === "Sakit" ? "🏥" : c.type === "Melahirkan" ? "👶" : c.type === "Khusus" ? "⭐" : "🏖️"}</span>
+                                  <span>Cuti {c.type}</span>
+                                </div>
+                                <span className="text-[10px] text-white/50 font-mono">{c.id}</span>
+                              </td>
+                              <td className="py-3 font-mono text-white text-[11px]">
+                                {c.start} s/d {c.end}
+                              </td>
+                              <td className="py-3">
+                                <span className="font-extrabold text-white text-[11px] bg-emerald-950 px-2 py-0.5 rounded border border-emerald-900/60">
+                                  {c.days} Hari
+                                </span>
+                              </td>
+                              <td className="py-3">
+                                <div className="text-white font-medium text-[11px]">
+                                  {c.approverName || (directSuperior ? `${directSuperior.name} (${directSuperior.role})` : "Direktur Utama")}
+                                </div>
+                                {c.approvedAt && (
+                                  <span className="text-[10px] text-emerald-400 block font-mono">
+                                    {c.approvedAt}
+                                  </span>
+                                )}
+                              </td>
+                              <td className="py-3 text-white/70 text-[11px] max-w-[220px]">
+                                {c.reason}
+                              </td>
+                              <td className="py-3">
+                                <span
+                                  className={`px-2.5 py-1 rounded-lg text-[10px] font-black inline-flex items-center gap-1.5 ${
+                                    c.status === "DISETUJUI"
+                                      ? "bg-emerald-500/20 text-emerald-300 border border-emerald-400/40"
+                                      : c.status === "MENUNGGU"
+                                      ? "bg-amber-500/20 text-amber-300 border border-amber-400/40 animate-pulse"
+                                      : "bg-red-500/20 text-red-300 border border-red-400/40"
+                                  }`}
+                                >
+                                  {c.status === "DISETUJUI" && "✓ "}
+                                  {c.status === "MENUNGGU" && "⏳ "}
+                                  {c.status === "DITOLAK" && "✕ "}
+                                  {c.status}
+                                </span>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* CONTENT TAB 2: PERSETUJUAN CUTI BAWAHAN */}
+              {leaveActiveTab === "subordinate-leaves" && (
+                <div className="space-y-4">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                    <div>
+                      <h4 className="font-bold text-white text-sm">Persetujuan Cuti Bawahan Langsung</h4>
+                      <p className="text-xs text-white/60">
+                        {currentActiveEmployee.level === "GeneralManager"
+                          ? "Sebagai General Manager, Anda bertanggung jawab meninjau cuti dari 6 Supervisor Departemen."
+                          : currentActiveEmployee.level === "Supervisor"
+                          ? `Sebagai Supervisor ${currentActiveEmployee.dept}, Anda bertanggung jawab menyetujui atau menolak cuti staff di departemen Anda.`
+                          : currentActiveEmployee.level === "Director"
+                          ? "Sebagai Direktur Utama, Anda meninjau cuti dari General Manager dan memiliki hak supervisi global."
+                          : "Hanya atasan langsung (Supervisor, GM, Direksi) yang memiliki wewenang menyetujui cuti bawahan."}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-white/70 font-medium">Bawahan Langsung:</span>
+                      <span className="font-mono text-xs font-bold text-emerald-400 bg-emerald-950 px-2.5 py-1 rounded-lg border border-emerald-900/60">
+                        {directSubordinates.length} Orang
+                      </span>
+                    </div>
+                  </div>
+
+                  {!canApproveLeaves && directSubordinates.length === 0 ? (
+                    <div className="bg-[#021008] rounded-2xl p-8 border border-emerald-900/60 text-center space-y-2">
+                      <div className="text-3xl">ℹ️</div>
+                      <h5 className="font-bold text-white text-sm">Akses Khusus Atasan Langsung</h5>
+                      <p className="text-xs text-white/60 max-w-md mx-auto">
+                        Akun aktif Anda ({currentActiveEmployee.name} - {currentActiveEmployee.role}) berstatus Staff dan tidak memiliki bawahan langsung. Pengajuan cuti Anda diproses oleh atasan langsung Anda di tab sebelah.
+                      </p>
+                    </div>
+                  ) : subordinateLeaves.length === 0 ? (
+                    <div className="bg-[#021008] rounded-2xl p-8 border border-emerald-900/60 text-center space-y-2">
+                      <div className="text-3xl">🎉</div>
+                      <h5 className="font-bold text-white text-sm">Tidak Ada Permohonan Cuti Pending</h5>
+                      <p className="text-xs text-white/60 max-w-md mx-auto">
+                        Semua permohonan cuti dari staf bawahan langsung Anda telah selesai diproses.
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="bg-gradient-to-br from-[#062417] to-[#021008] rounded-2xl p-5 border border-emerald-900/60 overflow-x-auto shadow-xl">
+                      <table className="w-full text-left text-xs">
+                        <thead>
+                          <tr className="border-b border-emerald-900/60 text-white/60 text-[10px] uppercase font-bold">
+                            <th className="pb-3">Karyawan Pemohon</th>
+                            <th className="pb-3">Departemen</th>
+                            <th className="pb-3">Jenis Cuti</th>
+                            <th className="pb-3">Tanggal Pelaksanaan</th>
+                            <th className="pb-3">Durasi</th>
+                            <th className="pb-3">Alasan Pengajuan</th>
+                            <th className="pb-3">Status</th>
+                            <th className="pb-3 text-right">Aksi Persetujuan Atasan</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-emerald-900/30">
+                          {subordinateLeaves.map((c) => {
+                            const empData = employees.find((e) => e.id === c.employeeId);
+                            return (
+                              <tr key={c.id} className="hover:bg-emerald-950/20 transition-colors">
+                                <td className="py-3">
+                                  <div className="flex items-center gap-2.5">
+                                    <div className="w-8 h-8 rounded-full bg-emerald-900/80 border border-emerald-500/40 flex items-center justify-center font-bold text-white text-[11px]">
+                                      {empData?.avatar || c.name.slice(0, 2).toUpperCase()}
+                                    </div>
+                                    <div>
+                                      <div className="font-bold text-white">{c.name}</div>
+                                      <div className="text-[10px] text-white/50 font-mono">
+                                        {empData?.role || c.dept} • {empData?.nik || c.employeeId}
+                                      </div>
+                                    </div>
+                                  </div>
+                                </td>
+                                <td className="py-3 font-black text-white">{c.dept}</td>
+                                <td className="py-3">
+                                  <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-white/5 text-emerald-300 border border-emerald-900/60">
+                                    {c.type}
+                                  </span>
+                                </td>
+                                <td className="py-3 font-mono text-white text-[11px]">
+                                  {c.start} s/d {c.end}
+                                </td>
+                                <td className="py-3 font-extrabold text-white text-[11px]">{c.days} Hari</td>
+                                <td className="py-3 text-white/70 text-[11px] max-w-[200px]">
+                                  {c.reason}
+                                </td>
+                                <td className="py-3">
+                                  <span
+                                    className={`px-2.5 py-1 rounded-lg text-[10px] font-bold inline-flex items-center gap-1 ${
+                                      c.status === "DISETUJUI"
+                                        ? "bg-emerald-500/20 text-emerald-300 border border-emerald-400/40"
+                                        : c.status === "MENUNGGU"
+                                        ? "bg-amber-500/20 text-amber-300 border border-amber-400/40 animate-pulse"
+                                        : "bg-red-500/20 text-red-300 border border-red-400/40"
+                                    }`}
+                                  >
+                                    {c.status}
+                                  </span>
+                                </td>
+                                <td className="py-3 text-right">
+                                  {c.status === "MENUNGGU" ? (
+                                    <div className="flex items-center justify-end gap-2">
+                                      <button
+                                        onClick={() => handleApproveLeave(c.id)}
+                                        className="px-3 py-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-extrabold text-[11px] flex items-center gap-1 shadow-md shadow-emerald-500/20 transition-all hover:scale-105 active:scale-95"
+                                        title="Setujui permohonan cuti"
+                                      >
+                                        <Check className="w-3.5 h-3.5" />
+                                        Setujui
+                                      </button>
+                                      <button
+                                        onClick={() => handleRejectLeave(c.id)}
+                                        className="px-3 py-1.5 rounded-xl bg-red-500/20 hover:bg-red-500 text-red-300 hover:text-white border border-red-500/40 font-bold text-[11px] flex items-center gap-1 transition-all hover:scale-105 active:scale-95"
+                                        title="Tolak permohonan cuti"
+                                      >
+                                        <X className="w-3.5 h-3.5" />
+                                        Tolak
+                                      </button>
+                                    </div>
+                                  ) : (
+                                    <div className="text-right">
+                                      <span className="text-[10px] text-white/50 font-mono block">
+                                        {c.approvedAt || "Selesai ditinjau"}
+                                      </span>
+                                      <span className="text-[9px] text-white/40 block">
+                                        Oleh: {c.approverName || "Atasan"}
+                                      </span>
+                                    </div>
+                                  )}
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           )}
 
@@ -3905,6 +4401,192 @@ export default function Home() {
                   className="flex-1 py-2.5 rounded-xl bg-emerald-500 text-black font-black hover:bg-emerald-400"
                 >
                   Perbarui Password
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================= */}
+      {/* MODAL 4: FORM PENGAJUAN CUTI MANDIRI (SELF-SERVICE)       */}
+      {/* ATASAN LANGSUNG TERHUBUNG OTOMATIS & TERKUNCI (READ-ONLY) */}
+      {/* ========================================================= */}
+      {showApplyLeaveModal && (
+        <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-[#021008] border border-emerald-500/40 rounded-3xl p-7 max-w-lg w-full shadow-2xl space-y-5 my-8">
+            <div className="flex justify-between items-center border-b border-emerald-900/60 pb-3">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-2xl bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-lg">
+                  🏖️
+                </div>
+                <div>
+                  <span className="text-[10px] text-emerald-400 font-black uppercase tracking-wider block">
+                    SELF-SERVICE EMPLOYEE LEAVE
+                  </span>
+                  <h3 className="font-black text-white text-base">
+                    Formulir Pengajuan Cuti Mandiri
+                  </h3>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowApplyLeaveModal(false)}
+                className="text-white/60 hover:text-white transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleApplyLeaveSubmit} className="space-y-4 text-xs">
+              {/* Box Karyawan Pemohon */}
+              <div className="p-3.5 rounded-2xl bg-[#010804] border border-emerald-900/60 space-y-1">
+                <span className="text-[10px] text-white/50 font-bold uppercase block">Karyawan Pemohon</span>
+                <div className="flex justify-between items-center">
+                  <div>
+                    <span className="font-bold text-white text-sm block">{currentActiveEmployee.name}</span>
+                    <span className="text-[11px] text-emerald-400 font-mono">
+                      {currentActiveEmployee.nik} • {currentActiveEmployee.role} ({currentActiveEmployee.dept})
+                    </span>
+                  </div>
+                  <div className="text-right">
+                    <span className="text-[10px] text-white/50 block">Sisa Kuota:</span>
+                    <span className="font-extrabold text-teal-400 font-mono text-sm">{myRemainingQuota} Hari</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* ATASAN LANGSUNG (N+1) - READ-ONLY TEXTBOX TERKUNCI OTOMATIS */}
+              <div className="space-y-1.5 p-3 rounded-2xl bg-emerald-950/20 border border-emerald-500/30">
+                <div className="flex items-center justify-between">
+                  <label className="text-white font-bold flex items-center gap-1.5 text-xs">
+                    <Lock className="w-3.5 h-3.5 text-amber-400" />
+                    <span>Atasan Langsung Penyetuju (N+1)</span>
+                  </label>
+                  <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                    ⚡ Terhubung Otomatis
+                  </span>
+                </div>
+
+                <div className="relative">
+                  <input
+                    type="text"
+                    readOnly
+                    value={
+                      directSuperior
+                        ? `${directSuperior.name} — ${directSuperior.role} (${directSuperior.dept})`
+                        : "Ir. Hendra Gunawan — Direktur Utama (CEO)"
+                    }
+                    className="w-full bg-[#010804] border border-emerald-700/60 rounded-xl p-3 text-white font-semibold cursor-not-allowed select-none text-xs pl-3 pr-8 shadow-inner"
+                  />
+                  <div className="absolute right-3 top-1/2 -translate-y-1/2 text-white/40">
+                    🔒
+                  </div>
+                </div>
+                <p className="text-[10px] text-emerald-400/90 leading-tight">
+                  ✓ Sesuai hirarki sistem, permohonan ini otomatis dikirimkan ke atasan langsung Anda dan tidak dapat dialihkan manual.
+                </p>
+              </div>
+
+              {/* Pilihan Jenis Cuti */}
+              <div className="space-y-1.5">
+                <label className="text-white font-bold block text-xs">
+                  Jenis Cuti <span className="text-red-400">*</span>
+                </label>
+                <select
+                  value={newLeaveForm.type}
+                  onChange={(e) =>
+                    setNewLeaveForm((prev) => ({
+                      ...prev,
+                      type: e.target.value as "Tahunan" | "Sakit" | "Melahirkan" | "Khusus",
+                    }))
+                  }
+                  className="w-full bg-[#010804] border border-emerald-900/80 rounded-xl p-3 text-white font-medium focus:border-emerald-400 focus:outline-none"
+                >
+                  <option value="Tahunan">🏖️ Cuti Tahunan (Potong Kuota Tahunan)</option>
+                  <option value="Sakit">🏥 Cuti Sakit (Rekomendasi Dokter)</option>
+                  <option value="Melahirkan">👶 Cuti Melahirkan (Maternity Leave)</option>
+                  <option value="Khusus">⭐ Cuti Khusus (Pernikahan, Duka, Keperluan Mendesak)</option>
+                </select>
+              </div>
+
+              {/* Rentang Tanggal Mulai & Selesai */}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <label className="text-white font-bold block text-xs">
+                    Tanggal Mulai <span className="text-red-400">*</span>
+                  </label>
+                  <input
+                    type="date"
+                    required
+                    value={newLeaveForm.start}
+                    onChange={(e) =>
+                      setNewLeaveForm((prev) => ({ ...prev, start: e.target.value }))
+                    }
+                    className="w-full bg-[#010804] border border-emerald-900/80 rounded-xl p-3 text-white font-mono focus:border-emerald-400 focus:outline-none"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-white font-bold block text-xs">
+                    Tanggal Selesai <span className="text-red-400">*</span>
+                  </label>
+                  <input
+                    type="date"
+                    required
+                    value={newLeaveForm.end}
+                    onChange={(e) =>
+                      setNewLeaveForm((prev) => ({ ...prev, end: e.target.value }))
+                    }
+                    className="w-full bg-[#010804] border border-emerald-900/80 rounded-xl p-3 text-white font-mono focus:border-emerald-400 focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              {/* Live Duration Calculation Helper */}
+              {(() => {
+                const s = new Date(newLeaveForm.start);
+                const e = new Date(newLeaveForm.end);
+                const diffDays = Math.max(1, Math.ceil((e.getTime() - s.getTime()) / (1000 * 60 * 60 * 24)) + 1);
+                return (
+                  <div className="bg-[#010804] p-2.5 rounded-xl border border-emerald-900/60 flex items-center justify-between text-xs">
+                    <span className="text-white/60">Estimasi Durasi Pengajuan:</span>
+                    <span className="font-extrabold text-white font-mono bg-emerald-950 px-2 py-0.5 rounded border border-emerald-800">
+                      {diffDays} Hari Kalender
+                    </span>
+                  </div>
+                );
+              })()}
+
+              {/* Alasan Pengajuan Cuti */}
+              <div className="space-y-1.5">
+                <label className="text-white font-bold block text-xs">
+                  Alasan Pengajuan Cuti <span className="text-red-400">*</span>
+                </label>
+                <textarea
+                  required
+                  rows={3}
+                  value={newLeaveForm.reason}
+                  onChange={(e) =>
+                    setNewLeaveForm((prev) => ({ ...prev, reason: e.target.value }))
+                  }
+                  placeholder="Contoh: Mengurus keperluan keluarga mendesak di luar kota / Istirahat pemulihan kesehatan..."
+                  className="w-full bg-[#010804] border border-emerald-900/80 rounded-xl p-3 text-white placeholder-white/40 focus:border-emerald-400 focus:outline-none text-xs"
+                />
+              </div>
+
+              {/* Tombol Aksi */}
+              <div className="pt-2 flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => setShowApplyLeaveModal(false)}
+                  className="flex-1 py-3 rounded-2xl bg-white/10 text-white font-bold hover:bg-white/20 transition-all"
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 py-3 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-black font-black transition-all shadow-lg shadow-emerald-500/20 hover:scale-[1.02] active:scale-[0.98]"
+                >
+                  Kirim Pengajuan Cuti
                 </button>
               </div>
             </form>
