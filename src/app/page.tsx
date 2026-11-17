@@ -246,10 +246,11 @@ export default function Home() {
   }, []);
 
   // ─────────────────────────────────────────────────────────────
-  // 6 DEPARTEMEN STANDAR (SESUAI GAMBAR REFERENSI USER)
-  // HR, Finance, Marketing, Sales, Operations, IT
+  // 7 DEPARTEMEN PERUSAHAAN (TERMASUK DIREKSI)
+  // Direksi, HR, Finance, Marketing, Sales, Operations, IT
   // ─────────────────────────────────────────────────────────────
-  const standardDepartments: { id: "HR" | "Finance" | "Marketing" | "Sales" | "Operations" | "IT"; name: string; supervisorRole: string; staffRole: string; icon: string; desc: string }[] = [
+  const standardDepartments: { id: DepartmentType; name: string; supervisorRole: string; staffRole: string; icon: string; desc: string }[] = [
+    { id: "Direksi", name: "Direksi", supervisorRole: "General Manager (GM)", staffRole: "Direktur Utama (CEO)", icon: "🏛️", desc: "Kepemimpinan eksekutif, arah kebijakan strategis & pengawasan seluruh divisi" },
     { id: "HR", name: "HR (Human Resources)", supervisorRole: "HR Supervisor", staffRole: "HR Staff", icon: "👥", desc: "Pengelolaan SDM, pendaftaran akun karyawan, cuti & data jabatan" },
     { id: "Finance", name: "Finance", supervisorRole: "Finance Supervisor", staffRole: "Finance Staff", icon: "💰", desc: "Manajemen keuangan, kas kantor, invoice & pembukuan" },
     { id: "Marketing", name: "Marketing", supervisorRole: "Marketing Supervisor", staffRole: "Marketing Staff", icon: "📈", desc: "Pemasaran digital, branding perusahaan & pertumbuhan audiens" },
@@ -1470,7 +1471,7 @@ export default function Home() {
       const hasCeo = employees.some((e) => e.level === "Director");
       const hasGm = employees.some((e) => e.level === "GeneralManager");
       const availableSpvDepts = standardDepartments.filter(
-        (d) => !employees.some((e) => e.dept === d.id && e.level === "Supervisor")
+        (d) => d.id !== "Direksi" && !employees.some((e) => e.dept === d.id && e.level === "Supervisor")
       );
 
       let targetLevel: HierarchyLevel = "Supervisor";
@@ -1842,7 +1843,7 @@ export default function Home() {
   const menuMeta: Record<string, { title: string; subtitle: string; icon: string }> = {
     dashboard: { title: "DASHBOARD", subtitle: `Ringkasan Data AbsenKu`, icon: "🏠" },
     karyawan: { title: "KARYAWAN", subtitle: `Direktori Karyawan & Relasi Atasan-Bawahan (${visibleEmployees.length} Karyawan)`, icon: "👥" },
-    departemen: { title: "DEPARTEMEN", subtitle: "Struktur 6 Departemen Pokok (HR, Finance, Marketing, Sales, Operations, IT)", icon: "🏢" },
+    departemen: { title: "DEPARTEMEN", subtitle: "Struktur 7 Departemen Perusahaan (Direksi, HR, Finance, Marketing, Sales, Operations, IT)", icon: "🏢" },
     jabatan: { title: "JABATAN", subtitle: "Hirarki Jabatan 4 Tingkat: CEO → GM → Supervisor → Staff", icon: "💼" },
     kontrak: { title: "KONTRAK & LIFECYCLE", subtitle: "Status Kerja Karyawan: Tetap, Kontrak, Magang, DW", icon: "📄" },
     absensi: { title: "ABSENSI", subtitle: "Verifikasi Kehadiran Otomatis Real-Time (GPS & AI Liveness)", icon: "📍" },
@@ -2055,7 +2056,7 @@ export default function Home() {
                 <div className="mt-1 space-y-0.5 pl-3 border-l-2 border-emerald-900/60 ml-4">
                   {[
                     { id: "karyawan", label: "Karyawan", icon: "👥", badge: visibleEmployees.length },
-                    { id: "departemen", label: "Departemen", icon: "🏢", badge: 6 },
+                    { id: "departemen", label: "Departemen", icon: "🏢", badge: standardDepartments.length },
                     { id: "jabatan", label: "Jabatan", icon: "💼" },
                     { id: "kontrak", label: "Kontrak & Lifecycle", icon: "📄" },
                   ].map((item) => (
@@ -2667,13 +2668,13 @@ export default function Home() {
                     </div>
                   </div>
 
-                  {/* Grid 6 Departemen Sesuai Referensi Gambar */}
+                  {/* Grid 7 Departemen Sesuai Referensi Gambar */}
                   <div className="overflow-x-auto">
                     <table className="w-full text-left text-xs">
                       <thead>
                         <tr className="border-b border-emerald-900/60 text-white text-[11px] uppercase font-black">
                           <th className="py-2.5">Departemen</th>
-                          <th className="py-2.5">General Manager (Membawahi SPV)</th>
+                          <th className="py-2.5">Atasan (Pimpinan / GM)</th>
                           <th className="py-2.5">Supervisor (Atasan Langsung)</th>
                           <th className="py-2.5">Staff (Bawahan)</th>
                           <th className="py-2.5">Wewenang Khusus</th>
@@ -2684,6 +2685,8 @@ export default function Home() {
                           const gm = employees.find((e) => e.level === "GeneralManager");
                           const spv = employees.find((e) => e.dept === dept.id && e.level === "Supervisor");
                           const stf = employees.filter((e) => e.dept === dept.id && e.level === "Staff");
+                          const isDireksi = dept.id === "Direksi";
+                          const ceo = employees.find((e) => e.level === "Director");
 
                           return (
                             <tr key={dept.id} className="hover:bg-emerald-950/20 transition-colors">
@@ -2692,25 +2695,29 @@ export default function Home() {
                                 <span className="text-sm font-extrabold text-white">{dept.name}</span>
                               </td>
                               <td className="py-3">
-                                <span className="font-bold text-sky-300 block">General Manager (GM)</span>
+                                <span className="font-bold text-sky-300 block">{isDireksi ? "Direktur Utama (CEO)" : "General Manager (GM)"}</span>
                                 <span className="text-[11px] text-white/80 font-medium">
-                                  {gm ? gm.name : "Belum Ditugaskan"}
+                                  {isDireksi ? (ceo ? ceo.name : "Ir. Hendra Gunawan") : (gm ? gm.name : "Belum Ditugaskan")}
                                 </span>
                               </td>
                               <td className="py-3">
-                                <span className="font-bold text-amber-300 block">{dept.supervisorRole}</span>
+                                <span className="font-bold text-amber-300 block">{isDireksi ? "General Manager (GM)" : dept.supervisorRole}</span>
                                 <span className="text-[11px] text-white/80 font-medium">
-                                  {spv ? spv.name : "Belum Ditugaskan"}
+                                  {isDireksi ? (gm ? gm.name : "Belum Ditugaskan") : (spv ? spv.name : "Belum Ditugaskan")}
                                 </span>
                               </td>
                               <td className="py-3">
                                 <span className="font-bold text-emerald-400 block">{dept.staffRole}</span>
                                 <span className="text-[11px] text-white/80 font-medium">
-                                  {stf.length > 0 ? stf.map((s) => s.name).join(", ") : "Belum Ditugaskan"}
+                                  {stf.length > 0 ? stf.map((s) => s.name).join(", ") : (isDireksi ? "Pimpinan Eksekutif" : "Belum Ditugaskan")}
                                 </span>
                               </td>
                               <td className="py-3 text-[11px] text-white/70 max-w-xs">
-                                {dept.id === "HR" ? (
+                                {dept.id === "Direksi" ? (
+                                  <span className="px-2.5 py-1 rounded-lg bg-amber-500/20 text-amber-200 border border-amber-500/30 font-semibold block">
+                                    👑 Pengambil kebijakan strategis tertinggi perusahaan & supervisi seluruh divisi
+                                  </span>
+                                ) : dept.id === "HR" ? (
                                   <span className="px-2.5 py-1 rounded-lg bg-pink-500/20 text-pink-200 border border-pink-500/30 font-semibold block">
                                     👔 Membuat akun, daftarkan karyawan, atur jabatan & departemen
                                   </span>
@@ -2892,7 +2899,7 @@ export default function Home() {
                     onChange={(e) => setFilterDept(e.target.value)}
                     className="bg-[#010804] border border-emerald-900/60 rounded-xl px-3 py-1.5 text-xs text-white"
                   >
-                    <option value="ALL">Semua Departemen (6)</option>
+                    <option value="ALL">Semua Departemen ({standardDepartments.length})</option>
                     {standardDepartments.map((d) => (
                       <option key={d.id} value={d.id}>
                         {d.name}
@@ -3071,9 +3078,9 @@ export default function Home() {
           {activeMenu === "departemen" && (
             <div className="space-y-5">
               <div>
-                <h3 className="font-bold text-white text-base">6 Departemen Perusahaan</h3>
+                <h3 className="font-bold text-white text-base">7 Departemen Perusahaan</h3>
                 <p className="text-xs text-white/70">
-                  HR dan IT tetap menjadi departemen fungsional, bukan level jabatan tambahan.
+                  Direksi sebagai pimpinan eksekutif dan 6 departemen fungsional & operasional perusahaan.
                 </p>
               </div>
 
@@ -3081,6 +3088,9 @@ export default function Home() {
                 {standardDepartments.map((d) => {
                   const staffCount = employees.filter((e) => e.dept === d.id).length;
                   const spv = employees.find((e) => e.dept === d.id && e.level === "Supervisor");
+                  const ceo = employees.find((e) => e.level === "Director");
+                  const gm = employees.find((e) => e.level === "GeneralManager");
+                  const isDireksi = d.id === "Direksi";
 
                   return (
                     <div key={d.id} className="bg-gradient-to-br from-[#072619] to-[#010e07] rounded-2xl p-5 border border-emerald-900/60 shadow-lg space-y-3">
@@ -3096,14 +3106,20 @@ export default function Home() {
 
                       <div className="bg-[#010804] p-3 rounded-xl border border-emerald-900/40 space-y-1.5 text-xs">
                         <div className="flex justify-between">
-                          <span className="text-white/60">General Manager (GM):</span>
+                          <span className="text-white/60">Atasan:</span>
                           <span className="font-bold text-sky-300">
-                            {employees.find((e) => e.level === "GeneralManager")?.name || "Belum ada"}
+                            {isDireksi
+                              ? (ceo ? ceo.name : "Ir. Hendra Gunawan")
+                              : (gm ? gm.name : "Dr. Kartika Sari, S.E., M.M.")}
                           </span>
                         </div>
                         <div className="flex justify-between">
-                          <span className="text-white/60">Supervisor:</span>
-                          <span className="font-bold text-amber-300">{spv ? spv.name : "Belum ada"}</span>
+                          <span className="text-white/60">{isDireksi ? "General Manager (GM):" : "Supervisor:"}</span>
+                          <span className="font-bold text-amber-300">
+                            {isDireksi
+                              ? (gm ? gm.name : "Dr. Kartika Sari, S.E., M.M.")
+                              : (spv ? spv.name : "Belum ada")}
+                          </span>
                         </div>
                         <div className="flex justify-between">
                           <span className="text-white/60">Total Karyawan:</span>
@@ -3118,7 +3134,7 @@ export default function Home() {
                         }}
                         className="w-full py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-semibold transition-all text-center"
                       >
-                        Lihat Karyawan {d.id} ({staffCount}) →
+                        Lihat Karyawan {d.name} ({staffCount}) →
                       </button>
                     </div>
                   );
@@ -4830,7 +4846,7 @@ export default function Home() {
                   const hasCeo = employees.some((e) => e.level === "Director");
                   const hasGm = employees.some((e) => e.level === "GeneralManager");
                   const availableSpvDepts = standardDepartments.filter(
-                    (d) => !employees.some((e) => e.dept === d.id && e.level === "Supervisor")
+                    (d) => d.id !== "Direksi" && !employees.some((e) => e.dept === d.id && e.level === "Supervisor")
                   );
 
                   let targetLevel: HierarchyLevel = "Supervisor";
@@ -5137,7 +5153,7 @@ export default function Home() {
                           onChange={(e) => handleDeptChange(e.target.value as DepartmentType)}
                           className="w-full bg-[#021008] border border-amber-500/40 rounded-xl p-2.5 text-white font-bold focus:border-amber-400 focus:outline-none"
                         >
-                          {standardDepartments.map((d) => {
+                          {standardDepartments.filter((d) => d.id !== "Direksi").map((d) => {
                             const existingSpv = employees.find((e) => e.dept === d.id && e.level === "Supervisor");
                             return (
                               <option key={d.id} value={d.id} disabled={Boolean(existingSpv)}>
