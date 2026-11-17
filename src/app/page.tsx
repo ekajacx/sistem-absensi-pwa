@@ -62,8 +62,8 @@ import {
 // ─────────────────────────────────────────────────────────────
 // DATA TYPES
 // ─────────────────────────────────────────────────────────────
-type DepartmentType = "HR" | "Finance" | "Marketing" | "Sales" | "Operations" | "IT";
-type HierarchyLevel = "Director" | "Supervisor" | "Staff";
+type DepartmentType = "HR" | "Finance" | "Marketing" | "Sales" | "Operations" | "IT" | "Direksi";
+type HierarchyLevel = "Director" | "GeneralManager" | "Supervisor" | "Staff";
 type ContractType = "Tetap" | "Kontrak" | "Magang" | "DW";
 
 interface Employee {
@@ -147,7 +147,7 @@ interface SystemUser {
   employeeId: string;
   name: string;
   email: string;
-  role: "Super Admin" | "HR Supervisor" | "HR Staff" | "IT Supervisor" | "IT Staff" | "Supervisor" | "Staff";
+  role: "Super Admin" | "General Manager" | "HR Supervisor" | "HR Staff" | "IT Supervisor" | "IT Staff" | "Supervisor" | "Staff";
   dept: string;
   lastLogin: string;
   status: "AKTIF" | "NON-AKTIF";
@@ -244,7 +244,7 @@ export default function Home() {
   // 6 DEPARTEMEN STANDAR (SESUAI GAMBAR REFERENSI USER)
   // HR, Finance, Marketing, Sales, Operations, IT
   // ─────────────────────────────────────────────────────────────
-  const standardDepartments: { id: DepartmentType; name: string; supervisorRole: string; staffRole: string; icon: string; desc: string }[] = [
+  const standardDepartments: { id: "HR" | "Finance" | "Marketing" | "Sales" | "Operations" | "IT"; name: string; supervisorRole: string; staffRole: string; icon: string; desc: string }[] = [
     { id: "HR", name: "HR (Human Resources)", supervisorRole: "HR Supervisor", staffRole: "HR Staff", icon: "👥", desc: "Pengelolaan SDM, pendaftaran akun karyawan, cuti & data jabatan" },
     { id: "Finance", name: "Finance", supervisorRole: "Finance Supervisor", staffRole: "Finance Staff", icon: "💰", desc: "Manajemen keuangan, kas kantor, invoice & pembukuan" },
     { id: "Marketing", name: "Marketing", supervisorRole: "Marketing Supervisor", staffRole: "Marketing Staff", icon: "📈", desc: "Pemasaran digital, branding perusahaan & pertumbuhan audiens" },
@@ -255,10 +255,10 @@ export default function Home() {
 
   // ─────────────────────────────────────────────────────────────
   // EMPLOYEES MASTER DATA
-  // Sesuai Hirarki: Supervisor membawahi Staff di tiap departemen
+  // Hirarki 4 Tingkat: CEO (1) → GM (1) → Supervisor (6 Dept) → Staff
   // ─────────────────────────────────────────────────────────────
   const [employees, setEmployees] = useState<Employee[]>([
-    // Direktur Utama
+    // 1. Direktur Utama (CEO) — Pimpinan Tertinggi
     {
       id: "emp-ceo",
       nik: "2024-0001",
@@ -267,7 +267,7 @@ export default function Home() {
       phone: "+62 811-9876-0001",
       address: "Jl. Sudirman No. 10, Jakarta Pusat",
       birthDate: "1978-04-12",
-      dept: "HR",
+      dept: "Direksi",
       role: "Direktur Utama (CEO)",
       level: "Director",
       shiftId: "shift-1",
@@ -284,7 +284,34 @@ export default function Home() {
       isFirstLogin: false,
       temporaryPassword: null,
     },
-    // 1. HR DEPT
+    // 2. General Manager (GM) — Tepat 1 Orang, Membawahi Seluruh 6 Supervisor
+    {
+      id: "emp-gm",
+      nik: "2024-0010",
+      name: "Dr. Kartika Sari, S.E., M.M.",
+      email: "kartika.gm@perusahaan.id",
+      phone: "+62 811-1000-0010",
+      address: "Jl. Gatot Subroto No. 55, Jakarta Selatan",
+      birthDate: "1980-03-15",
+      dept: "Direksi",
+      role: "General Manager (GM)",
+      level: "GeneralManager",
+      shiftId: "shift-1",
+      contractType: "Tetap",
+      startDate: "2024-01-15",
+      endDate: null,
+      joinDate: "15 Jan 2024",
+      tenure: "2 Thn 10 Bln",
+      faceRegistered: true,
+      faceScore: 98.5,
+      status: "Aktif",
+      avatar: "KS",
+      managerId: "emp-ceo", // Lapor langsung ke CEO
+      isFirstLogin: false,
+      temporaryPassword: null,
+    },
+    // 3. SUPERVISOR & STAFF PER DEPARTEMEN (Semua Supervisor Melapor ke GM)
+    // HR DEPT
     {
       id: "emp-hr-spv",
       nik: "2026-0101",
@@ -306,7 +333,7 @@ export default function Home() {
       faceScore: 98.1,
       status: "Aktif",
       avatar: "SR",
-      managerId: "emp-ceo",
+      managerId: "emp-gm", // Lapor ke General Manager
       isFirstLogin: false,
       temporaryPassword: null,
     },
@@ -335,7 +362,7 @@ export default function Home() {
       isFirstLogin: false,
       temporaryPassword: null,
     },
-    // 2. FINANCE DEPT
+    // FINANCE DEPT
     {
       id: "emp-fin-spv",
       nik: "2026-0201",
@@ -357,7 +384,7 @@ export default function Home() {
       faceScore: 95.8,
       status: "Aktif",
       avatar: "AS",
-      managerId: "emp-ceo",
+      managerId: "emp-gm", // Lapor ke General Manager
       isFirstLogin: false,
       temporaryPassword: null,
     },
@@ -386,7 +413,7 @@ export default function Home() {
       isFirstLogin: false,
       temporaryPassword: null,
     },
-    // 3. MARKETING DEPT
+    // MARKETING DEPT
     {
       id: "emp-mkt-spv",
       nik: "2026-0301",
@@ -408,7 +435,7 @@ export default function Home() {
       faceScore: 96.0,
       status: "Aktif",
       avatar: "DL",
-      managerId: "emp-ceo",
+      managerId: "emp-gm", // Lapor ke General Manager
       isFirstLogin: false,
       temporaryPassword: null,
     },
@@ -437,7 +464,7 @@ export default function Home() {
       isFirstLogin: false,
       temporaryPassword: null,
     },
-    // 4. SALES DEPT
+    // SALES DEPT
     {
       id: "emp-sls-spv",
       nik: "2026-0401",
@@ -459,7 +486,7 @@ export default function Home() {
       faceScore: 95.1,
       status: "Aktif",
       avatar: "RP",
-      managerId: "emp-ceo",
+      managerId: "emp-gm", // Lapor ke General Manager
       isFirstLogin: false,
       temporaryPassword: null,
     },
@@ -488,7 +515,7 @@ export default function Home() {
       isFirstLogin: false,
       temporaryPassword: null,
     },
-    // 5. OPERATIONS DEPT
+    // OPERATIONS DEPT
     {
       id: "emp-ops-spv",
       nik: "2026-0501",
@@ -510,7 +537,7 @@ export default function Home() {
       faceScore: 94.0,
       status: "Aktif",
       avatar: "RH",
-      managerId: "emp-ceo",
+      managerId: "emp-gm", // Lapor ke General Manager
       isFirstLogin: false,
       temporaryPassword: null,
     },
@@ -539,7 +566,7 @@ export default function Home() {
       isFirstLogin: false,
       temporaryPassword: null,
     },
-    // 6. IT DEPT
+    // IT DEPT
     {
       id: "emp-it-spv",
       nik: "2026-0601",
@@ -561,7 +588,7 @@ export default function Home() {
       faceScore: 96.4,
       status: "Aktif",
       avatar: "BP",
-      managerId: "emp-ceo",
+      managerId: "emp-gm", // Lapor ke General Manager
       isFirstLogin: false,
       temporaryPassword: null,
     },
@@ -653,6 +680,7 @@ export default function Home() {
   // System Users State
   const [users, setUsers] = useState<SystemUser[]>([
     { id: "usr-0", employeeId: "emp-ceo", name: "Ir. Hendra Gunawan", email: "hendra@perusahaan.id", role: "Super Admin", dept: "Direksi", lastLogin: "17 Nov 2026 08:00", status: "AKTIF", isFirstLogin: false, temporaryPassword: null },
+    { id: "usr-gm", employeeId: "emp-gm", name: "Dr. Kartika Sari", email: "kartika.gm@perusahaan.id", role: "General Manager", dept: "Direksi", lastLogin: "17 Nov 2026 08:10", status: "AKTIF", isFirstLogin: false, temporaryPassword: null },
     { id: "usr-hr-1", employeeId: "emp-hr-spv", name: "Siti Rahmawati", email: "siti.hr@perusahaan.id", role: "HR Supervisor", dept: "HR", lastLogin: "17 Nov 2026 09:15", status: "AKTIF", isFirstLogin: false, temporaryPassword: null },
     { id: "usr-hr-2", employeeId: "emp-hr-stf", name: "Maya Indah", email: "maya.hr@perusahaan.id", role: "HR Staff", dept: "HR", lastLogin: "17 Nov 2026 08:30", status: "AKTIF", isFirstLogin: false, temporaryPassword: null },
     { id: "usr-it-1", employeeId: "emp-it-spv", name: "Budi Pratama", email: "budi.it@perusahaan.id", role: "IT Supervisor", dept: "IT", lastLogin: "17 Nov 2026 10:42", status: "AKTIF", isFirstLogin: false, temporaryPassword: null },
@@ -730,6 +758,15 @@ export default function Home() {
       "leave_approve_subordinate",
       "journal_review_team",
     ],
+    "General Manager": [
+      "dash_global",
+      "dash_team",
+      "att_scan_self",
+      "att_team",
+      "att_all",
+      "leave_approve_subordinate",
+      "journal_review_team",
+    ],
     Staff: [
       "att_scan_self",
     ],
@@ -765,6 +802,8 @@ export default function Home() {
       ? "IT Supervisor"
       : currentActiveEmployee.role === "IT Staff"
       ? "IT Staff"
+      : currentActiveEmployee.level === "GeneralManager"
+      ? "General Manager"
       : currentActiveEmployee.level === "Supervisor"
       ? "Supervisor"
       : "Staff";
@@ -788,9 +827,13 @@ export default function Home() {
     if (activePerspective === "admin" || currentRoleName === "Super Admin" || currentRoleName === "HR Supervisor") {
       return employees; // HR Supervisor & Admin dapat melihat seluruh direktori untuk urusan SDM
     }
+    if (currentActiveEmployee.level === "GeneralManager") {
+      // GM membawahi seluruh 6 Supervisor & seluruh Staff operasional
+      return employees;
+    }
     if (currentActiveEmployee.level === "Supervisor") {
       // Supervisor hanya melihat dirinya + staf di departemennya
-      return employees.filter((e) => e.dept === currentActiveEmployee.dept);
+      return employees.filter((e) => e.dept === currentActiveEmployee.dept && (e.level === "Staff" || e.id === currentActiveEmployee.id));
     }
     // Staff hanya melihat dirinya sendiri
     return employees.filter((e) => e.id === currentActiveEmployee.id);
@@ -837,28 +880,117 @@ export default function Home() {
     superiorName: string;
   } | null>(null);
 
-  // Form State: Pendaftaran Karyawan Baru
-  const [newEmployeeForm, setNewEmployeeForm] = useState({
+  // Form State: Pendaftaran Karyawan (Pemisahan: Tambah Staff vs Tambah Atasan)
+  const [addRegistrationType, setAddRegistrationType] = useState<"staff" | "atasan">("staff");
+
+  interface NewEmployeeFormData {
+    nik: string;
+    name: string;
+    email: string;
+    phone: string;
+    address: string;
+    birthDate: string;
+    dept: DepartmentType;
+    level: HierarchyLevel;
+    managerId: string | null;
+    shiftId: string;
+    contractType: ContractType;
+    startDate: string;
+    endDate?: string | null;
+  }
+
+  const [newEmployeeForm, setNewEmployeeForm] = useState<NewEmployeeFormData>({
     nik: "",
     name: "",
     email: "",
     phone: "",
     address: "",
     birthDate: "1998-05-14",
-    dept: "IT" as DepartmentType,
-    level: "Staff" as HierarchyLevel,
-    managerId: "emp-it-spv", // Pre-linked ke IT Supervisor
+    dept: "HR",
+    level: "Staff",
+    managerId: "emp-hr-spv", // Pre-linked ke HR Supervisor
     shiftId: "shift-1",
-    contractType: "Kontrak" as ContractType,
+    contractType: "Kontrak",
     startDate: "2026-11-20",
     endDate: "2027-11-20",
   });
 
+  const openAddEmployeeModal = (type: "staff" | "atasan" = "staff") => {
+    setAddRegistrationType(type);
+    if (type === "staff") {
+      const hrSpv = employees.find((e) => e.dept === "HR" && e.level === "Supervisor");
+      setNewEmployeeForm({
+        nik: "",
+        name: "",
+        email: "",
+        phone: "",
+        address: "",
+        birthDate: "1998-05-14",
+        dept: "HR",
+        level: "Staff",
+        managerId: hrSpv ? hrSpv.id : "",
+        shiftId: "shift-1",
+        contractType: "Kontrak",
+        startDate: "2026-11-20",
+        endDate: "2027-11-20",
+      });
+    } else {
+      const hasCeo = employees.some((e) => e.level === "Director");
+      const hasGm = employees.some((e) => e.level === "GeneralManager");
+      const availableSpvDepts = standardDepartments.filter(
+        (d) => !employees.some((e) => e.dept === d.id && e.level === "Supervisor")
+      );
+
+      let targetLevel: HierarchyLevel = "Supervisor";
+      let targetDept: DepartmentType = availableSpvDepts[0]?.id || "HR";
+      let targetMgr: string | null =
+        employees.find((e) => e.level === "GeneralManager")?.id ||
+        employees.find((e) => e.level === "Director")?.id ||
+        null;
+
+      if (!hasCeo) {
+        targetLevel = "Director";
+        targetDept = "Direksi";
+        targetMgr = null;
+      } else if (!hasGm) {
+        targetLevel = "GeneralManager";
+        targetDept = "Direksi";
+        targetMgr = employees.find((e) => e.level === "Director")?.id || null;
+      }
+
+      setNewEmployeeForm({
+        nik: "",
+        name: "",
+        email: "",
+        phone: "",
+        address: "",
+        birthDate: "1988-04-12",
+        dept: targetDept,
+        level: targetLevel,
+        managerId: targetMgr,
+        shiftId: "shift-1",
+        contractType: "Tetap",
+        startDate: "2026-11-20",
+        endDate: null,
+      });
+    }
+    setShowAddEmployeeModal(true);
+  };
+
   const handleDeptChange = (newDept: DepartmentType) => {
-    let targetMgrId = "emp-ceo";
+    let targetMgrId: string | null = "emp-ceo";
     if (newEmployeeForm.level === "Staff") {
       const spv = employees.find((e) => e.dept === newDept && e.level === "Supervisor");
-      if (spv) targetMgrId = spv.id;
+      targetMgrId = spv ? spv.id : "";
+    } else if (newEmployeeForm.level === "Supervisor") {
+      const gm = employees.find((e) => e.level === "GeneralManager");
+      const ceo = employees.find((e) => e.level === "Director");
+      targetMgrId = gm ? gm.id : (ceo ? ceo.id : null);
+    } else if (newEmployeeForm.level === "GeneralManager") {
+      const ceo = employees.find((e) => e.level === "Director");
+      targetMgrId = ceo ? ceo.id : null;
+    } else {
+      targetMgrId = null;
     }
     setNewEmployeeForm((prev) => ({
       ...prev,
@@ -868,14 +1000,29 @@ export default function Home() {
   };
 
   const handleLevelChange = (newLevel: HierarchyLevel) => {
-    let targetMgrId = "emp-ceo";
+    let targetMgrId: string | null = null;
+    let targetDept = newEmployeeForm.dept;
+
     if (newLevel === "Staff") {
       const spv = employees.find((e) => e.dept === newEmployeeForm.dept && e.level === "Supervisor");
-      if (spv) targetMgrId = spv.id;
+      targetMgrId = spv ? spv.id : "";
+    } else if (newLevel === "Supervisor") {
+      const gm = employees.find((e) => e.level === "GeneralManager");
+      const ceo = employees.find((e) => e.level === "Director");
+      targetMgrId = gm ? gm.id : (ceo ? ceo.id : null);
+    } else if (newLevel === "GeneralManager") {
+      targetDept = "Direksi";
+      const ceo = employees.find((e) => e.level === "Director");
+      targetMgrId = ceo ? ceo.id : null;
+    } else if (newLevel === "Director") {
+      targetDept = "Direksi";
+      targetMgrId = null;
     }
+
     setNewEmployeeForm((prev) => ({
       ...prev,
       level: newLevel,
+      dept: targetDept,
       managerId: targetMgrId,
     }));
   };
@@ -897,6 +1044,11 @@ export default function Home() {
 
   // ─────────────────────────────────────────────────────────────
   // ACTIONS: REGISTRASI KARYAWAN & USER OTOMATIS
+  // Aturan Hirarki:
+  // - CEO: Maksimal 1
+  // - GM: Maksimal 1 (Membawahi Seluruh Supervisor)
+  // - Supervisor: Maksimal 1 per departemen (Membawahi Staff departemennya)
+  // - Staff: Melapor ke Supervisor departemennya
   // ─────────────────────────────────────────────────────────────
   const handleRegisterEmployeeSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -905,24 +1057,69 @@ export default function Home() {
       return;
     }
 
+    // 1. Validasi Kuota CEO: Hanya boleh ada 1 CEO
+    if (newEmployeeForm.level === "Director" && employees.some((emp) => emp.level === "Director")) {
+      const existingCeo = employees.find((emp) => emp.level === "Director");
+      showToast(`Gagal: Posisi Direktur Utama (CEO) sudah terisi oleh ${existingCeo?.name}!`, "error");
+      return;
+    }
+
+    // 2. Validasi Kuota GM: Hanya boleh ada 1 General Manager
+    if (newEmployeeForm.level === "GeneralManager" && employees.some((emp) => emp.level === "GeneralManager")) {
+      const existingGm = employees.find((emp) => emp.level === "GeneralManager");
+      showToast(`Gagal: Posisi General Manager (GM) sudah terisi oleh ${existingGm?.name}!`, "error");
+      return;
+    }
+
+    // 3. Validasi Kuota Supervisor: Hanya boleh 1 Supervisor per departemen
+    if (
+      newEmployeeForm.level === "Supervisor" &&
+      employees.some((emp) => emp.dept === newEmployeeForm.dept && emp.level === "Supervisor")
+    ) {
+      const existingSpv = employees.find((emp) => emp.dept === newEmployeeForm.dept && emp.level === "Supervisor");
+      showToast(`Gagal: Departemen ${newEmployeeForm.dept} sudah memiliki Supervisor (${existingSpv?.name})!`, "error");
+      return;
+    }
+
+    // 4. Validasi Staff: Harus ada Supervisor di departemen tersebut
+    if (newEmployeeForm.level === "Staff") {
+      const deptSpv = employees.find((emp) => emp.dept === newEmployeeForm.dept && emp.level === "Supervisor");
+      if (!deptSpv) {
+        showToast(`Gagal: Departemen ${newEmployeeForm.dept} belum memiliki Supervisor. Daftarkan Supervisor terlebih dahulu!`, "error");
+        return;
+      }
+    }
+
     const randomTempPass = generateRandomPassword();
     const newEmpId = `emp-${Date.now()}`;
     const newUserId = `usr-${Date.now()}`;
 
-    // Otomatis tentukan Atasan Langsung & Nama Jabatan sesuai hirarki:
-    // Jika Level Staff: Atasannya adalah Supervisor dari departemen tersebut!
-    // Jika Level Supervisor: Atasannya adalah Direktur Utama (CEO)!
-    const deptInfo = standardDepartments.find((d) => d.id === newEmployeeForm.dept);
-    const calculatedRole =
-      newEmployeeForm.level === "Supervisor"
-        ? deptInfo?.supervisorRole || `${newEmployeeForm.dept} Supervisor`
-        : deptInfo?.staffRole || `${newEmployeeForm.dept} Staff`;
+    // Tentukan Role & Atasan Langsung Berdasarkan Level:
+    let calculatedRole = "";
+    let finalDept: DepartmentType = newEmployeeForm.dept;
+    let superiorEmployee: Employee | null = null;
 
-    const superiorEmployee =
-      employees.find((e) => e.id === newEmployeeForm.managerId) ||
-      (newEmployeeForm.level === "Staff"
-        ? employees.find((e) => e.dept === newEmployeeForm.dept && e.level === "Supervisor") || employees[0]
-        : employees[0]); // Supervisor melapor ke CEO
+    if (newEmployeeForm.level === "Director") {
+      calculatedRole = "Direktur Utama (CEO)";
+      finalDept = "Direksi";
+      superiorEmployee = null;
+    } else if (newEmployeeForm.level === "GeneralManager") {
+      calculatedRole = "General Manager (GM)";
+      finalDept = "Direksi";
+      superiorEmployee = employees.find((emp) => emp.level === "Director") || null; // GM melapor ke CEO
+    } else if (newEmployeeForm.level === "Supervisor") {
+      const deptInfo = standardDepartments.find((d) => d.id === newEmployeeForm.dept);
+      calculatedRole = deptInfo?.supervisorRole || `${newEmployeeForm.dept} Supervisor`;
+      superiorEmployee =
+        employees.find((emp) => emp.level === "GeneralManager") ||
+        employees.find((emp) => emp.level === "Director") ||
+        null; // SPV melapor ke GM
+    } else {
+      // Staff melapor ke Supervisor departemennya
+      const deptInfo = standardDepartments.find((d) => d.id === newEmployeeForm.dept);
+      calculatedRole = deptInfo?.staffRole || `${newEmployeeForm.dept} Staff`;
+      superiorEmployee = employees.find((emp) => emp.dept === newEmployeeForm.dept && emp.level === "Supervisor") || null;
+    }
 
     const effectiveEndDate = newEmployeeForm.contractType === "Tetap" ? null : newEmployeeForm.endDate;
 
@@ -934,7 +1131,7 @@ export default function Home() {
       phone: newEmployeeForm.phone || "+62 812-0000-0000",
       address: newEmployeeForm.address || "Jakarta",
       birthDate: newEmployeeForm.birthDate,
-      dept: newEmployeeForm.dept,
+      dept: finalDept,
       role: calculatedRole,
       level: newEmployeeForm.level,
       shiftId: newEmployeeForm.shiftId,
@@ -962,14 +1159,22 @@ export default function Home() {
       employeeId: newEmpId,
       name: newEmployeeForm.name,
       email: newEmployeeForm.email,
-      role: (calculatedRole.includes("HR")
-        ? calculatedRole
-        : calculatedRole.includes("IT")
-        ? calculatedRole
+      role: (newEmployeeForm.level === "Director"
+        ? "Super Admin"
+        : newEmployeeForm.level === "GeneralManager"
+        ? "General Manager"
+        : calculatedRole === "HR Supervisor"
+        ? "HR Supervisor"
+        : calculatedRole === "HR Staff"
+        ? "HR Staff"
+        : calculatedRole === "IT Supervisor"
+        ? "IT Supervisor"
+        : calculatedRole === "IT Staff"
+        ? "IT Staff"
         : newEmployeeForm.level === "Supervisor"
         ? "Supervisor"
         : "Staff") as any,
-      dept: newEmployeeForm.dept,
+      dept: finalDept,
       lastLogin: "Belum Pernah Login",
       status: "AKTIF",
       isFirstLogin: true,
@@ -984,17 +1189,17 @@ export default function Home() {
       nik: newEmployeeForm.nik,
       email: newEmployeeForm.email,
       tempPass: randomTempPass,
-      dept: newEmployeeForm.dept,
+      dept: finalDept,
       role: calculatedRole,
       contractType: newEmployeeForm.contractType,
       startDate: newEmployeeForm.startDate,
       endDate: effectiveEndDate,
-      superiorName: superiorEmployee ? superiorEmployee.name : "Direktur Utama",
+      superiorName: superiorEmployee ? `${superiorEmployee.name} (${superiorEmployee.role})` : "Pimpinan Tertinggi (Tanpa Atasan)",
     });
 
     setShowAddEmployeeModal(false);
     setShowCredentialsModal(true);
-    showToast(`✓ Karyawan ${newEmployeeForm.name} (${calculatedRole}) dan akun berhasil dibuat!`);
+    showToast(`✓ Berhasil mendaftarkan ${newEmployeeForm.name} sebagai ${calculatedRole}! Akun login telah dibuat.`);
 
     setNewEmployeeForm({
       nik: "",
@@ -1095,7 +1300,7 @@ export default function Home() {
     dashboard: { title: "DASHBOARD", subtitle: `Ringkasan Data AbsenKu`, icon: "🏠" },
     karyawan: { title: "KARYAWAN", subtitle: `Direktori Karyawan & Relasi Atasan-Bawahan (${visibleEmployees.length} Karyawan)`, icon: "👥" },
     departemen: { title: "DEPARTEMEN", subtitle: "Struktur 6 Departemen Pokok (HR, Finance, Marketing, Sales, Operations, IT)", icon: "🏢" },
-    jabatan: { title: "JABATAN", subtitle: "Hirarki Jabatan: Supervisor & Staff per Departemen", icon: "💼" },
+    jabatan: { title: "JABATAN", subtitle: "Hirarki Jabatan 4 Tingkat: CEO → GM → Supervisor → Staff", icon: "💼" },
     kontrak: { title: "KONTRAK & LIFECYCLE", subtitle: "Status Kerja Karyawan: Tetap, Kontrak, Magang, DW", icon: "📄" },
     absensi: { title: "ABSENSI", subtitle: "Verifikasi Kehadiran Otomatis Real-Time (GPS & AI Liveness)", icon: "📍" },
     "rekap-absensi": { title: "REKAP ABSENSI", subtitle: `Audit Log Kehadiran Terverifikasi (${attendances.length} Log Hari Ini)`, icon: "📊" },
@@ -1535,13 +1740,14 @@ export default function Home() {
                 className="bg-transparent text-white font-bold text-xs focus:outline-none cursor-pointer"
               >
                 <option value="admin" className="bg-[#021008] text-white">👑 Super Admin / Direksi (Semua Akses)</option>
-                <option value="emp-hr-spv" className="bg-[#021008] text-white">👩‍💼 Siti Rahmawati (HR Supervisor - Akses Registrasi SDM)</option>
-                <option value="emp-it-spv" className="bg-[#021008] text-white">💻 Budi Pratama (IT Supervisor - Akses Server & Geofence)</option>
+                <option value="emp-gm" className="bg-[#021008] text-white">🏢 Dr. Kartika Sari (General Manager — Membawahi 6 Supervisor)</option>
+                <option value="emp-hr-spv" className="bg-[#021008] text-white">👩‍💼 Siti Rahmawati (HR Supervisor — Akses Registrasi SDM)</option>
+                <option value="emp-it-spv" className="bg-[#021008] text-white">💻 Budi Pratama (IT Supervisor — Akses Server & Geofence)</option>
                 <option value="emp-mkt-spv" className="bg-[#021008] text-white">📈 Dewi Lestari (Marketing Supervisor)</option>
-                <option value="emp-it-stf" className="bg-[#021008] text-white">👤 Dimas Wicaksono (IT Staff - Bawahan Budi)</option>
-                <option value="emp-mkt-stf" className="bg-[#021008] text-white">👤 Aditya Pratama (Marketing Staff - Bawahan Dewi)</option>
+                <option value="emp-it-stf" className="bg-[#021008] text-white">👤 Dimas Wicaksono (IT Staff — Bawahan Budi)</option>
+                <option value="emp-mkt-stf" className="bg-[#021008] text-white">👤 Aditya Pratama (Marketing Staff — Bawahan Dewi)</option>
                 {employees
-                  .filter((emp) => !["emp-ceo", "emp-hr-spv", "emp-it-spv", "emp-mkt-spv", "emp-it-stf", "emp-mkt-stf"].includes(emp.id))
+                  .filter((emp) => !["emp-ceo", "emp-gm", "emp-hr-spv", "emp-it-spv", "emp-mkt-spv", "emp-it-stf", "emp-mkt-stf"].includes(emp.id))
                   .map((emp) => (
                     <option key={emp.id} value={emp.id} className="bg-[#021008] text-white">
                       👤 {emp.name} ({emp.role})
@@ -1618,13 +1824,22 @@ export default function Home() {
                   </div>
 
                   {hasPermission("emp_manage_hr") && (
-                    <button
-                      onClick={() => setShowAddEmployeeModal(true)}
-                      className="px-3.5 py-2 rounded-xl bg-emerald-500 text-black font-extrabold text-xs hover:bg-emerald-400 transition-all flex items-center gap-1.5 flex-shrink-0"
-                    >
-                      <UserPlus className="w-3.5 h-3.5" />
-                      <span>Daftarkan Karyawan</span>
-                    </button>
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      <button
+                        onClick={() => openAddEmployeeModal("staff")}
+                        className="px-3 py-1.5 rounded-xl bg-emerald-500 text-black font-extrabold text-xs hover:bg-emerald-400 transition-all flex items-center gap-1.5"
+                      >
+                        <UserPlus className="w-3.5 h-3.5" />
+                        <span>+ Tambah Staff</span>
+                      </button>
+                      <button
+                        onClick={() => openAddEmployeeModal("atasan")}
+                        className="px-3 py-1.5 rounded-xl bg-[#031d11] border border-amber-400/50 text-amber-300 font-extrabold text-xs hover:bg-emerald-950 transition-all flex items-center gap-1.5"
+                      >
+                        <ShieldCheck className="w-3.5 h-3.5 text-amber-300" />
+                        <span>+ Tambah Atasan</span>
+                      </button>
+                    </div>
                   )}
                 </div>
 
@@ -1857,15 +2072,42 @@ export default function Home() {
                     <div>
                       <h2 className="text-base font-black text-white flex items-center gap-2">
                         <Network className="w-5 h-5 text-emerald-400" />
-                        <span>Matriks Hirarki Organisasi (HR & IT sebagai Departemen)</span>
+                        <span>Matriks Hirarki Organisasi (4 Tingkat: CEO → GM → Supervisor → Staff)</span>
                       </h2>
                       <p className="text-xs text-white/70">
-                        Setiap departemen memiliki 1 Supervisor sebagai atasan langsung dan Staff sebagai pelaksana.
+                        1 CEO membawahi 1 General Manager. 1 GM membawahi seluruh 6 Supervisor. Masing-masing Supervisor membawahi Staff di departemennya.
                       </p>
                     </div>
                     <span className="px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-300 text-[10px] font-extrabold border border-emerald-500/30 self-start">
                       6 DEPARTEMEN AKTIF
                     </span>
+                  </div>
+
+                  {/* Executive Leadership Bar (1 CEO & 1 GM) */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-[#010804] p-4 rounded-2xl border border-emerald-900/60">
+                    <div className="flex items-center gap-3 p-3 rounded-xl bg-gradient-to-r from-amber-500/10 to-transparent border border-amber-500/30">
+                      <div className="w-12 h-12 rounded-xl bg-amber-500/20 text-amber-300 font-black text-lg flex items-center justify-center ring-1 ring-amber-400">
+                        HG
+                      </div>
+                      <div>
+                        <span className="text-[10px] font-black uppercase text-amber-400 block tracking-wider">PUCUK PIMPINAN • MAKS 1 CEO</span>
+                        <h4 className="font-extrabold text-white text-sm">Ir. Hendra Gunawan</h4>
+                        <p className="text-[11px] text-white/70">Direktur Utama (CEO) — Membawahi General Manager</p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-3 p-3 rounded-xl bg-gradient-to-r from-sky-500/10 to-transparent border border-sky-500/30">
+                      <div className="w-12 h-12 rounded-xl bg-sky-500/20 text-sky-300 font-black text-lg flex items-center justify-center ring-1 ring-sky-400">
+                        KS
+                      </div>
+                      <div>
+                        <span className="text-[10px] font-black uppercase text-sky-400 block tracking-wider">MANAJEMEN EKSEKUTIF • MAKS 1 GM</span>
+                        <h4 className="font-extrabold text-white text-sm">
+                          {employees.find((e) => e.level === "GeneralManager")?.name || "Dr. Kartika Sari, S.E., M.M."}
+                        </h4>
+                        <p className="text-[11px] text-white/70">General Manager (GM) — Membawahi Seluruh 6 Supervisor</p>
+                      </div>
+                    </div>
                   </div>
 
                   {/* Grid 6 Departemen Sesuai Referensi Gambar */}
@@ -1874,13 +2116,15 @@ export default function Home() {
                       <thead>
                         <tr className="border-b border-emerald-900/60 text-white text-[11px] uppercase font-black">
                           <th className="py-2.5">Departemen</th>
+                          <th className="py-2.5">General Manager (Membawahi SPV)</th>
                           <th className="py-2.5">Supervisor (Atasan Langsung)</th>
                           <th className="py-2.5">Staff (Bawahan)</th>
-                          <th className="py-2.5">Wewenang / Tugas Khusus</th>
+                          <th className="py-2.5">Wewenang Khusus</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-emerald-900/30">
                         {standardDepartments.map((dept) => {
+                          const gm = employees.find((e) => e.level === "GeneralManager");
                           const spv = employees.find((e) => e.dept === dept.id && e.level === "Supervisor");
                           const stf = employees.filter((e) => e.dept === dept.id && e.level === "Staff");
 
@@ -1889,6 +2133,12 @@ export default function Home() {
                               <td className="py-3 font-bold text-white flex items-center gap-2">
                                 <span className="text-base">{dept.icon}</span>
                                 <span className="text-sm font-extrabold text-white">{dept.name}</span>
+                              </td>
+                              <td className="py-3">
+                                <span className="font-bold text-sky-300 block">General Manager (GM)</span>
+                                <span className="text-[11px] text-white/80 font-medium">
+                                  {gm ? gm.name : "Belum Ditugaskan"}
+                                </span>
                               </td>
                               <td className="py-3">
                                 <span className="font-bold text-amber-300 block">{dept.supervisorRole}</span>
@@ -1930,6 +2180,12 @@ export default function Home() {
                     <div className="flex items-start gap-2 text-white/90">
                       <span className="text-emerald-400 font-bold">•</span>
                       <p>
+                        <strong>Hirarki 4 Tingkat:</strong> CEO (Direktur Utama) → General Manager → Supervisor → Staff. GM membawahi semua Supervisor di departemennya.
+                      </p>
+                    </div>
+                    <div className="flex items-start gap-2 text-white/90">
+                      <span className="text-emerald-400 font-bold">•</span>
+                      <p>
                         <strong>HR Supervisor atau HR Staff yang diberi izin</strong> dapat membuat akun karyawan, mendaftarkan karyawan, mengatur data jabatan dan departemen.
                       </p>
                     </div>
@@ -1955,18 +2211,27 @@ export default function Home() {
                 <div>
                   <h3 className="font-bold text-white text-base">Direktori Karyawan & Relasi Atasan-Bawahan</h3>
                   <p className="text-xs text-white/70">
-                    Staf melapor langsung ke Supervisor departemennya. HR bertugas mendaftarkan akun, IT mengelola keamanan sistem.
+                    Hirarki: CEO → GM → Supervisor → Staff. Staf melapor ke Supervisor, Supervisor ke GM, GM ke CEO. HR mendaftarkan akun, IT mengelola keamanan.
                   </p>
                 </div>
 
                 {hasPermission("emp_manage_hr") && (
-                  <button
-                    onClick={() => setShowAddEmployeeModal(true)}
-                    className="px-4 py-2.5 rounded-xl bg-emerald-500 text-black font-extrabold text-xs hover:bg-emerald-400 transition-all flex items-center gap-2 shadow-lg shadow-black"
-                  >
-                    <UserPlus className="w-4 h-4 text-black" />
-                    <span>Daftarkan Karyawan Baru (HR)</span>
-                  </button>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <button
+                      onClick={() => openAddEmployeeModal("staff")}
+                      className="px-4 py-2.5 rounded-xl bg-emerald-500 text-black font-extrabold text-xs hover:bg-emerald-400 transition-all flex items-center gap-2 shadow-lg shadow-black"
+                    >
+                      <UserPlus className="w-4 h-4 text-black" />
+                      <span>+ Tambah Staff (Karyawan)</span>
+                    </button>
+                    <button
+                      onClick={() => openAddEmployeeModal("atasan")}
+                      className="px-4 py-2.5 rounded-xl bg-[#031d11] border border-amber-400/50 text-amber-300 font-extrabold text-xs hover:bg-emerald-950 transition-all flex items-center gap-2 shadow-lg shadow-black"
+                    >
+                      <ShieldCheck className="w-4 h-4 text-amber-300" />
+                      <span>+ Tambah Atasan (Pimpinan)</span>
+                    </button>
+                  </div>
                 )}
               </div>
 
@@ -1975,7 +2240,7 @@ export default function Home() {
                 <div className="bg-gradient-to-r from-[#06291a] to-[#021008] rounded-2xl p-5 border border-emerald-500/40 shadow-xl relative overflow-hidden">
                   <div className="flex items-center justify-between mb-3">
                     <span className="text-[10px] font-black uppercase tracking-wider text-amber-400 flex items-center gap-1.5">
-                      <ShieldCheck className="w-3.5 h-3.5" /> ATASAN LANGSUNG SAYA (SUPERVISOR / N+1)
+                      <ShieldCheck className="w-3.5 h-3.5" /> ATASAN LANGSUNG SAYA (N+1)
                     </span>
                     <span className="text-[10px] px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 font-bold border border-emerald-500/30">
                       Departemen: {directSuperior.dept}
@@ -2245,6 +2510,12 @@ export default function Home() {
 
                       <div className="bg-[#010804] p-3 rounded-xl border border-emerald-900/40 space-y-1.5 text-xs">
                         <div className="flex justify-between">
+                          <span className="text-white/60">General Manager (GM):</span>
+                          <span className="font-bold text-sky-300">
+                            {employees.find((e) => e.level === "GeneralManager")?.name || "Belum ada"}
+                          </span>
+                        </div>
+                        <div className="flex justify-between">
                           <span className="text-white/60">Supervisor:</span>
                           <span className="font-bold text-amber-300">{spv ? spv.name : "Belum ada"}</span>
                         </div>
@@ -2302,13 +2573,22 @@ export default function Home() {
                 </div>
 
                 {hasPermission("emp_manage_hr") && (
-                  <button
-                    onClick={() => setShowAddEmployeeModal(true)}
-                    className="px-3.5 py-2 rounded-xl bg-emerald-500 text-black font-extrabold text-xs hover:bg-emerald-400 transition-all flex items-center gap-1.5"
-                  >
-                    <Plus className="w-3.5 h-3.5" />
-                    <span>Daftarkan Karyawan Baru (HR)</span>
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => openAddEmployeeModal("staff")}
+                      className="px-3.5 py-2 rounded-xl bg-emerald-500 text-black font-extrabold text-xs hover:bg-emerald-400 transition-all flex items-center gap-1.5"
+                    >
+                      <UserPlus className="w-3.5 h-3.5" />
+                      <span>+ Tambah Staff</span>
+                    </button>
+                    <button
+                      onClick={() => openAddEmployeeModal("atasan")}
+                      className="px-3.5 py-2 rounded-xl bg-[#031d11] border border-amber-400/50 text-amber-300 font-extrabold text-xs hover:bg-emerald-950 transition-all flex items-center gap-1.5"
+                    >
+                      <ShieldCheck className="w-3.5 h-3.5" />
+                      <span>+ Tambah Atasan</span>
+                    </button>
+                  </div>
                 )}
               </div>
 
@@ -2756,12 +3036,20 @@ export default function Home() {
                   </p>
                 </div>
                 {hasPermission("emp_manage_hr") && (
-                  <button
-                    onClick={() => setShowAddEmployeeModal(true)}
-                    className="px-4 py-2 rounded-xl bg-emerald-500 text-black font-bold text-xs hover:bg-emerald-400 flex items-center gap-1.5"
-                  >
-                    <Plus className="w-4 h-4" /> Daftarkan Karyawan Baru
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => openAddEmployeeModal("staff")}
+                      className="px-3.5 py-2 rounded-xl bg-emerald-500 text-black font-bold text-xs hover:bg-emerald-400 flex items-center gap-1.5"
+                    >
+                      <UserPlus className="w-3.5 h-3.5" /> + Tambah Staff
+                    </button>
+                    <button
+                      onClick={() => openAddEmployeeModal("atasan")}
+                      className="px-3.5 py-2 rounded-xl bg-[#031d11] border border-amber-400/50 text-amber-300 font-bold text-xs hover:bg-emerald-950 flex items-center gap-1.5"
+                    >
+                      <ShieldCheck className="w-3.5 h-3.5" /> + Tambah Atasan
+                    </button>
+                  </div>
                 )}
               </div>
 
@@ -3015,6 +3303,7 @@ export default function Home() {
 
       {/* ========================================================= */}
       {/* MODAL 1: FORM PENDAFTARAN KARYAWAN (WEWENANG KHUSUS HR)   */}
+      {/* PEMISAHAN: TAMBAH STAFF vs TAMBAH ATASAN                  */}
       {/* ========================================================= */}
       {showAddEmployeeModal && (
         <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
@@ -3022,16 +3311,88 @@ export default function Home() {
             <div className="flex justify-between items-center border-b border-emerald-900/60 pb-3">
               <div>
                 <span className="text-[10px] text-pink-400 font-black uppercase tracking-wider block">
-                  WEWENANG KHUSUS HR • PENDAFTARAN KARYAWAN BARU
+                  WEWENANG KHUSUS HR • PENDAFTARAN AKUN
                 </span>
-                <h3 className="font-black text-white text-base">Registrasi SDM & Buat Akun Otomatis</h3>
+                <h3 className="font-black text-white text-base">
+                  {addRegistrationType === "staff" ? "Daftarkan Staff (Karyawan Pelaksana)" : "Daftarkan Atasan (Pimpinan Struktur)"}
+                </h3>
               </div>
               <button onClick={() => setShowAddEmployeeModal(false)} className="text-white/60 hover:text-white">
                 <X className="w-5 h-5" />
               </button>
             </div>
 
+            {/* TAB SELEKSI: TAMBAH STAFF vs TAMBAH ATASAN */}
+            <div className="flex bg-[#010804] p-1.5 rounded-2xl border border-emerald-900/80 gap-1.5">
+              <button
+                type="button"
+                onClick={() => {
+                  setAddRegistrationType("staff");
+                  const hrSpv = employees.find((e) => e.dept === "HR" && e.level === "Supervisor");
+                  setNewEmployeeForm((prev) => ({
+                    ...prev,
+                    level: "Staff",
+                    dept: "HR",
+                    managerId: hrSpv ? hrSpv.id : "",
+                  }));
+                }}
+                className={`flex-1 py-2.5 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-2 ${
+                  addRegistrationType === "staff"
+                    ? "bg-emerald-500 text-black shadow-lg shadow-black"
+                    : "text-white/70 hover:text-white hover:bg-emerald-950/40"
+                }`}
+              >
+                <UserPlus className="w-4 h-4" />
+                <span>Tambah Staff (Karyawan)</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setAddRegistrationType("atasan");
+                  const hasCeo = employees.some((e) => e.level === "Director");
+                  const hasGm = employees.some((e) => e.level === "GeneralManager");
+                  const availableSpvDepts = standardDepartments.filter(
+                    (d) => !employees.some((e) => e.dept === d.id && e.level === "Supervisor")
+                  );
+
+                  let targetLevel: HierarchyLevel = "Supervisor";
+                  let targetDept: DepartmentType = availableSpvDepts[0]?.id || "HR";
+                  let targetMgr: string | null =
+                    employees.find((e) => e.level === "GeneralManager")?.id ||
+                    employees.find((e) => e.level === "Director")?.id ||
+                    null;
+
+                  if (!hasCeo) {
+                    targetLevel = "Director";
+                    targetDept = "Direksi";
+                    targetMgr = null;
+                  } else if (!hasGm) {
+                    targetLevel = "GeneralManager";
+                    targetDept = "Direksi";
+                    targetMgr = employees.find((e) => e.level === "Director")?.id || null;
+                  }
+
+                  setNewEmployeeForm((prev) => ({
+                    ...prev,
+                    level: targetLevel,
+                    dept: targetDept,
+                    managerId: targetMgr,
+                  }));
+                }}
+                className={`flex-1 py-2.5 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-2 ${
+                  addRegistrationType === "atasan"
+                    ? "bg-amber-400 text-black shadow-lg shadow-black"
+                    : "text-white/70 hover:text-white hover:bg-emerald-950/40"
+                }`}
+              >
+                <ShieldCheck className="w-4 h-4" />
+                <span>Tambah Atasan (Pimpinan)</span>
+              </button>
+            </div>
+
             <form onSubmit={handleRegisterEmployeeSubmit} className="space-y-3.5 text-xs">
+              {/* Data Pribadi (Sama untuk Staff & Atasan) */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block text-white/90 font-bold mb-1">NIK (Nomor Induk Karyawan) *</label>
@@ -3059,11 +3420,11 @@ export default function Home() {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-white/90 font-bold mb-1">Email Karyawan (Untuk Login) *</label>
+                  <label className="block text-white/90 font-bold mb-1">Email (Untuk Login Akun) *</label>
                   <input
                     type="email"
                     required
-                    placeholder="ahmad@perusahaan.id"
+                    placeholder="nama@perusahaan.id"
                     value={newEmployeeForm.email}
                     onChange={(e) => setNewEmployeeForm({ ...newEmployeeForm, email: e.target.value })}
                     className="w-full bg-[#010804] border border-emerald-900/80 rounded-xl p-2.5 text-white font-mono focus:border-emerald-400 focus:outline-none"
@@ -3094,7 +3455,7 @@ export default function Home() {
                   />
                 </div>
                 <div>
-                  <label className="block text-white/90 font-bold mb-1">Tanggal Lahir</label>
+                  <label className="block text-white/90 font-bold mb-1">Tanggal Lahir *</label>
                   <input
                     type="date"
                     required
@@ -3105,80 +3466,253 @@ export default function Home() {
                 </div>
               </div>
 
-              {/* Pilih Departemen (6 Pilihan) & Level (Supervisor atau Staff) */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-[#010804] p-3 rounded-2xl border border-emerald-900/60">
-                <div>
-                  <label className="block text-emerald-400 font-bold mb-1">Pilih Departemen (6 Pokok) *</label>
-                  <select
-                    value={newEmployeeForm.dept}
-                    onChange={(e) => handleDeptChange(e.target.value as DepartmentType)}
-                    className="w-full bg-[#021008] border border-emerald-500/40 rounded-xl p-2.5 text-white font-bold focus:border-emerald-400 focus:outline-none"
-                  >
-                    {standardDepartments.map((d) => (
-                      <option key={d.id} value={d.id}>
-                        {d.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+              {/* ───────────────────────────────────────────────────────────── */}
+              {/* KONDISIONAL: JIKA MODE TAMBAH STAFF (PELAKSANA)               */}
+              {/* General Manager TIDAK PERNAH MUNCUL di sini!                 */}
+              {/* ───────────────────────────────────────────────────────────── */}
+              {addRegistrationType === "staff" ? (
+                <div className="space-y-3">
+                  <div className="bg-[#010c06] p-3 rounded-2xl border border-emerald-500/30 space-y-2">
+                    <span className="text-[10px] text-emerald-400 font-black uppercase tracking-wider block">
+                      POSISI TINGKAT PELAKSANA (STAFF)
+                    </span>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-white font-bold mb-1">Pilih Departemen (6 Pokok) *</label>
+                        <select
+                          value={newEmployeeForm.dept}
+                          onChange={(e) => handleDeptChange(e.target.value as DepartmentType)}
+                          className="w-full bg-[#021008] border border-emerald-500/40 rounded-xl p-2.5 text-white font-bold focus:border-emerald-400 focus:outline-none"
+                        >
+                          {standardDepartments.map((d) => (
+                            <option key={d.id} value={d.id}>
+                              {d.name}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
 
-                <div>
-                  <label className="block text-emerald-400 font-bold mb-1">Tingkatan Posisi *</label>
-                  <select
-                    value={newEmployeeForm.level}
-                    onChange={(e) => handleLevelChange(e.target.value as HierarchyLevel)}
-                    className="w-full bg-[#021008] border border-emerald-500/40 rounded-xl p-2.5 text-white font-bold focus:border-emerald-400 focus:outline-none"
-                  >
-                    <option value="Staff">Staff ({newEmployeeForm.dept} Staff)</option>
-                    <option value="Supervisor">Supervisor ({newEmployeeForm.dept} Supervisor)</option>
-                  </select>
-                </div>
-              </div>
-
-              {/* Atasan Langsung (N+1) Read-Only Textbox (Terkunci Sesuai Hirarki) */}
-              {(() => {
-                const selectedSuperior =
-                  employees.find((e) => e.id === newEmployeeForm.managerId) ||
-                  (newEmployeeForm.level === "Staff"
-                    ? employees.find((e) => e.dept === newEmployeeForm.dept && e.level === "Supervisor") || employees[0]
-                    : employees[0]);
-                const superiorDisplayText = `${selectedSuperior.name} — ${selectedSuperior.role} (${selectedSuperior.dept})`;
-
-                return (
-                  <div className="bg-[#010804] p-3 rounded-2xl border border-emerald-500/40 space-y-1.5">
-                    <div className="flex items-center justify-between">
-                      <label className="block text-emerald-400 font-bold text-xs">
-                        Atasan Langsung (N+1) *
-                      </label>
-                      <span className="text-[10px] font-extrabold text-amber-400 bg-amber-400/10 px-2 py-0.5 rounded-full border border-amber-400/30 flex items-center gap-1">
-                        <Lock className="w-3 h-3 text-amber-400" />
-                        <span>Terkunci Otomatis</span>
-                      </span>
-                    </div>
-
-                    <div className="relative">
-                      <input
-                        type="text"
-                        readOnly
-                        value={superiorDisplayText}
-                        className="w-full bg-[#021008] border border-emerald-900/80 rounded-xl p-2.5 pr-10 text-white font-bold cursor-not-allowed select-none opacity-90 focus:outline-none"
-                      />
-                      <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-emerald-400">
-                        <Lock className="w-4 h-4 text-emerald-400" />
+                      <div>
+                        <label className="block text-white/70 font-bold mb-1">Jabatan Otomatis</label>
+                        <div className="w-full bg-[#021008] border border-emerald-900/80 rounded-xl p-2.5 text-emerald-300 font-bold">
+                          {newEmployeeForm.dept} Staff
+                        </div>
                       </div>
                     </div>
-
-                    <div className="flex items-center gap-1.5 pt-0.5 text-[11px] text-white/80">
-                      <span className="text-emerald-400 font-bold">✓ Relasi:</span>
-                      <span>
-                        {newEmployeeForm.level === "Staff"
-                          ? `Staf ini otomatis melapor ke ${selectedSuperior.name} dan masuk dalam pengawasan langsung beliau.`
-                          : `Supervisor ini bertanggung jawab dan melapor langsung ke ${selectedSuperior.name}.`}
-                      </span>
-                    </div>
                   </div>
-                );
-              })()}
+
+                  {/* Atasan Langsung Staff (Otomatis Terkunci ke Supervisor Departemen) */}
+                  {(() => {
+                    const deptSpv = employees.find(
+                      (e) => e.dept === newEmployeeForm.dept && e.level === "Supervisor"
+                    );
+
+                    return (
+                      <div className="bg-[#010804] p-3 rounded-2xl border border-emerald-500/40 space-y-1.5">
+                        <div className="flex items-center justify-between">
+                          <label className="block text-emerald-400 font-bold text-xs">
+                            Atasan Langsung (N+1) *
+                          </label>
+                          <span className="text-[10px] font-extrabold text-amber-400 bg-amber-400/10 px-2 py-0.5 rounded-full border border-amber-400/30 flex items-center gap-1">
+                            <Lock className="w-3 h-3 text-amber-400" />
+                            <span>Terkunci Otomatis</span>
+                          </span>
+                        </div>
+
+                        <div className="relative">
+                          <input
+                            type="text"
+                            readOnly
+                            value={
+                              deptSpv
+                                ? `${deptSpv.name} — ${deptSpv.role} (${deptSpv.dept})`
+                                : `⚠️ Belum ada Supervisor untuk departemen ${newEmployeeForm.dept}`
+                            }
+                            className={`w-full bg-[#021008] border rounded-xl p-2.5 pr-10 font-bold cursor-not-allowed select-none focus:outline-none ${
+                              deptSpv
+                                ? "border-emerald-900/80 text-white"
+                                : "border-red-500/60 text-red-300"
+                            }`}
+                          />
+                          <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-emerald-400">
+                            <Lock className="w-4 h-4 text-emerald-400" />
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-1.5 pt-0.5 text-[11px]">
+                          {deptSpv ? (
+                            <>
+                              <span className="text-emerald-400 font-bold">✓ Relasi:</span>
+                              <span className="text-white/80">
+                                Staff ini otomatis melapor langsung ke Supervisor departemennya:{" "}
+                                <strong className="text-amber-300">{deptSpv.name}</strong>.
+                              </span>
+                            </>
+                          ) : (
+                            <span className="text-red-400 font-semibold">
+                              ⚠️ Harap daftarkan Supervisor untuk departemen {newEmployeeForm.dept} terlebih dahulu di tab &quot;Tambah Atasan&quot;.
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })()}
+                </div>
+              ) : (
+                /* ───────────────────────────────────────────────────────────── */
+                /* KONDISIONAL: JIKA MODE TAMBAH ATASAN (PIMPINAN STRUKTUR)      */
+                /* CEO (Maks 1), GM (Maks 1), Supervisor (1 per departemen)      */
+                /* ───────────────────────────────────────────────────────────── */
+                <div className="space-y-3">
+                  {/* Status Kuota Atasan */}
+                  {(() => {
+                    const ceo = employees.find((e) => e.level === "Director");
+                    const gm = employees.find((e) => e.level === "GeneralManager");
+                    const spvList = employees.filter((e) => e.level === "Supervisor");
+
+                    return (
+                      <div className="bg-[#02120a] p-3 rounded-2xl border border-amber-500/40 space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[10px] text-amber-400 font-black uppercase tracking-wider">
+                            STATUS KUOTA PIMPINAN (ATASAN)
+                          </span>
+                          <span className="text-[10px] text-white/60">Hirarki: CEO → GM → SPV</span>
+                        </div>
+                        <div className="grid grid-cols-3 gap-2 text-center text-[10px]">
+                          <div className={`p-2 rounded-xl border ${ceo ? "bg-emerald-950/40 border-emerald-500/40" : "bg-black/40 border-emerald-900/40"}`}>
+                            <span className="text-white/60 block">Direktur Utama</span>
+                            <span className={`font-bold block mt-0.5 ${ceo ? "text-emerald-300" : "text-amber-300"}`}>
+                              {ceo ? "1/1 Terisi" : "0/1 Kosong"}
+                            </span>
+                          </div>
+                          <div className={`p-2 rounded-xl border ${gm ? "bg-emerald-950/40 border-emerald-500/40" : "bg-black/40 border-emerald-900/40"}`}>
+                            <span className="text-white/60 block">General Manager</span>
+                            <span className={`font-bold block mt-0.5 ${gm ? "text-emerald-300" : "text-amber-300"}`}>
+                              {gm ? "1/1 Terisi" : "0/1 Kosong"}
+                            </span>
+                          </div>
+                          <div className={`p-2 rounded-xl border ${spvList.length >= 6 ? "bg-emerald-950/40 border-emerald-500/40" : "bg-black/40 border-emerald-900/40"}`}>
+                            <span className="text-white/60 block">Supervisor</span>
+                            <span className={`font-bold block mt-0.5 ${spvList.length >= 6 ? "text-emerald-300" : "text-amber-300"}`}>
+                              {spvList.length}/6 Terisi
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })()}
+
+                  {/* Form Pilihan Level Atasan */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-[#010804] p-3 rounded-2xl border border-emerald-900/60">
+                    <div>
+                      <label className="block text-amber-300 font-bold mb-1">Tingkatan Atasan *</label>
+                      {(() => {
+                        const ceo = employees.find((e) => e.level === "Director");
+                        const gm = employees.find((e) => e.level === "GeneralManager");
+                        const spvList = employees.filter((e) => e.level === "Supervisor");
+
+                        return (
+                          <select
+                            value={newEmployeeForm.level}
+                            onChange={(e) => handleLevelChange(e.target.value as HierarchyLevel)}
+                            className="w-full bg-[#021008] border border-amber-500/40 rounded-xl p-2.5 text-white font-bold focus:border-amber-400 focus:outline-none"
+                          >
+                            <option value="Director" disabled={Boolean(ceo)}>
+                              👑 Direktur Utama (CEO) {ceo ? `— Terisi: ${ceo.name} (Terkunci)` : "— (Kosong)"}
+                            </option>
+                            <option value="GeneralManager" disabled={Boolean(gm)}>
+                              🏢 General Manager (GM) {gm ? `— Terisi: ${gm.name} (Terkunci)` : "— (Kosong)"}
+                            </option>
+                            <option value="Supervisor" disabled={spvList.length >= 6}>
+                              👔 Supervisor Departemen {spvList.length >= 6 ? "— Semua 6 Terisi (Terkunci)" : `— (Tersisa ${6 - spvList.length} Dept)`}
+                            </option>
+                          </select>
+                        );
+                      })()}
+                    </div>
+
+                    {/* Jika Supervisor: Pilih Departemen yang Belum Terisi */}
+                    {newEmployeeForm.level === "Supervisor" ? (
+                      <div>
+                        <label className="block text-amber-300 font-bold mb-1">Pilih Departemen SPV *</label>
+                        <select
+                          value={newEmployeeForm.dept}
+                          onChange={(e) => handleDeptChange(e.target.value as DepartmentType)}
+                          className="w-full bg-[#021008] border border-amber-500/40 rounded-xl p-2.5 text-white font-bold focus:border-amber-400 focus:outline-none"
+                        >
+                          {standardDepartments.map((d) => {
+                            const existingSpv = employees.find((e) => e.dept === d.id && e.level === "Supervisor");
+                            return (
+                              <option key={d.id} value={d.id} disabled={Boolean(existingSpv)}>
+                                {d.name} {existingSpv ? `— Sudah Ada: ${existingSpv.name} (Terkunci)` : "— (Tersedia)"}
+                              </option>
+                            );
+                          })}
+                        </select>
+                      </div>
+                    ) : (
+                      <div>
+                        <label className="block text-white/70 font-bold mb-1">Struktur</label>
+                        <div className="w-full bg-[#021008] border border-emerald-900/80 rounded-xl p-2.5 text-amber-300 font-bold">
+                          {newEmployeeForm.level === "Director" ? "Direksi (Puncak Pimpinan)" : "Direksi (Manajemen Umum)"}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Atasan Langsung untuk Level Atasan (CEO -> Null, GM -> CEO, SPV -> GM) */}
+                  {(() => {
+                    const ceo = employees.find((e) => e.level === "Director");
+                    const gm = employees.find((e) => e.level === "GeneralManager");
+
+                    let superiorText = "";
+                    let relationText = "";
+
+                    if (newEmployeeForm.level === "Director") {
+                      superiorText = "Pimpinan Tertinggi Organisasi (Tidak Memiliki Atasan)";
+                      relationText = "CEO merupakan pimpinan tertinggi di perusahaan yang membawahi General Manager.";
+                    } else if (newEmployeeForm.level === "GeneralManager") {
+                      superiorText = ceo ? `${ceo.name} — Direktur Utama (CEO)` : "Belum Ada CEO";
+                      relationText = `General Manager bertanggung jawab dan melapor langsung ke CEO (${ceo?.name || 'Direktur Utama'}), serta membawahi seluruh 6 Supervisor.`;
+                    } else {
+                      // Supervisor
+                      superiorText = gm ? `${gm.name} — General Manager (GM)` : (ceo ? `${ceo.name} — Direktur Utama (CEO)` : "Belum Ada GM");
+                      relationText = `Supervisor ${newEmployeeForm.dept} bertanggung jawab dan melapor langsung ke General Manager (${gm?.name || ceo?.name}), serta membawahi Staff departemen ${newEmployeeForm.dept}.`;
+                    }
+
+                    return (
+                      <div className="bg-[#010804] p-3 rounded-2xl border border-amber-500/40 space-y-1.5">
+                        <div className="flex items-center justify-between">
+                          <label className="block text-amber-400 font-bold text-xs">
+                            Atasan Langsung (N+1) *
+                          </label>
+                          <span className="text-[10px] font-extrabold text-amber-400 bg-amber-400/10 px-2 py-0.5 rounded-full border border-amber-400/30 flex items-center gap-1">
+                            <Lock className="w-3 h-3 text-amber-400" />
+                            <span>Terkunci Otomatis</span>
+                          </span>
+                        </div>
+
+                        <div className="relative">
+                          <input
+                            type="text"
+                            readOnly
+                            value={superiorText}
+                            className="w-full bg-[#021008] border border-emerald-900/80 rounded-xl p-2.5 pr-10 text-white font-bold cursor-not-allowed select-none opacity-90 focus:outline-none"
+                          />
+                          <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-amber-400">
+                            <Lock className="w-4 h-4 text-amber-400" />
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-1.5 pt-0.5 text-[11px] text-white/80">
+                          <span className="text-amber-400 font-bold">✓ Relasi:</span>
+                          <span>{relationText}</span>
+                        </div>
+                      </div>
+                    );
+                  })()}
+                </div>
+              )}
 
               {/* Status Kerja: Tetap, Kontrak, Magang, DW */}
               <div className="bg-[#010703] p-3.5 rounded-2xl border border-emerald-900/60 space-y-3">
@@ -3222,7 +3756,7 @@ export default function Home() {
                       <input
                         type="date"
                         required
-                        value={newEmployeeForm.endDate}
+                        value={newEmployeeForm.endDate || ""}
                         onChange={(e) => setNewEmployeeForm({ ...newEmployeeForm, endDate: e.target.value })}
                         className="w-full bg-[#010804] border border-amber-500/50 rounded-xl p-2.5 text-white font-mono focus:border-amber-400 focus:outline-none"
                       />
@@ -3236,6 +3770,7 @@ export default function Home() {
                 </div>
               </div>
 
+              {/* Submit / Batal */}
               <div className="pt-2 flex gap-2">
                 <button
                   type="button"
@@ -3248,7 +3783,7 @@ export default function Home() {
                   type="submit"
                   className="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-400 text-black font-black hover:brightness-110 transition-all shadow-lg"
                 >
-                  Daftarkan & Generate Password
+                  {addRegistrationType === "staff" ? "Daftarkan Staff & Buat Akun" : "Daftarkan Atasan & Buat Akun"}
                 </button>
               </div>
             </form>
