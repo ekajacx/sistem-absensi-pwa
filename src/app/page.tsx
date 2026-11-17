@@ -1196,8 +1196,43 @@ export default function Home() {
   // ─────────────────────────────────────────────────────────────
   const DAYS_OF_WEEK: DayOfWeek[] = ["Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu", "Minggu"];
 
-  const isOfficeDept = (dept: string): boolean => {
-    return dept === "HR" || dept === "Finance" || dept === "IT" || dept === "Direksi";
+  // Helper: cek apakah tanggal tertentu jatuh dalam rentang cuti karyawan
+  const getLeaveOnDate = (empId: string, dateStr: string): LeaveRequest | null => {
+    return leaves.find((lv) => {
+      if (lv.employeeId !== empId) return false;
+      if (lv.status !== "DISETUJUI") return false;
+      const start = new Date(lv.start);
+      const end = new Date(lv.end);
+      const d = new Date(dateStr);
+      start.setHours(0, 0, 0, 0);
+      end.setHours(23, 59, 59, 999);
+      d.setHours(12, 0, 0, 0);
+      return d >= start && d <= end;
+    }) || null;
+  };
+
+  // Helper: hitung tanggal senin dari minggu yang mengandung tanggal tertentu
+  const getMondayOfWeek = (date: Date): Date => {
+    const d = new Date(date);
+    const day = d.getDay(); // 0=Sunday
+    const diff = day === 0 ? -6 : 1 - day;
+    d.setDate(d.getDate() + diff);
+    d.setHours(0, 0, 0, 0);
+    return d;
+  };
+
+  // Helper: format tanggal ke YYYY-MM-DD
+  const formatDateISO = (date: Date): string => {
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, "0");
+    const d = String(date.getDate()).padStart(2, "0");
+    return `${y}-${m}-${d}`;
+  };
+
+  // Helper: format tanggal ke tampilan singkat "17 Nov"
+  const formatDateShort = (date: Date): string => {
+    const months = ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agu", "Sep", "Okt", "Nov", "Des"];
+    return `${date.getDate()} ${months[date.getMonth()]}`;
   };
 
   const getSchedulableEmployees = (): Employee[] => {
@@ -1220,6 +1255,29 @@ export default function Home() {
   const [shiftActiveTab, setShiftActiveTab] = useState<"roster" | "master">("roster");
   const [selectedScheduleEmpId, setSelectedScheduleEmpId] = useState<string>("emp-ops-spv");
 
+  // Tanggal Senin dari minggu yang sedang dijadwalkan
+  const [rosterWeekStart, setRosterWeekStart] = useState<string>("2026-11-16");
+
+  // Set tanggal awal minggu ini saat komponen mount
+  useEffect(() => {
+    setRosterWeekStart(formatDateISO(getMondayOfWeek(new Date())));
+  }, []);
+
+  // Map hari ke tanggal spesifik berdasarkan rosterWeekStart
+  const rosterDayDates: Record<DayOfWeek, string> = (() => {
+    const monday = new Date(rosterWeekStart + "T00:00:00");
+    const result: Record<string, string> = {};
+    DAYS_OF_WEEK.forEach((day, i) => {
+      const d = new Date(monday);
+      d.setDate(d.getDate() + i);
+      result[day] = formatDateISO(d);
+    });
+    return result as Record<DayOfWeek, string>;
+  })();
+
+  // State untuk konfirmasi override cuti
+  const [cutiOverrideConfirm, setCutiOverrideConfirm] = useState<{ day: DayOfWeek; shift: ShiftSlotType; leave: LeaveRequest } | null>(null);
+
   const [draftSchedule, setDraftSchedule] = useState<Record<DayOfWeek, ShiftSlotType>>({
     Senin: "Pagi",
     Selasa: "Pagi",
@@ -1233,19 +1291,8 @@ export default function Home() {
   const handleSelectScheduleEmployee = (empId: string) => {
     setSelectedScheduleEmpId(empId);
     const existing = weeklySchedules[empId];
-    const targetEmp = employees.find((e) => e.id === empId);
     if (existing) {
       setDraftSchedule({ ...existing });
-    } else if (targetEmp && isOfficeDept(targetEmp.dept)) {
-      setDraftSchedule({
-        Senin: "Pagi",
-        Selasa: "Pagi",
-        Rabu: "Pagi",
-        Kamis: "Pagi",
-        Jumat: "Pagi",
-        Sabtu: "Libur",
-        Minggu: "Libur",
-      });
     } else {
       setDraftSchedule({
         Senin: "Pagi",
@@ -1253,7 +1300,7 @@ export default function Home() {
         Rabu: "Pagi",
         Kamis: "Pagi",
         Jumat: "Pagi",
-        Sabtu: "Siang",
+        Sabtu: "Libur",
         Minggu: "Libur",
       });
     }
@@ -1264,15 +1311,7 @@ export default function Home() {
     const targetEmp = employees.find((emp) => emp.id === selectedScheduleEmpId);
     if (!targetEmp) return;
 
-    // Pastikan karyawan office tidak terkena Shift Siang
-    let finalSchedule = { ...draftSchedule };
-    if (isOfficeDept(targetEmp.dept)) {
-      DAYS_OF_WEEK.forEach((day) => {
-        if (finalSchedule[day] === "Siang") {
-          finalSchedule[day] = "Pagi";
-        }
-      });
-    }
+    const finalSchedule = { ...draftSchedule };
 
     setWeeklySchedules((prev) => ({
       ...prev,
@@ -3657,9 +3696,9 @@ export default function Home() {
             const schedulableEmployees = getSchedulableEmployees();
             const currentSchedTarget =
               employees.find((e) => e.id === selectedScheduleEmpId) || schedulableEmployees[0] || employees[0];
-            const isTargetOffice = isOfficeDept(currentSchedTarget.dept);
             const isSupervisorRole = currentActiveEmployee.level === "Supervisor";
             const isAdminOrHR = activePerspective === "admin" || currentRoleName === "Super Admin" || currentRoleName === "HR Supervisor";
+            const canOverrideCuti = currentActiveEmployee.level === "Supervisor" || currentActiveEmployee.level === "GeneralManager" || currentActiveEmployee.level === "Director" || isAdminOrHR;
 
             return (
               <div className="space-y-6">
@@ -3678,8 +3717,8 @@ export default function Home() {
                       </div>
                       <p className="text-xs text-white/70 mt-1 max-w-2xl leading-relaxed">
                         Supervisor dapat mengatur jadwal shift mingguan untuk diri sendiri dan seluruh staf di departemennya.
-                        Khusus karyawan <strong>Office (HR, Finance, IT, Direksi)</strong> bekerja <strong>Shift Pagi</strong> pada hari kerja dan libur di akhir pekan.
-                        Shift Malam telah ditiadakan sesuai kebijakan efisiensi jam operasional.
+                        Semua karyawan memiliki pilihan <strong>Shift Pagi, Siang, atau Libur</strong> setiap harinya.
+                        Sistem otomatis mendeteksi hari cuti yang telah disetujui dan mengunci kolom tersebut.
                       </p>
                     </div>
 
@@ -3753,7 +3792,7 @@ export default function Home() {
                         </div>
                       </div>
 
-                      {/* Card Info Karyawan Terpilih */}
+                      {/* Card Info Karyawan Terpilih + Pemilih Minggu */}
                       <div className="bg-[#010804] p-4 rounded-2xl border border-emerald-900/60 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                         <div className="flex items-center gap-3.5">
                           <div className="w-12 h-12 rounded-2xl bg-emerald-950 flex items-center justify-center font-black text-white text-base ring-1 ring-emerald-500/40 flex-shrink-0">
@@ -3775,21 +3814,53 @@ export default function Home() {
                           </div>
                         </div>
 
-                        {/* Badge Kategori Kerja (Office vs Operasional) */}
-                        <div className="flex flex-col sm:items-end">
-                          <span
-                            className={`px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider border ${
-                              isTargetOffice
-                                ? "bg-blue-500/20 text-blue-300 border-blue-500/40"
-                                : "bg-emerald-500/20 text-emerald-300 border-emerald-500/40"
-                            }`}
-                          >
-                            {isTargetOffice ? "🏢 Staf Office (Khusus Pagi Saja)" : "⚙️ Staf Operasional / Lapangan"}
+                        {/* Pemilih Minggu */}
+                        <div className="flex flex-col sm:items-end gap-2">
+                          <span className="text-[10px] text-emerald-400 font-black uppercase tracking-wider">
+                            Periode Minggu
                           </span>
-                          <span className="text-[10px] text-white/50 mt-1">
-                            {isTargetOffice
-                              ? "Otomatis terjadwal Shift Pagi pada hari kerja dan Libur di akhir pekan."
-                              : "Fleksibel: dapat diatur Shift Pagi, Shift Siang, ataupun Libur per hari."}
+                          <div className="flex items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const d = new Date(rosterWeekStart + "T00:00:00");
+                                d.setDate(d.getDate() - 7);
+                                setRosterWeekStart(formatDateISO(d));
+                              }}
+                              className="px-2 py-1 rounded-lg bg-white/5 hover:bg-white/10 text-white text-xs font-bold border border-white/10 transition-all"
+                            >
+                              ◀
+                            </button>
+                            <input
+                              type="date"
+                              value={rosterWeekStart}
+                              onChange={(e) => {
+                                if (e.target.value) {
+                                  const monday = getMondayOfWeek(new Date(e.target.value + "T00:00:00"));
+                                  setRosterWeekStart(formatDateISO(monday));
+                                }
+                              }}
+                              className="bg-[#010804] border border-emerald-500/50 rounded-xl px-3 py-1.5 text-xs text-white font-bold focus:border-emerald-400 focus:outline-none"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const d = new Date(rosterWeekStart + "T00:00:00");
+                                d.setDate(d.getDate() + 7);
+                                setRosterWeekStart(formatDateISO(d));
+                              }}
+                              className="px-2 py-1 rounded-lg bg-white/5 hover:bg-white/10 text-white text-xs font-bold border border-white/10 transition-all"
+                            >
+                              ▶
+                            </button>
+                          </div>
+                          <span className="text-[10px] text-white/50 font-mono">
+                            {(() => {
+                              const mon = new Date(rosterWeekStart + "T00:00:00");
+                              const sun = new Date(mon);
+                              sun.setDate(sun.getDate() + 6);
+                              return `${formatDateShort(mon)} — ${formatDateShort(sun)} ${sun.getFullYear()}`;
+                            })()}
                           </span>
                         </div>
                       </div>
@@ -3812,102 +3883,136 @@ export default function Home() {
                                 Sabtu: "Libur",
                                 Minggu: "Libur",
                               });
-                              showToast("✓ Preset Office (Sen-Jum Pagi, Sab-Min Libur) diterapkan!");
+                              showToast("✓ Preset Pagi 5 Hari (Sen-Jum Pagi, Sab-Min Libur) diterapkan!");
                             }}
                             className="px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-white text-xs font-semibold border border-white/10 transition-all flex items-center gap-1.5"
                           >
                             <span>⚡</span>
-                            <span>Preset Office (Senin-Jumat Pagi, Sabtu-Minggu Libur)</span>
+                            <span>Preset Pagi 5 Hari (Senin-Jumat Pagi)</span>
                           </button>
 
-                          {!isTargetOffice && (
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setDraftSchedule({
-                                  Senin: "Siang",
-                                  Selasa: "Siang",
-                                  Rabu: "Siang",
-                                  Kamis: "Siang",
-                                  Jumat: "Siang",
-                                  Sabtu: "Libur",
-                                  Minggu: "Libur",
-                                });
-                                showToast("✓ Preset Operasional Siang diterapkan!");
-                              }}
-                              className="px-3 py-1.5 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 text-xs font-semibold border border-amber-500/30 transition-all flex items-center gap-1.5"
-                            >
-                              <span>🌤️</span>
-                              <span>Preset Operasional Siang (Senin-Jumat Siang)</span>
-                            </button>
-                          )}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setDraftSchedule({
+                                Senin: "Siang",
+                                Selasa: "Siang",
+                                Rabu: "Siang",
+                                Kamis: "Siang",
+                                Jumat: "Siang",
+                                Sabtu: "Libur",
+                                Minggu: "Libur",
+                              });
+                              showToast("✓ Preset Siang 5 Hari diterapkan!");
+                            }}
+                            className="px-3 py-1.5 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 text-xs font-semibold border border-amber-500/30 transition-all flex items-center gap-1.5"
+                          >
+                            <span>🌤️</span>
+                            <span>Preset Siang 5 Hari (Senin-Jumat Siang)</span>
+                          </button>
 
-                          {!isTargetOffice && (
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setDraftSchedule({
-                                  Senin: "Pagi",
-                                  Selasa: "Pagi",
-                                  Rabu: "Pagi",
-                                  Kamis: "Siang",
-                                  Jumat: "Siang",
-                                  Sabtu: "Siang",
-                                  Minggu: "Libur",
-                                });
-                                showToast("✓ Preset Rolling 6 Hari diterapkan!");
-                              }}
-                              className="px-3 py-1.5 rounded-xl bg-teal-500/10 hover:bg-teal-500/20 text-teal-300 text-xs font-semibold border border-teal-500/30 transition-all flex items-center gap-1.5"
-                            >
-                              <span>🔄</span>
-                              <span>Preset Rolling 6 Hari (3 Pagi, 3 Siang, 1 Libur)</span>
-                            </button>
-                          )}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setDraftSchedule({
+                                Senin: "Pagi",
+                                Selasa: "Pagi",
+                                Rabu: "Pagi",
+                                Kamis: "Siang",
+                                Jumat: "Siang",
+                                Sabtu: "Siang",
+                                Minggu: "Libur",
+                              });
+                              showToast("✓ Preset Rolling 6 Hari diterapkan!");
+                            }}
+                            className="px-3 py-1.5 rounded-xl bg-teal-500/10 hover:bg-teal-500/20 text-teal-300 text-xs font-semibold border border-teal-500/30 transition-all flex items-center gap-1.5"
+                          >
+                            <span>🔄</span>
+                            <span>Preset Rolling 6 Hari (3 Pagi, 3 Siang, 1 Libur)</span>
+                          </button>
                         </div>
                       </div>
 
-                      {/* Grid 7 Hari Mingguan */}
+                      {/* Grid 7 Hari Mingguan + Validasi Cuti */}
                       <form onSubmit={handleSaveWeeklySchedule} className="space-y-5">
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-7 gap-3">
                           {DAYS_OF_WEEK.map((day) => {
                             const currentVal = draftSchedule[day] || "Pagi";
                             const isWeekend = day === "Sabtu" || day === "Minggu";
+                            const dayDateStr = rosterDayDates[day];
+                            const dayDate = new Date(dayDateStr + "T00:00:00");
+                            const leaveOnDay = getLeaveOnDate(selectedScheduleEmpId, dayDateStr);
+                            const isCutiLocked = !!leaveOnDay && !canOverrideCuti;
+                            const hasCuti = !!leaveOnDay;
 
                             return (
                               <div
                                 key={day}
-                                className={`p-3.5 rounded-2xl border transition-all ${
-                                  currentVal === "Pagi"
+                                className={`p-3.5 rounded-2xl border transition-all relative ${
+                                  hasCuti
+                                    ? "bg-purple-950/40 border-purple-500/50 shadow-sm"
+                                    : currentVal === "Pagi"
                                     ? "bg-emerald-950/40 border-emerald-500/40 shadow-sm"
                                     : currentVal === "Siang"
                                     ? "bg-amber-950/40 border-amber-500/40 shadow-sm"
                                     : "bg-[#010804] border-emerald-900/40 opacity-90"
                                 }`}
                               >
-                                <div className="flex justify-between items-center mb-2.5">
+                                <div className="flex justify-between items-center mb-1">
                                   <span className={`font-black text-xs ${isWeekend ? "text-amber-400" : "text-white"}`}>
                                     {day}
                                   </span>
                                   <span
                                     className={`text-[9px] font-black px-1.5 py-0.5 rounded uppercase ${
-                                      currentVal === "Pagi"
+                                      hasCuti
+                                        ? "bg-purple-500/20 text-purple-300"
+                                        : currentVal === "Pagi"
                                         ? "bg-emerald-500/20 text-emerald-300"
                                         : currentVal === "Siang"
                                         ? "bg-amber-500/20 text-amber-300"
                                         : "bg-red-500/20 text-red-300"
                                     }`}
                                   >
-                                    {currentVal}
+                                    {hasCuti ? "CUTI" : currentVal}
                                   </span>
                                 </div>
+                                <span className="text-[9px] text-white/40 font-mono block mb-2">
+                                  {formatDateShort(dayDate)}
+                                </span>
+
+                                {/* Badge Cuti */}
+                                {hasCuti && (
+                                  <div className="mb-2 p-2 rounded-xl bg-purple-500/15 border border-purple-500/30">
+                                    <span className="text-[10px] font-bold text-purple-300 flex items-center gap-1">
+                                      <span>🏖️</span> Cuti {leaveOnDay.type} Disetujui
+                                    </span>
+                                    <span className="text-[9px] text-purple-200/60 block mt-0.5">
+                                      {leaveOnDay.start} s/d {leaveOnDay.end}
+                                    </span>
+                                    {canOverrideCuti && (
+                                      <span className="text-[8px] text-amber-400 block mt-1 font-bold">
+                                        ⚠️ Atasan: Anda dapat mengubah jadwal ini
+                                      </span>
+                                    )}
+                                  </div>
+                                )}
 
                                 <div className="space-y-1.5">
                                   {/* Pilihan 1: Shift Pagi */}
                                   <button
                                     type="button"
-                                    onClick={() => setDraftSchedule((prev) => ({ ...prev, [day]: "Pagi" }))}
+                                    disabled={isCutiLocked}
+                                    onClick={() => {
+                                      if (hasCuti && canOverrideCuti) {
+                                        setCutiOverrideConfirm({ day, shift: "Pagi", leave: leaveOnDay });
+                                        return;
+                                      }
+                                      setDraftSchedule((prev) => ({ ...prev, [day]: "Pagi" }));
+                                    }}
                                     className={`w-full py-2 px-2.5 rounded-xl text-[11px] font-bold flex items-center justify-between transition-all ${
-                                      currentVal === "Pagi"
+                                      isCutiLocked
+                                        ? "bg-white/5 text-white/20 cursor-not-allowed opacity-40"
+                                        : currentVal === "Pagi" && !hasCuti
                                         ? "bg-emerald-500 text-black shadow-md shadow-emerald-500/30"
                                         : "bg-white/5 text-white/70 hover:bg-white/10 hover:text-white"
                                     }`}
@@ -3919,35 +4024,42 @@ export default function Home() {
                                   {/* Pilihan 2: Shift Siang */}
                                   <button
                                     type="button"
-                                    disabled={isTargetOffice}
+                                    disabled={isCutiLocked}
                                     onClick={() => {
-                                      if (isTargetOffice) {
-                                        showToast("Karyawan office tidak dijadwalkan shift siang!", "error");
+                                      if (hasCuti && canOverrideCuti) {
+                                        setCutiOverrideConfirm({ day, shift: "Siang", leave: leaveOnDay });
                                         return;
                                       }
                                       setDraftSchedule((prev) => ({ ...prev, [day]: "Siang" }));
                                     }}
                                     className={`w-full py-2 px-2.5 rounded-xl text-[11px] font-bold flex items-center justify-between transition-all ${
-                                      currentVal === "Siang"
-                                        ? "bg-amber-400 text-black shadow-md shadow-amber-400/30"
-                                        : isTargetOffice
+                                      isCutiLocked
                                         ? "bg-white/5 text-white/20 cursor-not-allowed opacity-40"
+                                        : currentVal === "Siang" && !hasCuti
+                                        ? "bg-amber-400 text-black shadow-md shadow-amber-400/30"
                                         : "bg-white/5 text-white/70 hover:bg-white/10 hover:text-white"
                                     }`}
-                                    title={isTargetOffice ? "Khusus Office: Hanya Shift Pagi" : "Shift Siang"}
+                                    title="Shift Siang"
                                   >
                                     <span>🌤️ Siang</span>
-                                    <span className="text-[9px] font-mono opacity-80">
-                                      {isTargetOffice ? "Office ❌" : "15:00"}
-                                    </span>
+                                    <span className="text-[9px] font-mono opacity-80">15:00</span>
                                   </button>
 
                                   {/* Pilihan 3: Libur */}
                                   <button
                                     type="button"
-                                    onClick={() => setDraftSchedule((prev) => ({ ...prev, [day]: "Libur" }))}
+                                    disabled={isCutiLocked}
+                                    onClick={() => {
+                                      if (hasCuti && canOverrideCuti) {
+                                        setCutiOverrideConfirm({ day, shift: "Libur", leave: leaveOnDay });
+                                        return;
+                                      }
+                                      setDraftSchedule((prev) => ({ ...prev, [day]: "Libur" }));
+                                    }}
                                     className={`w-full py-2 px-2.5 rounded-xl text-[11px] font-bold flex items-center justify-between transition-all ${
-                                      currentVal === "Libur"
+                                      isCutiLocked
+                                        ? "bg-white/5 text-white/20 cursor-not-allowed opacity-40"
+                                        : currentVal === "Libur"
                                         ? "bg-red-500/80 text-white shadow-md shadow-red-500/30"
                                         : "bg-white/5 text-white/70 hover:bg-white/10 hover:text-white"
                                     }`}
@@ -4018,7 +4130,6 @@ export default function Home() {
                                 Sabtu: "Libur",
                                 Minggu: "Libur",
                               };
-                              const isOff = isOfficeDept(emp.dept);
                               const isSelected = emp.id === selectedScheduleEmpId;
 
                               return (
@@ -4041,29 +4152,33 @@ export default function Home() {
                                   </td>
                                   <td className="py-3 font-semibold text-white/80">{emp.dept}</td>
                                   <td className="py-3">
-                                    <span
-                                      className={`text-[9px] font-bold px-2 py-0.5 rounded-full ${
-                                        isOff ? "bg-blue-500/20 text-blue-300" : "bg-emerald-500/20 text-emerald-300"
-                                      }`}
-                                    >
-                                      {isOff ? "Office" : "Operasional"}
+                                    <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300">
+                                      {emp.dept}
                                     </span>
                                   </td>
                                   {DAYS_OF_WEEK.map((d) => {
                                     const val = empSched[d];
+                                    const dayDateStr = rosterDayDates[d];
+                                    const empLeave = getLeaveOnDate(emp.id, dayDateStr);
                                     return (
                                       <td key={d} className="py-3 text-center">
-                                        <span
-                                          className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${
-                                            val === "Pagi"
-                                              ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30"
-                                              : val === "Siang"
-                                              ? "bg-amber-500/20 text-amber-300 border border-amber-500/30"
-                                              : "bg-red-500/20 text-red-300 border border-red-500/30"
-                                          }`}
-                                        >
-                                          {val === "Pagi" ? "☀️ Pagi" : val === "Siang" ? "🌤️ Siang" : "🏖️ Off"}
-                                        </span>
+                                        {empLeave ? (
+                                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-purple-500/20 text-purple-300 border border-purple-500/30">
+                                            🏖️ Cuti
+                                          </span>
+                                        ) : (
+                                          <span
+                                            className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${
+                                              val === "Pagi"
+                                                ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30"
+                                                : val === "Siang"
+                                                ? "bg-amber-500/20 text-amber-300 border border-amber-500/30"
+                                                : "bg-red-500/20 text-red-300 border border-red-500/30"
+                                            }`}
+                                          >
+                                            {val === "Pagi" ? "☀️ Pagi" : val === "Siang" ? "🌤️ Siang" : "🏖️ Off"}
+                                          </span>
+                                        )}
                                       </td>
                                     );
                                   })}
@@ -6139,6 +6254,83 @@ export default function Home() {
                 className="flex-1 py-2.5 rounded-xl bg-red-500 hover:bg-red-600 text-white font-black text-xs transition-all shadow-lg shadow-red-500/20"
               >
                 🗑️ Ya, Hapus Shift
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================= */}
+      {/* MODAL: KONFIRMASI OVERRIDE HARI CUTI OLEH ATASAN           */}
+      {/* ========================================================= */}
+      {cutiOverrideConfirm && (
+        <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-[#021008] border border-amber-500/60 ring-2 ring-amber-500/20 rounded-3xl p-6 max-w-md w-full shadow-2xl space-y-4 animate-in zoom-in-95 duration-150">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-2xl bg-amber-500/20 text-amber-400 flex items-center justify-center ring-1 ring-amber-400 flex-shrink-0">
+                <AlertTriangle className="w-6 h-6" />
+              </div>
+              <div>
+                <span className="text-[10px] text-amber-400 font-black uppercase tracking-wider block">
+                  PERINGATAN: OVERRIDE CUTI
+                </span>
+                <h3 className="font-black text-white text-base">Ubah Jadwal di Hari Cuti?</h3>
+              </div>
+            </div>
+
+            <div className="bg-[#010804] p-4 rounded-2xl border border-emerald-900/60 space-y-2 text-xs">
+              <div className="flex justify-between">
+                <span className="text-white/60">Karyawan:</span>
+                <span className="font-bold text-white">
+                  {employees.find((e) => e.id === selectedScheduleEmpId)?.name || "-"}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-white/60">Hari:</span>
+                <span className="font-bold text-white">
+                  {cutiOverrideConfirm.day} ({rosterDayDates[cutiOverrideConfirm.day]})
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-white/60">Cuti Disetujui:</span>
+                <span className="font-bold text-purple-300">
+                  {cutiOverrideConfirm.leave.type} ({cutiOverrideConfirm.leave.start} s/d {cutiOverrideConfirm.leave.end})
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-white/60">Shift yang akan diterapkan:</span>
+                <span className={`font-bold ${
+                  cutiOverrideConfirm.shift === "Pagi" ? "text-emerald-300" :
+                  cutiOverrideConfirm.shift === "Siang" ? "text-amber-300" : "text-red-300"
+                }`}>
+                  {cutiOverrideConfirm.shift}
+                </span>
+              </div>
+            </div>
+
+            <div className="p-3 rounded-xl border border-amber-500/30 bg-amber-500/10 text-xs text-amber-300 leading-relaxed">
+              <strong className="block text-amber-400 font-bold mb-0.5">⚠️ Perhatian:</strong>
+              Anda akan mengubah jadwal shift di hari yang sudah disetujui sebagai cuti. Karyawan akan diminta untuk tetap masuk kerja pada hari tersebut. Pastikan Anda telah berkomunikasi dengan yang bersangkutan.
+            </div>
+
+            <div className="flex gap-2 pt-1">
+              <button
+                type="button"
+                onClick={() => setCutiOverrideConfirm(null)}
+                className="flex-1 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white font-bold text-xs transition-all"
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setDraftSchedule((prev) => ({ ...prev, [cutiOverrideConfirm.day]: cutiOverrideConfirm.shift }));
+                  showToast(`⚠️ Jadwal hari ${cutiOverrideConfirm.day} diubah ke ${cutiOverrideConfirm.shift} (override cuti)`, "info");
+                  setCutiOverrideConfirm(null);
+                }}
+                className="flex-1 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-black font-black text-xs transition-all shadow-lg shadow-amber-500/20"
+              >
+                ✓ Ya, Override Cuti
               </button>
             </div>
           </div>
