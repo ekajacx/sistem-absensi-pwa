@@ -5119,8 +5119,118 @@ export default function Home() {
                     </div>
                   ) : (
                     <div className="space-y-6">
-                    {/* Panel Form Penjadwalan */}
-                    <div className="bg-[#021008] border border-emerald-900/60 rounded-3xl p-6 shadow-xl space-y-5">
+                      {/* BANNER JADWAL 7 HARI KERJA ATASAN SENDIRI (SESUAI GAMBAR USER) */}
+                      <div className="bg-[#021008] border border-emerald-900/60 rounded-3xl p-6 shadow-xl space-y-4">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-emerald-900/40 pb-3">
+                          <div className="flex items-center gap-2">
+                            <span className="text-[11px] font-black uppercase tracking-wider text-emerald-400">
+                              JADWAL 7 HARI KERJA ANDA ({currentActiveEmployee.name} — {currentActiveEmployee.role}):
+                            </span>
+                          </div>
+                          <span className="text-[10px] text-white/50 font-medium">
+                            Status Roster Mingguan Resmi
+                          </span>
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-7 gap-3">
+                          {DAYS_OF_WEEK.map((day) => {
+                            const empSched = weeklySchedules[currentActiveEmployee.id] || {
+                              Senin: "Pagi",
+                              Selasa: "Pagi",
+                              Rabu: "Pagi",
+                              Kamis: "Pagi",
+                              Jumat: "Pagi",
+                              Sabtu: "Libur",
+                              Minggu: "Libur",
+                            };
+                            const currentVal = empSched[day] || "Pagi";
+                            const isWeekend = day === "Sabtu" || day === "Minggu";
+                            const dayDateStr = rosterDayDates[day];
+                            const dayDate = new Date(dayDateStr + "T00:00:00");
+                            const leaveOnDay = getLeaveOnDate(currentActiveEmployee.id, dayDateStr);
+                            const hasCuti = !!leaveOnDay;
+
+                            return (
+                              <div
+                                key={day}
+                                className={`p-4 rounded-2xl border transition-all ${
+                                  hasCuti
+                                    ? "bg-purple-950/40 border-purple-500/50 shadow-md ring-1 ring-purple-500/30"
+                                    : currentVal === "Pagi"
+                                    ? "bg-emerald-950/40 border-emerald-500/40 shadow-md ring-1 ring-emerald-500/30"
+                                    : currentVal === "Siang"
+                                    ? "bg-amber-950/40 border-amber-500/40 shadow-md ring-1 ring-amber-500/30"
+                                    : "bg-[#010804] border-red-900/30 opacity-80"
+                                }`}
+                              >
+                                <div className="flex justify-between items-center mb-1">
+                                  <span className={`font-black text-xs ${isWeekend ? "text-amber-400" : "text-white"}`}>
+                                    {day}
+                                  </span>
+                                  <span
+                                    className={`text-[9px] font-black px-1.5 py-0.5 rounded uppercase ${
+                                      hasCuti
+                                        ? "bg-purple-500/20 text-purple-300"
+                                        : currentVal === "Pagi"
+                                        ? "bg-emerald-500/20 text-emerald-300"
+                                        : currentVal === "Siang"
+                                        ? "bg-amber-500/20 text-amber-300"
+                                        : "bg-red-500/20 text-red-300"
+                                    }`}
+                                  >
+                                    {hasCuti ? "CUTI" : currentVal}
+                                  </span>
+                                </div>
+                                <span className="text-[9px] text-white/50 font-mono block mb-3">
+                                  {formatDateShort(dayDate)}
+                                </span>
+
+                                {/* Info Kartu Shift */}
+                                {hasCuti ? (
+                                  <div className="space-y-1 py-1">
+                                    <div className="text-purple-300 font-extrabold text-xs flex items-center gap-1.5">
+                                      <span>🏖️</span>
+                                      <span>Cuti {leaveOnDay.type}</span>
+                                    </div>
+                                    <div className="font-mono text-[11px] font-bold text-white">Disetujui Atasan</div>
+                                    <span className="text-[10px] text-white/50 block">Cuti Resmi</span>
+                                  </div>
+                                ) : currentVal === "Pagi" ? (
+                                  <div className="space-y-1 py-1">
+                                    <div className="text-emerald-400 font-extrabold text-xs flex items-center gap-1.5">
+                                      <span>☀️</span>
+                                      <span>Shift Pagi</span>
+                                    </div>
+                                    <div className="font-mono text-[11px] font-bold text-white">07:00 - 15:00 WIB</div>
+                                    <span className="text-[10px] text-white/50 block">Wajib Hadir Kerja</span>
+                                  </div>
+                                ) : currentVal === "Siang" ? (
+                                  <div className="space-y-1 py-1">
+                                    <div className="text-amber-400 font-extrabold text-xs flex items-center gap-1.5">
+                                      <span>🌤️</span>
+                                      <span>Shift Siang</span>
+                                    </div>
+                                    <div className="font-mono text-[11px] font-bold text-white">15:00 - 23:00 WIB</div>
+                                    <span className="text-[10px] text-white/50 block">Wajib Hadir Kerja</span>
+                                  </div>
+                                ) : (
+                                  <div className="space-y-1 py-1">
+                                    <div className="text-red-400 font-extrabold text-xs flex items-center gap-1.5">
+                                      <span>🏖️</span>
+                                      <span>Libur (OFF)</span>
+                                    </div>
+                                    <div className="font-mono text-[11px] font-bold text-white/60">Tidak Bekerja</div>
+                                    <span className="text-[10px] text-white/40 block">Hari Istirahat</span>
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      {/* Panel Form Penjadwalan */}
+                      <div className="bg-[#021008] border border-emerald-900/60 rounded-3xl p-6 shadow-xl space-y-5">
                       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-emerald-900/60 pb-4">
                         <div>
                           <span className="text-[10px] text-emerald-400 font-black uppercase tracking-wider block">
@@ -5304,125 +5414,145 @@ export default function Home() {
                             return (
                               <div
                                 key={day}
-                                className={`p-3.5 rounded-2xl border transition-all relative ${
+                                className={`p-4 rounded-2xl border transition-all flex flex-col justify-between ${
                                   hasCuti
-                                    ? "bg-purple-950/40 border-purple-500/50 shadow-sm"
+                                    ? "bg-purple-950/40 border-purple-500/50 shadow-md ring-1 ring-purple-500/30"
                                     : currentVal === "Pagi"
-                                    ? "bg-emerald-950/40 border-emerald-500/40 shadow-sm"
+                                    ? "bg-emerald-950/40 border-emerald-500/40 shadow-md ring-1 ring-emerald-500/30"
                                     : currentVal === "Siang"
-                                    ? "bg-amber-950/40 border-amber-500/40 shadow-sm"
-                                    : "bg-[#010804] border-emerald-900/40 opacity-90"
+                                    ? "bg-amber-950/40 border-amber-500/40 shadow-md ring-1 ring-amber-500/30"
+                                    : "bg-[#010804] border-red-900/30 opacity-90"
                                 }`}
                               >
-                                <div className="flex justify-between items-center mb-1">
-                                  <span className={`font-black text-xs ${isWeekend ? "text-amber-400" : "text-white"}`}>
-                                    {day}
-                                  </span>
-                                  <span
-                                    className={`text-[9px] font-black px-1.5 py-0.5 rounded uppercase ${
-                                      hasCuti
-                                        ? "bg-purple-500/20 text-purple-300"
-                                        : currentVal === "Pagi"
-                                        ? "bg-emerald-500/20 text-emerald-300"
-                                        : currentVal === "Siang"
-                                        ? "bg-amber-500/20 text-amber-300"
-                                        : "bg-red-500/20 text-red-300"
-                                    }`}
-                                  >
-                                    {hasCuti ? "CUTI" : currentVal}
-                                  </span>
-                                </div>
-                                <span className="text-[9px] text-white/40 font-mono block mb-2">
-                                  {formatDateShort(dayDate)}
-                                </span>
-
-                                {/* Badge Cuti */}
-                                {hasCuti && (
-                                  <div className="mb-2 p-2 rounded-xl bg-purple-500/15 border border-purple-500/30">
-                                    <span className="text-[10px] font-bold text-purple-300 flex items-center gap-1">
-                                      <span>🏖️</span> Cuti {leaveOnDay.type} Disetujui
+                                <div>
+                                  <div className="flex justify-between items-center mb-0.5">
+                                    <span className={`font-black text-sm ${isWeekend ? "text-amber-400" : "text-white"}`}>
+                                      {day}
                                     </span>
-                                    <span className="text-[9px] text-purple-200/60 block mt-0.5">
-                                      {leaveOnDay.start} s/d {leaveOnDay.end}
+                                    <span
+                                      className={`text-[9px] font-black px-2 py-0.5 rounded uppercase tracking-wider ${
+                                        hasCuti
+                                          ? "bg-purple-500/20 text-purple-300 border border-purple-500/40"
+                                          : currentVal === "Pagi"
+                                          ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/40"
+                                          : currentVal === "Siang"
+                                          ? "bg-amber-500/20 text-amber-300 border border-amber-500/40"
+                                          : "bg-red-500/20 text-red-300 border border-red-500/40"
+                                      }`}
+                                    >
+                                      {hasCuti ? "CUTI" : currentVal.toUpperCase()}
                                     </span>
-                                    {canOverrideCuti && (
-                                      <span className="text-[8px] text-amber-400 block mt-1 font-bold">
-                                        ⚠️ Atasan: Anda dapat mengubah jadwal ini
-                                      </span>
-                                    )}
                                   </div>
-                                )}
+                                  <span className="text-[10px] text-white/50 font-mono block mb-3">
+                                    {formatDateShort(dayDate)}
+                                  </span>
 
-                                <div className="space-y-1.5">
-                                  {/* Pilihan 1: Shift Pagi */}
-                                  <button
-                                    type="button"
-                                    disabled={isCutiLocked}
-                                    onClick={() => {
-                                      if (hasCuti && canOverrideCuti) {
-                                        setCutiOverrideConfirm({ day, shift: "Pagi", leave: leaveOnDay });
-                                        return;
-                                      }
-                                      setDraftSchedule((prev) => ({ ...prev, [day]: "Pagi" }));
-                                    }}
-                                    className={`w-full py-2 px-2.5 rounded-xl text-[11px] font-bold flex items-center justify-between transition-all ${
-                                      isCutiLocked
-                                        ? "bg-white/5 text-white/20 cursor-not-allowed opacity-40"
-                                        : currentVal === "Pagi" && !hasCuti
-                                        ? "bg-emerald-500 text-black shadow-md shadow-emerald-500/30"
-                                        : "bg-white/5 text-white/70 hover:bg-white/10 hover:text-white"
-                                    }`}
-                                  >
-                                    <span>☀️ Pagi</span>
-                                    <span className="text-[9px] font-mono opacity-80">07:00</span>
-                                  </button>
+                                  {/* Info Detail Shift (Sesuai Tampilan Roster Resmi) */}
+                                  {hasCuti ? (
+                                    <div className="space-y-1 mb-4">
+                                      <div className="text-purple-300 font-extrabold text-xs flex items-center gap-1.5">
+                                        <span>🏖️</span>
+                                        <span>Cuti {leaveOnDay.type}</span>
+                                      </div>
+                                      <div className="font-mono text-[11px] font-bold text-white">Disetujui Atasan</div>
+                                      <span className="text-[10px] text-purple-200/60 block">Cuti Resmi ({leaveOnDay.start})</span>
+                                    </div>
+                                  ) : currentVal === "Pagi" ? (
+                                    <div className="space-y-1 mb-4">
+                                      <div className="text-emerald-400 font-extrabold text-xs flex items-center gap-1.5">
+                                        <span>☀️</span>
+                                        <span>Shift Pagi</span>
+                                      </div>
+                                      <div className="font-mono text-[11px] font-bold text-white">07:00 - 15:00 WIB</div>
+                                      <span className="text-[10px] text-white/50 block">Wajib Hadir Kerja</span>
+                                    </div>
+                                  ) : currentVal === "Siang" ? (
+                                    <div className="space-y-1 mb-4">
+                                      <div className="text-amber-400 font-extrabold text-xs flex items-center gap-1.5">
+                                        <span>🌤️</span>
+                                        <span>Shift Siang</span>
+                                      </div>
+                                      <div className="font-mono text-[11px] font-bold text-white">15:00 - 23:00 WIB</div>
+                                      <span className="text-[10px] text-white/50 block">Wajib Hadir Kerja</span>
+                                    </div>
+                                  ) : (
+                                    <div className="space-y-1 mb-4">
+                                      <div className="text-red-400 font-extrabold text-xs flex items-center gap-1.5">
+                                        <span>🏖️</span>
+                                        <span>Libur (OFF)</span>
+                                      </div>
+                                      <div className="font-mono text-[11px] font-bold text-white/60">Tidak Bekerja</div>
+                                      <span className="text-[10px] text-white/40 block">Hari Istirahat</span>
+                                    </div>
+                                  )}
+                                </div>
 
-                                  {/* Pilihan 2: Shift Siang */}
-                                  <button
-                                    type="button"
-                                    disabled={isCutiLocked}
-                                    onClick={() => {
-                                      if (hasCuti && canOverrideCuti) {
-                                        setCutiOverrideConfirm({ day, shift: "Siang", leave: leaveOnDay });
-                                        return;
-                                      }
-                                      setDraftSchedule((prev) => ({ ...prev, [day]: "Siang" }));
-                                    }}
-                                    className={`w-full py-2 px-2.5 rounded-xl text-[11px] font-bold flex items-center justify-between transition-all ${
-                                      isCutiLocked
-                                        ? "bg-white/5 text-white/20 cursor-not-allowed opacity-40"
-                                        : currentVal === "Siang" && !hasCuti
-                                        ? "bg-amber-400 text-black shadow-md shadow-amber-400/30"
-                                        : "bg-white/5 text-white/70 hover:bg-white/10 hover:text-white"
-                                    }`}
-                                    title="Shift Siang"
-                                  >
-                                    <span>🌤️ Siang</span>
-                                    <span className="text-[9px] font-mono opacity-80">15:00</span>
-                                  </button>
+                                {/* Tombol Pemilih Slot Shift 3 Pilihan */}
+                                <div className="pt-2 border-t border-white/10 space-y-1">
+                                  <span className="text-[9px] text-white/40 uppercase font-bold tracking-wider block">
+                                    Pilih Shift:
+                                  </span>
+                                  <div className="grid grid-cols-3 gap-1">
+                                    <button
+                                      type="button"
+                                      disabled={isCutiLocked}
+                                      onClick={() => {
+                                        if (hasCuti && canOverrideCuti) {
+                                          setCutiOverrideConfirm({ day, shift: "Pagi", leave: leaveOnDay });
+                                          return;
+                                        }
+                                        setDraftSchedule((prev) => ({ ...prev, [day]: "Pagi" }));
+                                      }}
+                                      className={`py-1.5 px-1 rounded-lg text-[10px] font-extrabold transition-all text-center ${
+                                        currentVal === "Pagi" && !hasCuti
+                                          ? "bg-emerald-500 text-black shadow-md shadow-emerald-500/30"
+                                          : "bg-white/5 text-white/60 hover:bg-white/15 hover:text-white"
+                                      }`}
+                                      title="Pilih Shift Pagi"
+                                    >
+                                      Pagi
+                                    </button>
 
-                                  {/* Pilihan 3: Libur */}
-                                  <button
-                                    type="button"
-                                    disabled={isCutiLocked}
-                                    onClick={() => {
-                                      if (hasCuti && canOverrideCuti) {
-                                        setCutiOverrideConfirm({ day, shift: "Libur", leave: leaveOnDay });
-                                        return;
-                                      }
-                                      setDraftSchedule((prev) => ({ ...prev, [day]: "Libur" }));
-                                    }}
-                                    className={`w-full py-2 px-2.5 rounded-xl text-[11px] font-bold flex items-center justify-between transition-all ${
-                                      isCutiLocked
-                                        ? "bg-white/5 text-white/20 cursor-not-allowed opacity-40"
-                                        : currentVal === "Libur"
-                                        ? "bg-red-500/80 text-white shadow-md shadow-red-500/30"
-                                        : "bg-white/5 text-white/70 hover:bg-white/10 hover:text-white"
-                                    }`}
-                                  >
-                                    <span>🏖️ Libur</span>
-                                    <span className="text-[9px] font-mono opacity-80">OFF</span>
-                                  </button>
+                                    <button
+                                      type="button"
+                                      disabled={isCutiLocked}
+                                      onClick={() => {
+                                        if (hasCuti && canOverrideCuti) {
+                                          setCutiOverrideConfirm({ day, shift: "Siang", leave: leaveOnDay });
+                                          return;
+                                        }
+                                        setDraftSchedule((prev) => ({ ...prev, [day]: "Siang" }));
+                                      }}
+                                      className={`py-1.5 px-1 rounded-lg text-[10px] font-extrabold transition-all text-center ${
+                                        currentVal === "Siang" && !hasCuti
+                                          ? "bg-amber-400 text-black shadow-md shadow-amber-400/30"
+                                          : "bg-white/5 text-white/60 hover:bg-white/15 hover:text-white"
+                                      }`}
+                                      title="Pilih Shift Siang"
+                                    >
+                                      Siang
+                                    </button>
+
+                                    <button
+                                      type="button"
+                                      disabled={isCutiLocked}
+                                      onClick={() => {
+                                        if (hasCuti && canOverrideCuti) {
+                                          setCutiOverrideConfirm({ day, shift: "Libur", leave: leaveOnDay });
+                                          return;
+                                        }
+                                        setDraftSchedule((prev) => ({ ...prev, [day]: "Libur" }));
+                                      }}
+                                      className={`py-1.5 px-1 rounded-lg text-[10px] font-extrabold transition-all text-center ${
+                                        currentVal === "Libur"
+                                          ? "bg-red-500 text-white shadow-md shadow-red-500/30"
+                                          : "bg-white/5 text-white/60 hover:bg-white/15 hover:text-white"
+                                      }`}
+                                      title="Pilih Libur"
+                                    >
+                                      Libur
+                                    </button>
+                                  </div>
                                 </div>
                               </div>
                             );
