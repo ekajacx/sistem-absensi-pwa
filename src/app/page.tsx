@@ -2659,7 +2659,7 @@ export default function Home() {
       {/* ========================================================= */}
       {/* PANEL KIRI: LEBIH GELAP PEKAT (#010a06)                  */}
       {/* ========================================================= */}
-      <aside className="w-64 flex-shrink-0 bg-[#010a06] border-r border-emerald-950/80 flex flex-col justify-between py-5 px-3 h-screen overflow-y-auto select-none z-20 shadow-2xl shadow-black sticky top-0">
+      <aside className="w-72 flex-shrink-0 bg-[#010a06] border-r border-emerald-950/80 flex flex-col justify-between py-5 px-3 h-screen overflow-y-auto select-none z-20 shadow-2xl shadow-black sticky top-0">
         <div>
           {/* Header Profil Perusahaan */}
           <div className="group relative p-2.5 rounded-2xl bg-[#03140d]/70 border border-emerald-900/40 hover:border-emerald-500/40 transition-all mb-6">
@@ -2781,12 +2781,12 @@ export default function Home() {
                           : "text-white hover:bg-emerald-950/40 font-medium"
                       }`}
                     >
-                      <div className="flex items-center gap-2.5">
-                        <span className="text-sm">{item.icon}</span>
-                        <span>{item.label}</span>
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <span className="text-sm flex-shrink-0">{item.icon}</span>
+                        <span className="whitespace-nowrap">{item.label}</span>
                       </div>
                       {item.badge !== undefined && (
-                        <span className="text-[10px] font-mono px-1.5 py-0.2 rounded-full bg-emerald-900 text-white">
+                        <span className="text-[10px] font-mono px-1.5 py-0.2 rounded-full bg-emerald-900 text-white flex-shrink-0">
                           {item.badge}
                         </span>
                       )}
@@ -2831,12 +2831,12 @@ export default function Home() {
                           : "text-white hover:bg-emerald-950/40 font-medium"
                       }`}
                     >
-                      <div className="flex items-center gap-2.5">
-                        <span className="text-sm">{item.icon}</span>
-                        <span>{item.label}</span>
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <span className="text-sm flex-shrink-0">{item.icon}</span>
+                        <span className="whitespace-nowrap">{item.label}</span>
                       </div>
                       {item.badge !== undefined && (
-                        <span className="text-[10px] font-mono px-1.5 py-0.2 rounded-full bg-emerald-900 text-white">
+                        <span className="text-[10px] font-mono px-1.5 py-0.2 rounded-full bg-emerald-900 text-white flex-shrink-0">
                           {item.badge}
                         </span>
                       )}
@@ -2884,12 +2884,12 @@ export default function Home() {
                           : "text-white hover:bg-emerald-950/40 font-medium"
                       }`}
                     >
-                      <div className="flex items-center gap-2.5">
-                        <span className="text-sm">{item.icon}</span>
-                        <span>{item.label}</span>
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <span className="text-sm flex-shrink-0">{item.icon}</span>
+                        <span className="whitespace-nowrap">{item.label}</span>
                       </div>
                       {item.badge !== undefined && (
-                        <span className="text-[10px] font-mono px-1.5 py-0.2 rounded-full bg-emerald-900 text-white">
+                        <span className="text-[10px] font-mono px-1.5 py-0.2 rounded-full bg-emerald-900 text-white flex-shrink-0">
                           {item.badge}
                         </span>
                       )}
@@ -2935,12 +2935,12 @@ export default function Home() {
                               : "text-white hover:bg-emerald-950/40 font-medium"
                           }`}
                         >
-                          <div className="flex items-center gap-2.5">
-                            <span className="text-sm">{item.icon}</span>
-                            <span>{item.label}</span>
+                          <div className="flex items-center gap-2.5 min-w-0">
+                            <span className="text-sm flex-shrink-0">{item.icon}</span>
+                            <span className="whitespace-nowrap">{item.label}</span>
                           </div>
                           {item.badge !== undefined && (
-                            <span className="text-[10px] font-mono px-1.5 py-0.2 rounded-full bg-emerald-900 text-white">
+                            <span className="text-[10px] font-mono px-1.5 py-0.2 rounded-full bg-emerald-900 text-white flex-shrink-0">
                               {item.badge}
                             </span>
                           )}
