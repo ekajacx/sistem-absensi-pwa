@@ -893,6 +893,16 @@ export default function Home() {
     return rolePerms.includes(permId);
   };
 
+  // Otomatis alihkan ke dashboard jika menu yang sedang dibuka tidak memiliki izin akses
+  useEffect(() => {
+    if (activeMenu === "user-management" && !hasPermission("menu_user_mgmt")) {
+      setActiveMenu("dashboard");
+    }
+    if (activeMenu === "pengaturan" && !hasPermission("menu_settings")) {
+      setActiveMenu("dashboard");
+    }
+  }, [activePerspective, rolePermissions, activeMenu]);
+
   // Hierarchy Helpers
   const getDirectSuperior = (emp: Employee): Employee | null => {
     if (!emp.managerId) return null;
@@ -1845,95 +1855,56 @@ export default function Home() {
               )}
             </div>
 
-            {/* Section 4: SISTEM */}
-            <div>
-              <button
-                onClick={() => toggleSection("sistem")}
-                className="w-full flex items-center justify-between px-3 py-1.5 text-[10px] font-extrabold uppercase tracking-wider text-white hover:text-emerald-300"
-              >
-                <div className="flex items-center gap-2">
-                  <span>⚙️</span>
-                  <span>SISTEM</span>
-                </div>
-                {openSections.sistem ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
-              </button>
+            {/* Section 4: SISTEM (Otomatis Sembunyi Jika Tidak Memiliki Hak Akses) */}
+            {(() => {
+              const systemMenuItems = [
+                { id: "user-management", label: "User Management", icon: "👤", badge: users.length, permId: "menu_user_mgmt" },
+                { id: "pengaturan", label: "Pengaturan", icon: "⚙️", permId: "menu_settings" },
+              ].filter((item) => hasPermission(item.permId));
 
-              {openSections.sistem && (
-                <div className="mt-1 space-y-1 pl-3 border-l-2 border-emerald-900/60 ml-4">
-                  {[
-                    {
-                      id: "user-management",
-                      label: "User Management",
-                      icon: "👤",
-                      badge: users.length,
-                      permId: "menu_user_mgmt",
-                      roleBadge: "HR • IT • GM • CEO",
-                    },
-                    {
-                      id: "pengaturan",
-                      label: "Pengaturan",
-                      icon: "⚙️",
-                      permId: "menu_settings",
-                      roleBadge: "Khusus IT & CEO",
-                    },
-                  ].map((item) => {
-                    const isAllowed = hasPermission(item.permId);
-                    return (
-                      <button
-                        key={item.id}
-                        onClick={() => {
-                          if (!isAllowed) {
-                            showToast(
-                              `⛔ Akses Ditolak: Role "${currentRoleName}" tidak memiliki hak akses ke ${item.label}! Hanya untuk: ${item.roleBadge}.`,
-                              "error"
-                            );
-                            return;
-                          }
-                          setActiveMenu(item.id);
-                        }}
-                        className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs transition-all ${
-                          activeMenu === item.id
-                            ? "bg-emerald-950 text-white font-bold border-l-2 border-emerald-400 shadow-sm"
-                            : isAllowed
-                            ? "text-white hover:bg-emerald-950/40 font-medium"
-                            : "text-white/40 hover:bg-red-950/20 cursor-not-allowed font-medium"
-                        }`}
-                      >
-                        <div className="flex flex-col items-start gap-0.5">
-                          <div className="flex items-center gap-2">
+              if (systemMenuItems.length === 0) return null;
+
+              return (
+                <div>
+                  <button
+                    onClick={() => toggleSection("sistem")}
+                    className="w-full flex items-center justify-between px-3 py-1.5 text-[10px] font-extrabold uppercase tracking-wider text-white hover:text-emerald-300"
+                  >
+                    <div className="flex items-center gap-2">
+                      <span>⚙️</span>
+                      <span>SISTEM</span>
+                    </div>
+                    {openSections.sistem ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
+                  </button>
+
+                  {openSections.sistem && (
+                    <div className="mt-1 space-y-0.5 pl-3 border-l-2 border-emerald-900/60 ml-4">
+                      {systemMenuItems.map((item) => (
+                        <button
+                          key={item.id}
+                          onClick={() => setActiveMenu(item.id)}
+                          className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs transition-all ${
+                            activeMenu === item.id
+                              ? "bg-emerald-950 text-white font-bold border-l-2 border-emerald-400 shadow-sm"
+                              : "text-white hover:bg-emerald-950/40 font-medium"
+                          }`}
+                        >
+                          <div className="flex items-center gap-2.5">
                             <span className="text-sm">{item.icon}</span>
-                            <span className={!isAllowed ? "text-white/50" : ""}>{item.label}</span>
+                            <span>{item.label}</span>
                           </div>
-                          <span
-                            className={`text-[8px] px-1.5 py-0.2 rounded font-mono ${
-                              isAllowed
-                                ? "bg-emerald-950 text-emerald-400/90 border border-emerald-900/40"
-                                : "bg-red-950/60 text-red-400/80 border border-red-900/40"
-                            }`}
-                          >
-                            {isAllowed ? `✓ ${item.roleBadge}` : `🔒 ${item.roleBadge}`}
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-1.5">
-                          {!isAllowed ? (
-                            <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-red-900/60 text-red-300 border border-red-800/60 flex items-center gap-1">
-                              <Lock className="w-2.5 h-2.5" />
-                              Kunci
+                          {item.badge !== undefined && (
+                            <span className="text-[10px] font-mono px-1.5 py-0.2 rounded-full bg-emerald-900 text-white">
+                              {item.badge}
                             </span>
-                          ) : (
-                            item.badge !== undefined && (
-                              <span className="text-[10px] font-mono px-1.5 py-0.2 rounded-full bg-emerald-900 text-white">
-                                {item.badge}
-                              </span>
-                            )
                           )}
-                        </div>
-                      </button>
-                    );
-                  })}
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </div>
-              )}
-            </div>
+              );
+            })()}
           </div>
         </div>
 
@@ -2809,55 +2780,8 @@ export default function Home() {
           {/* ===================================================== */}
           {/* VIEW: USER MANAGEMENT & RBAC                          */}
           {/* ===================================================== */}
-          {activeMenu === "user-management" &&
-            (!hasPermission("menu_user_mgmt") ? (
-              <div className="max-w-2xl mx-auto my-8 bg-gradient-to-br from-[#1a0808] to-[#0a0202] rounded-3xl p-8 border border-red-500/40 text-center space-y-5 shadow-2xl">
-                <div className="w-16 h-16 rounded-3xl bg-red-500/20 border border-red-500/40 flex items-center justify-center mx-auto text-3xl">
-                  🔒
-                </div>
-                <div>
-                  <span className="text-[10px] text-red-400 font-black uppercase tracking-wider block">
-                    403 AKSES DITOLAK • WEWENANG TERBATAS
-                  </span>
-                  <h3 className="font-black text-white text-lg mt-1">
-                    Akses Menu User Management Terkunci
-                  </h3>
-                  <p className="text-xs text-white/70 mt-2 max-w-md mx-auto leading-relaxed">
-                    Akun aktif Anda (<span className="text-white font-bold">{currentActiveEmployee.name}</span> — <span className="text-amber-300 font-bold">{currentRoleName}</span>) tidak memiliki izin untuk mengelola kredensial akun, pendaftaran karyawan, atau matriks RBAC.
-                  </p>
-                </div>
-
-                <div className="bg-[#020503] p-4 rounded-2xl border border-emerald-900/60 text-left space-y-2">
-                  <span className="text-[10px] text-emerald-400 font-bold uppercase block">
-                    Role yang Diizinkan Mengakses Menu Ini:
-                  </span>
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-xs">
-                    {[
-                      { role: "Super Admin", desc: "Akses Penuh Seluruh Sistem" },
-                      { role: "General Manager", desc: "Supervisi Akun Perusahaan" },
-                      { role: "HR Supervisor", desc: "Kelola SDM & Akun Staf" },
-                      { role: "HR Staff", desc: "Pendaftaran Karyawan Baru" },
-                      { role: "IT Supervisor", desc: "Kelola RBAC & Akun Teknis" },
-                    ].map((item) => (
-                      <div key={item.role} className="bg-emerald-950/40 p-2.5 rounded-xl border border-emerald-900/60">
-                        <span className="text-emerald-300 font-bold text-[11px] block">✓ {item.role}</span>
-                        <span className="text-[9px] text-white/50">{item.desc}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="pt-2 flex justify-center gap-3">
-                  <button
-                    onClick={() => setActiveMenu("dashboard")}
-                    className="px-5 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white font-bold text-xs transition-all"
-                  >
-                    Kembali ke Dashboard
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <div className="space-y-6">
+          {activeMenu === "user-management" && hasPermission("menu_user_mgmt") && (
+            <div className="space-y-6">
               <div className="flex items-center justify-between border-b border-emerald-900/60 pb-3">
                 <div className="flex gap-3">
                   <button
@@ -3028,7 +2952,7 @@ export default function Home() {
                 </div>
               )}
             </div>
-          ))}
+          )}
 
           {/* ===================================================== */}
           {/* VIEW: ABSENSI (SCANNER GPS & WAJAH)                   */}
@@ -3860,109 +3784,64 @@ export default function Home() {
           {/* ===================================================== */}
           {/* VIEW: PENGATURAN TEKNIS IT (WEWENANG KHUSUS IT)       */}
           {/* ===================================================== */}
-          {activeMenu === "pengaturan" &&
-            (!hasPermission("menu_settings") ? (
-              <div className="max-w-2xl mx-auto my-8 bg-gradient-to-br from-[#1a0808] to-[#0a0202] rounded-3xl p-8 border border-red-500/40 text-center space-y-5 shadow-2xl">
-                <div className="w-16 h-16 rounded-3xl bg-red-500/20 border border-red-500/40 flex items-center justify-center mx-auto text-3xl">
-                  ⚙️
-                </div>
+          {activeMenu === "pengaturan" && hasPermission("menu_settings") && (
+            <div className="max-w-2xl bg-gradient-to-br from-[#062417] to-[#021008] rounded-2xl p-6 border border-emerald-900/60 space-y-5">
+              <div className="flex items-center justify-between border-b border-emerald-900/60 pb-3">
                 <div>
-                  <span className="text-[10px] text-red-400 font-black uppercase tracking-wider block">
-                    403 AKSES DITOLAK • WEWENANG KHUSUS IT
-                  </span>
-                  <h3 className="font-black text-white text-lg mt-1">
-                    Akses Menu Pengaturan Teknis IT Terkunci
+                  <h3 className="font-bold text-white text-base flex items-center gap-2">
+                    <Cpu className="w-5 h-5 text-blue-400" />
+                    <span>Pengaturan Teknis IT & Geofence GPS</span>
                   </h3>
-                  <p className="text-xs text-white/70 mt-2 max-w-md mx-auto leading-relaxed">
-                    Pengaturan server, parameter radius Geofence GPS ({settings.geofenceRadius}m), koordinat kantor, dan AI Face Match ({settings.aiFaceThreshold}%) adalah wewenang teknis divisi IT. Akun Anda (<span className="text-white font-bold">{currentActiveEmployee.name}</span> — <span className="text-amber-300 font-bold">{currentRoleName}</span>) tidak memiliki hak akses teknis ini.
+                  <p className="text-xs text-white/70">
+                    Wewenang khusus IT Supervisor & IT Staff untuk mengelola infrastruktur & keamanan sistem.
                   </p>
                 </div>
-
-                <div className="bg-[#020503] p-4 rounded-2xl border border-blue-900/60 text-left space-y-2">
-                  <span className="text-[10px] text-blue-400 font-bold uppercase block">
-                    Role yang Diizinkan Mengakses Menu Ini:
-                  </span>
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs">
-                    {[
-                      { role: "Super Admin", desc: "Akses Root & Konfigurasi Global" },
-                      { role: "IT Supervisor", desc: "Konfigurasi Geofence & Server" },
-                      { role: "IT Staff", desc: "Maintenance Teknis & Audit GPS" },
-                    ].map((item) => (
-                      <div key={item.role} className="bg-blue-950/40 p-2.5 rounded-xl border border-blue-900/60">
-                        <span className="text-blue-300 font-bold text-[11px] block">✓ {item.role}</span>
-                        <span className="text-[9px] text-white/50">{item.desc}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="pt-2 flex justify-center gap-3">
-                  <button
-                    onClick={() => setActiveMenu("dashboard")}
-                    className="px-5 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white font-bold text-xs transition-all"
-                  >
-                    Kembali ke Dashboard
-                  </button>
-                </div>
+                <span className="px-2.5 py-1 rounded-lg bg-blue-500/20 text-blue-300 border border-blue-500/30 text-[10px] font-bold">
+                  IT ONLY
+                </span>
               </div>
-            ) : (
-              <div className="max-w-2xl bg-gradient-to-br from-[#062417] to-[#021008] rounded-2xl p-6 border border-emerald-900/60 space-y-5">
-                <div className="flex items-center justify-between border-b border-emerald-900/60 pb-3">
-                  <div>
-                    <h3 className="font-bold text-white text-base flex items-center gap-2">
-                      <Cpu className="w-5 h-5 text-blue-400" />
-                      <span>Pengaturan Teknis IT & Geofence GPS</span>
-                    </h3>
-                    <p className="text-xs text-white/70">
-                      Wewenang khusus IT Supervisor & IT Staff untuk mengelola infrastruktur & keamanan sistem.
-                    </p>
-                  </div>
-                  <span className="px-2.5 py-1 rounded-lg bg-blue-500/20 text-blue-300 border border-blue-500/30 text-[10px] font-bold">
-                    IT ONLY
-                  </span>
+
+              <div className="space-y-4 text-xs">
+                <div>
+                  <label className="text-white block mb-1 font-bold">Nama Titik Kantor</label>
+                  <input
+                    type="text"
+                    value={settings.officeName}
+                    onChange={(e) => setSettings({ ...settings, officeName: e.target.value })}
+                    className="w-full bg-[#010804] border border-emerald-900/60 rounded-xl px-3.5 py-2.5 text-white"
+                  />
                 </div>
 
-                <div className="space-y-4 text-xs">
+                <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="text-white block mb-1 font-bold">Nama Titik Kantor</label>
+                    <label className="text-white block mb-1 font-bold">Radius Toleransi Geofence (Meter)</label>
                     <input
-                      type="text"
-                      value={settings.officeName}
-                      onChange={(e) => setSettings({ ...settings, officeName: e.target.value })}
-                      className="w-full bg-[#010804] border border-emerald-900/60 rounded-xl px-3.5 py-2.5 text-white"
+                      type="number"
+                      value={settings.geofenceRadius}
+                      onChange={(e) => setSettings({ ...settings, geofenceRadius: parseInt(e.target.value) || 50 })}
+                      className="w-full bg-[#010804] border border-emerald-900/60 rounded-xl px-3.5 py-2.5 text-white font-mono"
                     />
                   </div>
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="text-white block mb-1 font-bold">Radius Toleransi Geofence (Meter)</label>
-                      <input
-                        type="number"
-                        value={settings.geofenceRadius}
-                        onChange={(e) => setSettings({ ...settings, geofenceRadius: parseInt(e.target.value) || 50 })}
-                        className="w-full bg-[#010804] border border-emerald-900/60 rounded-xl px-3.5 py-2.5 text-white font-mono"
-                      />
-                    </div>
-                    <div>
-                      <label className="text-white block mb-1 font-bold">Ambang Batas Skor AI Wajah (%)</label>
-                      <input
-                        type="number"
-                        value={settings.aiFaceThreshold}
-                        onChange={(e) => setSettings({ ...settings, aiFaceThreshold: parseInt(e.target.value) || 80 })}
-                        className="w-full bg-[#010804] border border-emerald-900/60 rounded-xl px-3.5 py-2.5 text-white font-mono"
-                      />
-                    </div>
+                  <div>
+                    <label className="text-white block mb-1 font-bold">Ambang Batas Skor AI Wajah (%)</label>
+                    <input
+                      type="number"
+                      value={settings.aiFaceThreshold}
+                      onChange={(e) => setSettings({ ...settings, aiFaceThreshold: parseInt(e.target.value) || 80 })}
+                      className="w-full bg-[#010804] border border-emerald-900/60 rounded-xl px-3.5 py-2.5 text-white font-mono"
+                    />
                   </div>
-
-                  <button
-                    onClick={() => showToast("✓ Konfigurasi server geofence berhasil disimpan oleh tim IT!")}
-                    className="w-full mt-4 py-3 rounded-xl bg-gradient-to-r from-blue-600 to-teal-500 text-white font-extrabold text-xs hover:brightness-110 transition-all shadow-lg"
-                  >
-                    Simpan Konfigurasi Teknis IT
-                  </button>
                 </div>
+
+                <button
+                  onClick={() => showToast("✓ Konfigurasi server geofence berhasil disimpan oleh tim IT!")}
+                  className="w-full mt-4 py-3 rounded-xl bg-gradient-to-r from-blue-600 to-teal-500 text-white font-extrabold text-xs hover:brightness-110 transition-all shadow-lg"
+                >
+                  Simpan Konfigurasi Teknis IT
+                </button>
               </div>
-            ))}
+            </div>
+          )}
         </div>
       </div>
 
