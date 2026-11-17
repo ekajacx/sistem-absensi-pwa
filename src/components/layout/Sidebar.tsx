@@ -136,10 +136,10 @@ export default function Sidebar() {
                 setActiveMenu("dashboard");
                 setIsMobileSidebarOpen(false);
               }}
-              className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all ${
+              className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-bold transition-colors duration-100 ${
                 activeMenu === "dashboard"
                   ? "bg-[#0a261a] text-white border border-emerald-500/30 shadow-lg shadow-black/80"
-                  : "text-white hover:bg-emerald-950/60"
+                  : "text-white hover:bg-emerald-950/60 border border-transparent"
               }`}
             >
               <span className="text-base">🏠</span>
@@ -183,10 +183,10 @@ export default function Sidebar() {
                         setActiveMenu(item.id);
                         setIsMobileSidebarOpen(false);
                       }}
-                      className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs transition-all ${
+                      className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs transition-colors duration-100 border-l-2 ${
                         activeMenu === item.id
-                          ? "bg-emerald-950 text-white font-bold border-l-2 border-emerald-400 shadow-sm"
-                          : "text-white hover:bg-emerald-950/40 font-medium"
+                          ? "bg-emerald-950 text-white font-bold border-emerald-400 shadow-sm"
+                          : "text-white hover:bg-emerald-950/40 font-medium border-transparent"
                       }`}
                     >
                       <div className="flex items-center gap-2.5 min-w-0">
@@ -236,10 +236,10 @@ export default function Sidebar() {
                         setActiveMenu(item.id);
                         setIsMobileSidebarOpen(false);
                       }}
-                      className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs transition-all ${
+                      className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs transition-colors duration-100 border-l-2 ${
                         activeMenu === item.id
-                          ? "bg-emerald-950 text-white font-bold border-l-2 border-emerald-400 shadow-sm"
-                          : "text-white hover:bg-emerald-950/40 font-medium"
+                          ? "bg-emerald-950 text-white font-bold border-emerald-400 shadow-sm"
+                          : "text-white hover:bg-emerald-950/40 font-medium border-transparent"
                       }`}
                     >
                       <div className="flex items-center gap-2.5 min-w-0">
@@ -292,10 +292,10 @@ export default function Sidebar() {
                         setActiveMenu(item.id);
                         setIsMobileSidebarOpen(false);
                       }}
-                      className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs transition-all ${
+                      className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs transition-colors duration-100 border-l-2 ${
                         activeMenu === item.id
-                          ? "bg-emerald-950 text-white font-bold border-l-2 border-emerald-400 shadow-sm"
-                          : "text-white hover:bg-emerald-950/40 font-medium"
+                          ? "bg-emerald-950 text-white font-bold border-emerald-400 shadow-sm"
+                          : "text-white hover:bg-emerald-950/40 font-medium border-transparent"
                       }`}
                     >
                       <div className="flex items-center gap-2.5 min-w-0">
@@ -346,10 +346,10 @@ export default function Sidebar() {
                             setActiveMenu(item.id);
                             setIsMobileSidebarOpen(false);
                           }}
-                          className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs transition-all ${
+                          className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs transition-colors duration-100 border-l-2 ${
                             activeMenu === item.id
-                              ? "bg-emerald-950 text-white font-bold border-l-2 border-emerald-400 shadow-sm"
-                              : "text-white hover:bg-emerald-950/40 font-medium"
+                              ? "bg-emerald-950 text-white font-bold border-emerald-400 shadow-sm"
+                              : "text-white hover:bg-emerald-950/40 font-medium border-transparent"
                           }`}
                         >
                           <div className="flex items-center gap-2.5 min-w-0">
