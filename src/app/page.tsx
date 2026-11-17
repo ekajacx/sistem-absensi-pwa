@@ -775,6 +775,9 @@ export default function Home() {
     { id: "att_all", category: "Absensi", name: "Lihat Rekap Absensi Seluruh Perusahaan", description: "Audit trail kehadiran seluruh staf dan ekspor XLSX/PDF" },
     { id: "leave_approve_subordinate", category: "Cuti", name: "Persetujuan Cuti Bawahan Langsung (N+1)", description: "Supervisor menyetujui / menolak cuti staf di departemennya" },
     { id: "journal_review_team", category: "Jurnal", name: "Review & Penilaian Jurnal Bawahan", description: "Supervisor memeriksa dan memberi skor kualitas kerja tim" },
+    { id: "emp_edit", category: "Manajemen Karyawan", name: "Edit Data Karyawan", description: "Mengedit data profil karyawan (nama, departemen, jabatan, dll)" },
+    { id: "emp_deactivate", category: "Manajemen Karyawan", name: "Nonaktifkan Karyawan (Resign)", description: "Menonaktifkan akun karyawan yang resign atau berhenti" },
+    { id: "emp_delete", category: "Manajemen Karyawan", name: "Hapus Data Karyawan", description: "Menghapus data karyawan secara permanen dari sistem" },
   ];
 
   const [rolePermissions, setRolePermissions] = useState<Record<string, string[]>>({
@@ -792,6 +795,9 @@ export default function Home() {
       "att_all",
       "leave_approve_subordinate",
       "journal_review_team",
+      "emp_edit",
+      "emp_deactivate",
+      "emp_delete",
     ],
     "General Manager": [
       "menu_user_mgmt", // GM berwenang memantau seluruh akun dan hirarki organisasi
@@ -802,6 +808,8 @@ export default function Home() {
       "att_all",
       "leave_approve_subordinate",
       "journal_review_team",
+      "emp_edit",
+      "emp_deactivate",
     ],
     "HR Supervisor": [
       "menu_user_mgmt", // HR Supervisor berwenang penuh pada user management & pendaftaran
@@ -814,12 +822,16 @@ export default function Home() {
       "att_all",
       "leave_approve_subordinate",
       "journal_review_team",
+      "emp_edit",
+      "emp_deactivate",
+      "emp_delete",
     ],
     "HR Staff": [
       "menu_user_mgmt", // HR Staff diberi izin membuat akun & mendaftarkan karyawan baru
       "emp_manage_hr",
       "org_manage_hr",
       "att_scan_self",
+      "emp_edit",
     ],
     "IT Supervisor": [
       "menu_user_mgmt", // IT Supervisor mengelola hak akses akun & RBAC
@@ -846,6 +858,7 @@ export default function Home() {
       "att_team",
       "leave_approve_subordinate",
       "journal_review_team",
+      "emp_edit",
     ],
     Staff: [
       "att_scan_self",
@@ -2687,27 +2700,56 @@ export default function Home() {
                         )}
                       </div>
 
-                      {/* Action Links */}
+                      {/* Action Links — Edit, Nonaktifkan, Hapus (berdasarkan hak akses RBAC) */}
+                      {(hasPermission("emp_edit") || hasPermission("emp_deactivate") || hasPermission("emp_delete")) && (
                       <div className="pt-2 border-t border-emerald-900/40 flex gap-2">
+                        {hasPermission("emp_edit") && (
                         <button
                           onClick={() => {
-                            setSelectedEmployeeId(k.id);
-                            setActiveMenu("absensi");
+                            showToast(`Edit data karyawan: ${k.name}`, "info");
                           }}
                           className="flex-1 py-1.5 rounded-lg bg-emerald-500/20 hover:bg-emerald-500 hover:text-black text-emerald-300 text-[10px] font-bold transition-all text-center"
                         >
-                          📍 Absen Wajah
+                          ✏️ Edit Data
                         </button>
+                        )}
+                        {hasPermission("emp_deactivate") && k.status === "Aktif" && (
                         <button
                           onClick={() => {
-                            setActiveMenu("pengajuan-cuti");
-                            showToast(`Buka pengajuan cuti untuk ${k.name}`);
+                            if (confirm(`Nonaktifkan karyawan "${k.name}"? Status akan diubah menjadi Non-Aktif (Resign).`)) {
+                              setEmployees((prev) =>
+                                prev.map((emp) =>
+                                  emp.id === k.id ? { ...emp, status: "Non-Aktif" as const } : emp
+                                )
+                              );
+                              showToast(`${k.name} telah dinonaktifkan (Resign).`, "info");
+                            }
                           }}
-                          className="flex-1 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-white text-[10px] font-semibold transition-all text-center"
+                          className="flex-1 py-1.5 rounded-lg bg-amber-500/20 hover:bg-amber-500 hover:text-black text-amber-300 text-[10px] font-bold transition-all text-center"
                         >
-                          🏖️ Cuti
+                          🚫 Nonaktifkan
                         </button>
+                        )}
+                        {hasPermission("emp_deactivate") && k.status === "Non-Aktif" && (
+                        <span className="flex-1 py-1.5 rounded-lg bg-red-500/10 text-red-400 text-[10px] font-bold text-center border border-red-500/20">
+                          ⛔ Non-Aktif (Resign)
+                        </span>
+                        )}
+                        {hasPermission("emp_delete") && (
+                        <button
+                          onClick={() => {
+                            if (confirm(`HAPUS PERMANEN data karyawan "${k.name}"? Tindakan ini tidak dapat dibatalkan!`)) {
+                              setEmployees((prev) => prev.filter((emp) => emp.id !== k.id));
+                              showToast(`Data ${k.name} telah dihapus permanen.`, "error");
+                            }
+                          }}
+                          className="flex-1 py-1.5 rounded-lg bg-red-500/20 hover:bg-red-500 hover:text-white text-red-300 text-[10px] font-bold transition-all text-center"
+                        >
+                          🗑️ Hapus
+                        </button>
+                        )}
                       </div>
+                      )}
                     </div>
                   );
                 })}
