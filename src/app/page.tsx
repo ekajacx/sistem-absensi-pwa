@@ -264,7 +264,7 @@ export default function Home() {
     // 1. Direktur Utama (CEO) — Pimpinan Tertinggi
     {
       id: "emp-ceo",
-      nik: "2024-0001",
+      nik: "3171012401880001",
       name: "Ir. Hendra Gunawan",
       email: "hendra@perusahaan.id",
       phone: "+62 811-9876-0001",
@@ -290,7 +290,7 @@ export default function Home() {
     // 2. General Manager (GM) — Tepat 1 Orang, Membawahi Seluruh 6 Supervisor
     {
       id: "emp-gm",
-      nik: "2024-0010",
+      nik: "3171021501890010",
       name: "Dr. Kartika Sari, S.E., M.M.",
       email: "kartika.gm@perusahaan.id",
       phone: "+62 811-1000-0010",
@@ -317,7 +317,7 @@ export default function Home() {
     // HR DEPT
     {
       id: "emp-hr-spv",
-      nik: "2026-0101",
+      nik: "3171030102900101",
       name: "Siti Rahmawati",
       email: "siti.hr@perusahaan.id",
       phone: "+62 813-8888-0101",
@@ -342,7 +342,7 @@ export default function Home() {
     },
     {
       id: "emp-hr-stf",
-      nik: "2026-0102",
+      nik: "3171030202950102",
       name: "Maya Indah",
       email: "maya.hr@perusahaan.id",
       phone: "+62 878-3333-0102",
@@ -368,7 +368,7 @@ export default function Home() {
     // FINANCE DEPT
     {
       id: "emp-fin-spv",
-      nik: "2026-0201",
+      nik: "3171040103910201",
       name: "Andi Saputra",
       email: "andi.fin@perusahaan.id",
       phone: "+62 815-5555-0201",
@@ -393,7 +393,7 @@ export default function Home() {
     },
     {
       id: "emp-fin-stf",
-      nik: "2026-0202",
+      nik: "3171040203960202",
       name: "Farhan Ramadhan",
       email: "farhan.fin@perusahaan.id",
       phone: "+62 812-4444-0202",
@@ -419,7 +419,7 @@ export default function Home() {
     // MARKETING DEPT
     {
       id: "emp-mkt-spv",
-      nik: "2026-0301",
+      nik: "3171050104920301",
       name: "Dewi Lestari",
       email: "dewi.mkt@perusahaan.id",
       phone: "+62 819-2222-0301",
@@ -444,7 +444,7 @@ export default function Home() {
     },
     {
       id: "emp-mkt-stf",
-      nik: "2026-0302",
+      nik: "3171050204970302",
       name: "Aditya Pratama",
       email: "aditya.mkt@perusahaan.id",
       phone: "+62 818-7777-0302",
@@ -470,7 +470,7 @@ export default function Home() {
     // SALES DEPT
     {
       id: "emp-sls-spv",
-      nik: "2026-0401",
+      nik: "3171060105890401",
       name: "Reza Pahlevi",
       email: "reza.sls@perusahaan.id",
       phone: "+62 811-2233-0401",
@@ -495,7 +495,7 @@ export default function Home() {
     },
     {
       id: "emp-sls-stf",
-      nik: "2026-0402",
+      nik: "3171060205940402",
       name: "Bella Savira",
       email: "bella.sls@perusahaan.id",
       phone: "+62 812-6666-0402",
@@ -521,7 +521,7 @@ export default function Home() {
     // OPERATIONS DEPT
     {
       id: "emp-ops-spv",
-      nik: "2026-0501",
+      nik: "3171070106880501",
       name: "Rian Hidayat",
       email: "rian.ops@perusahaan.id",
       phone: "+62 856-1111-0501",
@@ -546,7 +546,7 @@ export default function Home() {
     },
     {
       id: "emp-ops-stf",
-      nik: "2026-0502",
+      nik: "3171070206960502",
       name: "Joko Susilo",
       email: "joko.ops@perusahaan.id",
       phone: "+62 857-9999-0502",
@@ -572,7 +572,7 @@ export default function Home() {
     // IT DEPT
     {
       id: "emp-it-spv",
-      nik: "2026-0601",
+      nik: "3171080107930601",
       name: "Budi Pratama",
       email: "budi.it@perusahaan.id",
       phone: "+62 812-3456-0601",
@@ -597,7 +597,7 @@ export default function Home() {
     },
     {
       id: "emp-it-stf",
-      nik: "2026-0602",
+      nik: "3171080207980602",
       name: "Dimas Wicaksono",
       email: "dimas.it@perusahaan.id",
       phone: "+62 813-7777-0602",
@@ -631,12 +631,12 @@ export default function Home() {
 
   // Attendances State
   const [attendances, setAttendances] = useState<AttendanceRecord[]>([
-    { id: "att-1", employeeId: "emp-it-spv", name: "Budi Pratama", nik: "2026-0601", dept: "IT", shift: "Shift Pagi (Utama)", in: "07:42 WIB", out: "15:02 WIB", dist: 14.2, score: 96.4, status: "APPROVED", date: "17 Nov 2026" },
-    { id: "att-2", employeeId: "emp-hr-spv", name: "Siti Rahmawati", nik: "2026-0101", dept: "HR", shift: "Shift Pagi (Utama)", in: "07:35 WIB", out: "15:00 WIB", dist: 8.5, score: 98.1, status: "APPROVED", date: "17 Nov 2026" },
-    { id: "att-3", employeeId: "emp-fin-spv", name: "Andi Saputra", nik: "2026-0201", dept: "Finance", shift: "Shift Pagi (Utama)", in: "07:58 WIB", out: "15:15 WIB", dist: 24.1, score: 95.8, status: "APPROVED", date: "17 Nov 2026" },
-    { id: "att-4", employeeId: "emp-mkt-spv", name: "Dewi Lestari", nik: "2026-0301", dept: "Marketing", shift: "Shift Pagi (Utama)", in: "08:04 WIB", out: "--:--", dist: 18.9, score: 96.0, status: "TERLAMBAT", date: "17 Nov 2026" },
-    { id: "att-5", employeeId: "emp-ops-spv", name: "Rian Hidayat", nik: "2026-0501", dept: "Operations", shift: "Shift Siang (Operasional)", in: "14:48 WIB", out: "23:05 WIB", dist: 12.3, score: 94.0, status: "APPROVED", date: "17 Nov 2026" },
-    { id: "att-6", employeeId: "emp-it-stf", name: "Dimas Wicaksono", nik: "2026-0602", dept: "IT", shift: "Shift Pagi (Utama)", in: "07:40 WIB", out: "15:00 WIB", dist: 11.2, score: 96.1, status: "APPROVED", date: "17 Nov 2026" },
+    { id: "att-1", employeeId: "emp-it-spv", name: "Budi Pratama", nik: "3171080107930601", dept: "IT", shift: "Shift Pagi (Utama)", in: "07:42 WIB", out: "15:02 WIB", dist: 14.2, score: 96.4, status: "APPROVED", date: "17 Nov 2026" },
+    { id: "att-2", employeeId: "emp-hr-spv", name: "Siti Rahmawati", nik: "3171030102900101", dept: "HR", shift: "Shift Pagi (Utama)", in: "07:35 WIB", out: "15:00 WIB", dist: 8.5, score: 98.1, status: "APPROVED", date: "17 Nov 2026" },
+    { id: "att-3", employeeId: "emp-fin-spv", name: "Andi Saputra", nik: "3171040103910201", dept: "Finance", shift: "Shift Pagi (Utama)", in: "07:58 WIB", out: "15:15 WIB", dist: 24.1, score: 95.8, status: "APPROVED", date: "17 Nov 2026" },
+    { id: "att-4", employeeId: "emp-mkt-spv", name: "Dewi Lestari", nik: "3171050104920301", dept: "Marketing", shift: "Shift Pagi (Utama)", in: "08:04 WIB", out: "--:--", dist: 18.9, score: 96.0, status: "TERLAMBAT", date: "17 Nov 2026" },
+    { id: "att-5", employeeId: "emp-ops-spv", name: "Rian Hidayat", nik: "3171070106880501", dept: "Operations", shift: "Shift Siang (Operasional)", in: "14:48 WIB", out: "23:05 WIB", dist: 12.3, score: 94.0, status: "APPROVED", date: "17 Nov 2026" },
+    { id: "att-6", employeeId: "emp-it-stf", name: "Dimas Wicaksono", nik: "3171080207980602", dept: "IT", shift: "Shift Pagi (Utama)", in: "07:40 WIB", out: "15:00 WIB", dist: 11.2, score: 96.1, status: "APPROVED", date: "17 Nov 2026" },
   ]);
 
   // Leave Requests State
@@ -987,8 +987,20 @@ export default function Home() {
     e.preventDefault();
     if (!editingEmployee) return;
 
+    const cleanKtp = editingEmployee.nik.replace(/\D/g, "");
+    if (cleanKtp.length !== 16) {
+      showToast("Nomor KTP harus tepat 16 digit angka!", "error");
+      return;
+    }
+    if (employees.some((emp) => emp.nik === cleanKtp && emp.id !== editingEmployee.id)) {
+      showToast(`Gagal: Nomor KTP ${cleanKtp} sudah terdaftar pada karyawan lain!`, "error");
+      return;
+    }
+
+    const updatedEmployeeData = { ...editingEmployee, nik: cleanKtp };
+
     setEmployees((prev) =>
-      prev.map((emp) => (emp.id === editingEmployee.id ? { ...editingEmployee } : emp))
+      prev.map((emp) => (emp.id === editingEmployee.id ? updatedEmployeeData : emp))
     );
     setUsers((prev) =>
       prev.map((u) =>
@@ -1347,7 +1359,18 @@ export default function Home() {
   const handleRegisterEmployeeSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newEmployeeForm.name || !newEmployeeForm.nik || !newEmployeeForm.email) {
-      showToast("Nama, NIK, dan Email wajib diisi!", "error");
+      showToast("Nama, Nomor KTP, dan Email wajib diisi!", "error");
+      return;
+    }
+
+    const cleanKtp = newEmployeeForm.nik.replace(/\D/g, "");
+    if (cleanKtp.length !== 16) {
+      showToast("Nomor KTP harus tepat 16 digit angka!", "error");
+      return;
+    }
+
+    if (employees.some((emp) => emp.nik === cleanKtp)) {
+      showToast(`Gagal: Nomor KTP ${cleanKtp} sudah terdaftar di sistem!`, "error");
       return;
     }
 
@@ -1419,7 +1442,7 @@ export default function Home() {
 
     const newEmployeeObj: Employee = {
       id: newEmpId,
-      nik: newEmployeeForm.nik,
+      nik: cleanKtp,
       name: newEmployeeForm.name,
       email: newEmployeeForm.email,
       phone: newEmployeeForm.phone || "+62 812-0000-0000",
@@ -1480,7 +1503,7 @@ export default function Home() {
 
     setNewlyCreatedCredentials({
       name: newEmployeeForm.name,
-      nik: newEmployeeForm.nik,
+      nik: cleanKtp,
       email: newEmployeeForm.email,
       tempPass: randomTempPass,
       dept: finalDept,
@@ -1584,7 +1607,7 @@ export default function Home() {
 
   const copyCredentialsToClipboard = () => {
     if (!newlyCreatedCredentials) return;
-    const text = `Halo ${newlyCreatedCredentials.name},\nSelamat bergabung di tim ${newlyCreatedCredentials.dept}!\nBerikut akun login Anda di AbsenKu:\n- Email: ${newlyCreatedCredentials.email}\n- Password Sementara: ${newlyCreatedCredentials.tempPass}\n- Atasan Langsung: ${newlyCreatedCredentials.superiorName}\n\n*Penting: Password ini berlaku sekali. Anda diwajibkan membuat password baru saat login pertama.*`;
+    const text = `Halo ${newlyCreatedCredentials.name},\nSelamat bergabung di tim ${newlyCreatedCredentials.dept}!\nBerikut akun login Anda di AbsenKu:\n- No. KTP: ${newlyCreatedCredentials.nik}\n- Email: ${newlyCreatedCredentials.email}\n- Password Sementara: ${newlyCreatedCredentials.tempPass}\n- Atasan Langsung: ${newlyCreatedCredentials.superiorName}\n\n*Penting: Password ini berlaku sekali. Anda diwajibkan membuat password baru saat login pertama.*`;
     navigator.clipboard?.writeText(text);
     showToast("✓ Info akun & password sementara berhasil disalin!");
   };
@@ -2563,7 +2586,7 @@ export default function Home() {
                       <div>
                         <h4 className="text-base font-extrabold text-white leading-tight">{directSuperior.name}</h4>
                         <p className="text-xs text-white/80">{directSuperior.role}</p>
-                        <p className="text-[11px] text-white/60 font-mono mt-0.5">NIK: {directSuperior.nik}</p>
+                        <p className="text-[11px] text-white/60 font-mono mt-0.5">No. KTP: {directSuperior.nik}</p>
                       </div>
                     </div>
 
@@ -2630,7 +2653,7 @@ export default function Home() {
                   <Search className="w-4 h-4 text-white/50" />
                   <input
                     type="text"
-                    placeholder="Cari nama, NIK, posisi, atau departemen..."
+                    placeholder="Cari nama, No. KTP, posisi, atau departemen..."
                     value={searchEmployeeQuery}
                     onChange={(e) => setSearchEmployeeQuery(e.target.value)}
                     className="w-full bg-[#010804] border border-emerald-900/60 rounded-xl px-3 py-1.5 text-xs text-white focus:outline-none focus:border-emerald-400"
@@ -2683,7 +2706,7 @@ export default function Home() {
                           </div>
                           <div>
                             <span className="font-bold text-white text-sm block leading-tight">{k.name}</span>
-                            <span className="text-[10px] text-white/60 font-mono">NIK: {k.nik}</span>
+                            <span className="text-[10px] text-white/60 font-mono">No. KTP: {k.nik}</span>
                           </div>
                         </div>
 
@@ -3090,7 +3113,7 @@ export default function Home() {
                     </div>
                     <div>
                       <h3 className="font-bold text-white text-base leading-tight">{selectedEmployee.name}</h3>
-                      <p className="text-[11px] text-white/80">NIK: {selectedEmployee.nik} • {selectedEmployee.role}</p>
+                      <p className="text-[11px] text-white/80">No. KTP: {selectedEmployee.nik} • {selectedEmployee.role}</p>
                       <span className="text-[10px] font-bold text-emerald-400">
                         Dept: {selectedEmployee.dept} • Atasan: {getDirectSuperior(selectedEmployee)?.name || "Direksi"}
                       </span>
@@ -4040,15 +4063,35 @@ export default function Home() {
               {/* Data Pribadi (Sama untuk Staff & Atasan) */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-white/90 font-bold mb-1">NIK (Nomor Induk Karyawan) *</label>
+                  <div className="flex justify-between items-center mb-1">
+                    <label className="text-white/90 font-bold">Nomor KTP (16 Digit) *</label>
+                    <span className={`text-[10px] font-mono ${newEmployeeForm.nik.length === 16 ? "text-emerald-400 font-bold" : "text-white/50"}`}>
+                      {newEmployeeForm.nik.length}/16 digit
+                    </span>
+                  </div>
                   <input
                     type="text"
                     required
-                    placeholder="Contoh: 2026-0701"
+                    maxLength={16}
+                    inputMode="numeric"
+                    placeholder="Contoh: 3171012304880001"
                     value={newEmployeeForm.nik}
-                    onChange={(e) => setNewEmployeeForm({ ...newEmployeeForm, nik: e.target.value })}
+                    onChange={(e) => {
+                      const val = e.target.value.replace(/\D/g, "").slice(0, 16);
+                      setNewEmployeeForm({ ...newEmployeeForm, nik: val });
+                    }}
                     className="w-full bg-[#010804] border border-emerald-900/80 rounded-xl p-2.5 text-white font-mono focus:border-emerald-400 focus:outline-none"
                   />
+                  {newEmployeeForm.nik.length > 0 && newEmployeeForm.nik.length < 16 && (
+                    <span className="text-[10px] text-amber-400 mt-1 block">
+                      ⚠️ Wajib 16 digit angka sesuai KTP (kurang {16 - newEmployeeForm.nik.length} digit)
+                    </span>
+                  )}
+                  {newEmployeeForm.nik.length === 16 && (
+                    <span className="text-[10px] text-emerald-400 mt-1 block font-medium">
+                      ✓ Format 16 digit KTP valid
+                    </span>
+                  )}
                 </div>
                 <div>
                   <label className="block text-white/90 font-bold mb-1">Nama Lengkap *</label>
@@ -4460,6 +4503,10 @@ export default function Home() {
                 <span className="font-bold text-white">{newlyCreatedCredentials.name}</span>
               </div>
               <div className="flex justify-between">
+                <span className="text-white/60">No. KTP (16 Digit):</span>
+                <span className="font-mono font-bold text-white">{newlyCreatedCredentials.nik}</span>
+              </div>
+              <div className="flex justify-between">
                 <span className="text-white/60">Departemen & Posisi:</span>
                 <span className="font-bold text-emerald-300">
                   {newlyCreatedCredentials.dept} — {newlyCreatedCredentials.role}
@@ -4775,18 +4822,37 @@ export default function Home() {
                 </span>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-white/80 font-bold mb-1">
-                      Nomor Induk Karyawan (NIK) <span className="text-red-400">*</span>
-                    </label>
+                    <div className="flex justify-between items-center mb-1">
+                      <label className="text-white/80 font-bold">
+                        Nomor KTP (16 Digit) <span className="text-red-400">*</span>
+                      </label>
+                      <span className={`text-[10px] font-mono ${editingEmployee.nik.length === 16 ? "text-emerald-400 font-bold" : "text-white/50"}`}>
+                        {editingEmployee.nik.length}/16 digit
+                      </span>
+                    </div>
                     <input
                       type="text"
                       required
+                      maxLength={16}
+                      inputMode="numeric"
+                      placeholder="16 digit angka KTP"
                       value={editingEmployee.nik}
-                      onChange={(e) =>
-                        setEditingEmployee({ ...editingEmployee, nik: e.target.value })
-                      }
+                      onChange={(e) => {
+                        const val = e.target.value.replace(/\D/g, "").slice(0, 16);
+                        setEditingEmployee({ ...editingEmployee, nik: val });
+                      }}
                       className="w-full bg-[#020b06] border border-emerald-900/80 rounded-xl p-2.5 text-white font-mono focus:border-emerald-400 focus:outline-none"
                     />
+                    {editingEmployee.nik.length > 0 && editingEmployee.nik.length < 16 && (
+                      <span className="text-[10px] text-amber-400 mt-1 block">
+                        ⚠️ Wajib 16 digit angka sesuai KTP (kurang {16 - editingEmployee.nik.length} digit)
+                      </span>
+                    )}
+                    {editingEmployee.nik.length === 16 && (
+                      <span className="text-[10px] text-emerald-400 mt-1 block font-medium">
+                        ✓ Format 16 digit KTP valid
+                      </span>
+                    )}
                   </div>
 
                   <div>
@@ -5136,7 +5202,7 @@ export default function Home() {
                 <span className="font-bold text-white">{confirmDialog.employee.name}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-white/60">NIK:</span>
+                <span className="text-white/60">No. KTP:</span>
                 <span className="font-mono text-white">{confirmDialog.employee.nik}</span>
               </div>
               <div className="flex justify-between">
