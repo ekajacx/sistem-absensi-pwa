@@ -117,6 +117,24 @@ interface AttendanceRecord {
   score: number;
   status: "APPROVED" | "TERLAMBAT" | "DITOLAK";
   date: string;
+  isEdited?: boolean;
+  editedBy?: string;
+  editReason?: string;
+  editedAt?: string;
+}
+
+interface ActivityLog {
+  id: string;
+  timestamp: string;
+  type: "CHECK_IN" | "CHECK_OUT" | "LEAVE_APPLY" | "LEAVE_APPROVE" | "MANUAL_EDIT";
+  title: string;
+  description: string;
+  employeeName: string;
+  dept: string;
+  actorName: string;
+  actorRole: string;
+  isEdited: boolean; // Jika true, tampil dengan warna merah mencolok
+  editReason?: string;
 }
 
 interface LeaveRequest {
@@ -783,6 +801,95 @@ export default function Home() {
     aiFaceThreshold: 80,
   });
 
+  // Audit Trail & Activity Log State (Log Otomatis & Koreksi Manual Warna Merah)
+  const [activityLogs, setActivityLogs] = useState<ActivityLog[]>([
+    {
+      id: "log-1",
+      timestamp: "17 Nov 2026, 07:15 WIB",
+      type: "CHECK_IN",
+      title: "Check-In Mandiri Otomatis",
+      description: "Absensi hadir masuk terverifikasi via GPS (5.4m) & AI Liveness Face Match 99.2%",
+      employeeName: "Ir. Hendra Gunawan",
+      dept: "Direksi",
+      actorName: "Ir. Hendra Gunawan",
+      actorRole: "Direktur Utama (CEO)",
+      isEdited: false,
+    },
+    {
+      id: "log-2",
+      timestamp: "17 Nov 2026, 07:22 WIB",
+      type: "CHECK_IN",
+      title: "Check-In Mandiri Otomatis",
+      description: "Absensi hadir masuk terverifikasi via GPS (6.8m) & AI Liveness Face Match 98.7%",
+      employeeName: "Dr. Kartika Sari, S.E., M.M.",
+      dept: "Direksi",
+      actorName: "Dr. Kartika Sari, S.E., M.M.",
+      actorRole: "General Manager (GM)",
+      isEdited: false,
+    },
+    {
+      id: "log-3",
+      timestamp: "17 Nov 2026, 07:35 WIB",
+      type: "CHECK_IN",
+      title: "Check-In Mandiri Otomatis",
+      description: "Absensi hadir masuk terverifikasi via GPS (8.5m) & AI Liveness Face Match 98.1%",
+      employeeName: "Siti Rahmawati",
+      dept: "HR",
+      actorName: "Siti Rahmawati",
+      actorRole: "HR Supervisor",
+      isEdited: false,
+    },
+    {
+      id: "log-4",
+      timestamp: "17 Nov 2026, 08:04 WIB",
+      type: "CHECK_IN",
+      title: "Check-In Mandiri (Terlambat)",
+      description: "Absensi hadir masuk terdeteksi terlambat 4 menit dari batas toleransi shift pagi",
+      employeeName: "Dewi Lestari",
+      dept: "Marketing",
+      actorName: "Dewi Lestari",
+      actorRole: "Marketing Supervisor",
+      isEdited: false,
+    },
+    {
+      id: "log-5",
+      timestamp: "17 Nov 2026, 08:30 WIB",
+      type: "LEAVE_APPROVE",
+      title: "Persetujuan Cuti Tahunan (Approved)",
+      description: "Persetujuan cuti 3 hari Maya Indah (Acara wisuda saudara kandung) telah disetujui",
+      employeeName: "Maya Indah",
+      dept: "HR",
+      actorName: "Siti Rahmawati",
+      actorRole: "HR Supervisor",
+      isEdited: false,
+    },
+    {
+      id: "log-6",
+      timestamp: "17 Nov 2026, 09:15 WIB",
+      type: "MANUAL_EDIT",
+      title: "⚠️ Koreksi Manual Rekap Absensi",
+      description: "Koreksi data absen: Check-In disesuaikan ke 07:50 WIB & Check-Out 15:00 WIB (Status: APPROVED)",
+      employeeName: "Farhan Ramadhan",
+      dept: "Finance",
+      actorName: "Siti Rahmawati",
+      actorRole: "HR Supervisor",
+      isEdited: true,
+      editReason: "Karyawan lupa absen masuk karena langsung mendampingi audit internal kantor di lantai 3",
+    },
+    {
+      id: "log-7",
+      timestamp: "17 Nov 2026, 14:48 WIB",
+      type: "CHECK_IN",
+      title: "Check-In Mandiri Otomatis",
+      description: "Absensi hadir shift siang terverifikasi via GPS (12.3m) & AI Liveness Face Match 94.0%",
+      employeeName: "Rian Hidayat",
+      dept: "Operations",
+      actorName: "Rian Hidayat",
+      actorRole: "Operations Supervisor",
+      isEdited: false,
+    },
+  ]);
+
   // ─────────────────────────────────────────────────────────────
   // ROLE-BASED ACCESS CONTROL (RBAC) DENGAN PEMBAGIAN KHUSUS
   // - Akses Menu: Wewenang siapa saja yang boleh membuka menu sistem
@@ -801,6 +908,8 @@ export default function Home() {
     { id: "att_scan_self", category: "Absensi", name: "Absensi Mandiri (GPS & Wajah)", description: "Melakukan check-in dan check-out menggunakan kamera dan GPS" },
     { id: "att_team", category: "Absensi", name: "Lihat Rekap Absen Tim Bawahan", description: "Supervisor memantau jam datang dan keterlambatan staf di departemennya" },
     { id: "att_all", category: "Absensi", name: "Lihat Rekap Absensi Seluruh Perusahaan", description: "Audit trail kehadiran seluruh staf dan ekspor XLSX/PDF" },
+    { id: "att_edit_rekap", category: "Absensi", name: "Edit Check-In/Out Rekap (Koreksi Lupa Absen)", description: "Wewenang mengoreksi jam check-in, check-out, dan status absensi karyawan yang lupa absen beserta alasan wajib" },
+    { id: "log_view", category: "Audit Log & Jejak Digital", name: "Lihat Audit Log Aktivitas Kehadiran", description: "Wewenang melihat panel riwayat audit log aktivitas sistem, absensi otomatis, dan rekaman modifikasi manual berwarna merah" },
     { id: "leave_approve_subordinate", category: "Cuti", name: "Persetujuan Cuti Bawahan Langsung (N+1)", description: "Supervisor menyetujui / menolak cuti staf di departemennya" },
     { id: "journal_review_team", category: "Jurnal", name: "Review & Penilaian Jurnal Bawahan", description: "Supervisor memeriksa dan memberi skor kualitas kerja tim" },
     { id: "emp_edit", category: "Manajemen Karyawan", name: "Edit Data Karyawan", description: "Mengedit data profil karyawan (nama, departemen, jabatan, dll)" },
@@ -821,6 +930,8 @@ export default function Home() {
       "att_scan_self",
       "att_team",
       "att_all",
+      "att_edit_rekap",
+      "log_view",
       "leave_approve_subordinate",
       "journal_review_team",
       "emp_edit",
@@ -834,6 +945,8 @@ export default function Home() {
       "att_scan_self",
       "att_team",
       "att_all",
+      "att_edit_rekap",
+      "log_view",
       "leave_approve_subordinate",
       "journal_review_team",
       "emp_edit",
@@ -848,6 +961,8 @@ export default function Home() {
       "att_scan_self",
       "att_team",
       "att_all",
+      "att_edit_rekap",
+      "log_view",
       "leave_approve_subordinate",
       "journal_review_team",
       "emp_edit",
@@ -871,6 +986,7 @@ export default function Home() {
       "att_scan_self",
       "att_team",
       "att_all",
+      "log_view",
       "leave_approve_subordinate",
       "journal_review_team",
     ],
@@ -1001,6 +1117,83 @@ export default function Home() {
   const [showAddEmployeeModal, setShowAddEmployeeModal] = useState(false);
   const [showEditEmployeeModal, setShowEditEmployeeModal] = useState(false);
   const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null);
+  // Modal Edit Rekap Absen State (Koreksi Lupa Absen)
+  const [showEditAttendanceModal, setShowEditAttendanceModal] = useState<boolean>(false);
+  const [editingAttendance, setEditingAttendance] = useState<AttendanceRecord | null>(null);
+  const [editAttendanceForm, setEditAttendanceForm] = useState<{
+    in: string;
+    out: string;
+    status: "APPROVED" | "TERLAMBAT" | "DITOLAK";
+    reason: string;
+  }>({
+    in: "",
+    out: "",
+    status: "APPROVED",
+    reason: "",
+  });
+
+  // Filter Log Audit Aktivitas
+  const [rekapLogTypeFilter, setRekapLogTypeFilter] = useState<string>("ALL");
+
+  const handleOpenEditAttendance = (att: AttendanceRecord) => {
+    setEditingAttendance(att);
+    setEditAttendanceForm({
+      in: att.in,
+      out: att.out === "--:--" ? "15:00 WIB" : att.out,
+      status: att.status,
+      reason: att.editReason || "",
+    });
+    setShowEditAttendanceModal(true);
+  };
+
+  const handleSaveEditAttendance = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingAttendance) return;
+
+    if (!editAttendanceForm.reason.trim()) {
+      showToast("Keterangan atau alasan melakukan edit absensi wajib diisi!", "error");
+      return;
+    }
+
+    const updatedAttendances = attendances.map((item) => {
+      if (item.id === editingAttendance.id) {
+        return {
+          ...item,
+          in: editAttendanceForm.in,
+          out: editAttendanceForm.out,
+          status: editAttendanceForm.status,
+          isEdited: true,
+          editedBy: `${currentActiveEmployee.name} (${currentActiveEmployee.role})`,
+          editReason: editAttendanceForm.reason,
+          editedAt: `${new Date().toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" })}, ${currentTime || "15:00 WIB"}`,
+        };
+      }
+      return item;
+    });
+
+    setAttendances(updatedAttendances);
+
+    // Tambahkan log baru berwarna merah (MANUAL_EDIT)
+    const newLog: ActivityLog = {
+      id: `log-${Date.now()}`,
+      timestamp: `${new Date().toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" })}, ${currentTime || "15:00 WIB"}`,
+      type: "MANUAL_EDIT",
+      title: `⚠️ Koreksi Manual Rekap Absensi (${editingAttendance.name})`,
+      description: `Jam Check-In disesuaikan ke "${editAttendanceForm.in}", Check-Out ke "${editAttendanceForm.out}", Status: ${editAttendanceForm.status}`,
+      employeeName: editingAttendance.name,
+      dept: editingAttendance.dept,
+      actorName: currentActiveEmployee.name,
+      actorRole: currentActiveEmployee.role,
+      isEdited: true,
+      editReason: editAttendanceForm.reason,
+    };
+
+    setActivityLogs((prev) => [newLog, ...prev]);
+
+    setShowEditAttendanceModal(false);
+    showToast(`✓ Rekap absensi ${editingAttendance.name} berhasil diperbarui & tercatat di log audit!`, "success");
+  };
+
   const [confirmDialog, setConfirmDialog] = useState<{
     isOpen: boolean;
     type: "deactivate" | "delete";
@@ -1841,6 +2034,21 @@ export default function Home() {
       };
 
       setAttendances((prev) => [newRecord, ...prev]);
+
+      const autoLog: ActivityLog = {
+        id: `log-${Date.now()}`,
+        timestamp: `${new Date().toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" })}, ${currentTime || "07:45 WIB"}`,
+        type: "CHECK_IN",
+        title: "Check-In Mandiri Otomatis",
+        description: `Absensi hadir masuk terverifikasi via GPS (${simulatedDistance.toFixed(1)}m) & AI Face Match (${simulatedFaceScore}%)`,
+        employeeName: currentActiveEmployee.name,
+        dept: currentActiveEmployee.dept,
+        actorName: currentActiveEmployee.name,
+        actorRole: currentActiveEmployee.role,
+        isEdited: false,
+      };
+      setActivityLogs((prev) => [autoLog, ...prev]);
+
       showToast(`✓ Absensi mandiri ${currentActiveEmployee.name} BERHASIL disahkan secara otomatis (APPROVED)!`);
     }, 1200);
   };
@@ -1942,6 +2150,22 @@ export default function Home() {
     URL.revokeObjectURL(url);
     showToast(`✓ Berhasil mengekspor ${filteredAttendances.length} data absensi ke file CSV/Excel!`, "success");
   };
+
+  // Filter Data Audit Log Aktivitas (di bagian bawah rekap absensi)
+  const filteredActivityLogs = activityLogs.filter((log) => {
+    const matchDept = rekapDeptFilter === "ALL" || log.dept === rekapDeptFilter;
+    const matchType =
+      rekapLogTypeFilter === "ALL" ||
+      (rekapLogTypeFilter === "MANUAL_EDIT" && log.isEdited) ||
+      (rekapLogTypeFilter === "AUTO" && !log.isEdited);
+    const matchSearch =
+      rekapSearchQuery === "" ||
+      log.employeeName.toLowerCase().includes(rekapSearchQuery.toLowerCase()) ||
+      log.actorName.toLowerCase().includes(rekapSearchQuery.toLowerCase()) ||
+      log.description.toLowerCase().includes(rekapSearchQuery.toLowerCase()) ||
+      (log.editReason && log.editReason.toLowerCase().includes(rekapSearchQuery.toLowerCase()));
+    return matchDept && matchType && matchSearch;
+  });
 
   return (
     <div className="flex h-screen overflow-hidden bg-[#010804] text-white font-sans selection:bg-emerald-500 selection:text-black">
@@ -3752,7 +3976,8 @@ export default function Home() {
                       <th className="py-3">Check-Out</th>
                       <th className="py-3">Jarak</th>
                       <th className="py-3">Skor AI</th>
-                      <th className="py-3 pr-3 text-center">Status</th>
+                      <th className="py-3 text-center">Status</th>
+                      <th className="py-3 pr-3 text-center">Aksi</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-emerald-900/30">
@@ -3775,7 +4000,7 @@ export default function Home() {
                           <td className="py-3 font-mono text-white/60">{r.out}</td>
                           <td className="py-3 font-mono text-white">{r.dist.toFixed(1)}m</td>
                           <td className="py-3 font-mono text-sky-300 font-bold">{r.score}%</td>
-                          <td className="py-3 pr-3 text-center">
+                          <td className="py-3 text-center">
                             <span
                               className={`px-2.5 py-1 rounded-full text-[10px] font-extrabold uppercase border ${
                                 r.status === "APPROVED"
@@ -3785,12 +4010,29 @@ export default function Home() {
                             >
                               {r.status === "APPROVED" ? "✓ APPROVED" : "⚠️ TERLAMBAT"}
                             </span>
+                            {r.isEdited && (
+                              <span className="block text-[9px] text-red-400 font-bold mt-1">
+                                ✏️ Diedit Manual
+                              </span>
+                            )}
+                          </td>
+                          <td className="py-3 pr-3 text-center">
+                            {hasPermission("att_edit_rekap") && (
+                              <button
+                                onClick={() => handleOpenEditAttendance(r)}
+                                className="px-2.5 py-1 rounded-lg bg-amber-500/15 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 text-[10px] font-bold transition-all flex items-center gap-1 mx-auto"
+                                title="Koreksi jam check-in/out jika karyawan lupa absen"
+                              >
+                                <Pencil className="w-3 h-3" />
+                                <span>Edit</span>
+                              </button>
+                            )}
                           </td>
                         </tr>
                       ))
                     ) : (
                       <tr>
-                        <td colSpan={10} className="py-8 text-center text-white/50 text-xs">
+                        <td colSpan={11} className="py-8 text-center text-white/50 text-xs">
                           Tidak ada catatan absensi yang sesuai dengan filter yang dipilih.
                         </td>
                       </tr>
@@ -3798,6 +4040,131 @@ export default function Home() {
                   </tbody>
                 </table>
               </div>
+
+              {/* ========================================================= */}
+              {/* BAGIAN BAWAH: AUDIT LOG AKTIVITAS (HAK AKSES ROLE: log_view) */}
+              {/* ========================================================= */}
+              {hasPermission("log_view") ? (
+                <div className="bg-[#010804] border border-emerald-900/60 rounded-2xl p-5 shadow-2xl space-y-4 pt-4 mt-6">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-emerald-900/60 pb-3">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-lg">📜</span>
+                        <h4 className="font-black text-white text-base">
+                          Audit Log Aktivitas Kehadiran & Sistem
+                        </h4>
+                        <span className="px-2 py-0.5 rounded-full text-[9px] font-extrabold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                          Hak Akses log_view Terverifikasi
+                        </span>
+                      </div>
+                      <p className="text-xs text-white/60 mt-0.5">
+                        Rekam jejak otomatis (check-in/out, cuti) & modifikasi manual. <strong className="text-red-400">Log berwarna merah</strong> menandakan data hasil koreksi/edit manual dengan informasi user pengedit.
+                      </p>
+                    </div>
+
+                    {/* Filter Jenis Log */}
+                    <div className="flex items-center gap-2">
+                      <span className="text-[11px] text-white/60 font-bold whitespace-nowrap">Filter Log:</span>
+                      <select
+                        value={rekapLogTypeFilter}
+                        onChange={(e) => setRekapLogTypeFilter(e.target.value)}
+                        className="bg-[#021008] border border-emerald-500/40 rounded-xl px-3 py-1.5 text-xs text-white font-bold focus:border-emerald-400 focus:outline-none"
+                      >
+                        <option value="ALL">Semua Aktivitas ({activityLogs.length})</option>
+                        <option value="MANUAL_EDIT">⚠️ Modifikasi Manual (Warna Merah)</option>
+                        <option value="AUTO">✓ Aktivitas Otomatis</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  {/* Daftar Card Log */}
+                  <div className="space-y-2.5 max-h-[420px] overflow-y-auto pr-1">
+                    {filteredActivityLogs.length > 0 ? (
+                      filteredActivityLogs.map((log) => (
+                        <div
+                          key={log.id}
+                          className={`p-3.5 rounded-xl border transition-all ${
+                            log.isEdited
+                              ? "bg-gradient-to-r from-red-950/60 via-red-950/30 to-[#010804] border-red-500/60 ring-1 ring-red-500/30 shadow-md shadow-red-950/30"
+                              : "bg-[#021008] border-emerald-900/40 hover:border-emerald-500/30"
+                          }`}
+                        >
+                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-1.5">
+                            <div className="flex items-center gap-2">
+                              <span
+                                className={`px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-wider ${
+                                  log.isEdited
+                                    ? "bg-red-500 text-white shadow-sm"
+                                    : log.type === "CHECK_IN"
+                                    ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30"
+                                    : "bg-purple-500/20 text-purple-300 border border-purple-500/30"
+                                }`}
+                              >
+                                {log.isEdited ? "⚠️ MODIFIKASI MANUAL" : log.type === "CHECK_IN" ? "CHECK-IN" : "CUTI"}
+                              </span>
+                              <h5 className={`font-black text-xs ${log.isEdited ? "text-red-300" : "text-white"}`}>
+                                {log.title}
+                              </h5>
+                              <span className="text-[10px] text-white/40">• Dept: <span className="text-white/80 font-bold">{log.dept}</span></span>
+                            </div>
+                            <span className="text-[10px] text-white/50 font-mono">
+                              {log.timestamp}
+                            </span>
+                          </div>
+
+                          <p className={`text-xs ${log.isEdited ? "text-red-200/90" : "text-white/70"}`}>
+                            {log.description}
+                          </p>
+
+                          {/* Info User Pengedit & Alasan (Wajib & Khusus Merah) */}
+                          {log.isEdited && (
+                            <div className="mt-2.5 pt-2 border-t border-red-500/30 flex flex-col sm:flex-row sm:items-center justify-between gap-2 bg-red-950/40 -mx-3.5 -mb-3.5 p-3 rounded-b-xl text-xs">
+                              <div className="space-y-0.5">
+                                <span className="text-[10px] text-red-400 font-bold uppercase tracking-wider block">
+                                  Diedit Manual Oleh User:
+                                </span>
+                                <span className="font-extrabold text-white">
+                                  {log.actorName} <span className="text-red-300 font-semibold">({log.actorRole})</span>
+                                </span>
+                              </div>
+                              {log.editReason && (
+                                <div className="sm:max-w-md sm:text-right">
+                                  <span className="text-[10px] text-red-400 font-bold uppercase tracking-wider block">
+                                    Alasan / Keterangan Edit:
+                                  </span>
+                                  <span className="italic text-red-200 font-medium">
+                                    "{log.editReason}"
+                                  </span>
+                                </div>
+                              )}
+                            </div>
+                          )}
+
+                          {!log.isEdited && (
+                            <div className="mt-1 text-[10px] text-white/40">
+                              Aktor: <span className="text-white/70 font-semibold">{log.actorName}</span> ({log.actorRole})
+                            </div>
+                          )}
+                        </div>
+                      ))
+                    ) : (
+                      <div className="py-6 text-center text-white/40 text-xs">
+                        Tidak ada riwayat log yang sesuai dengan filter.
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ) : (
+                <div className="p-4 rounded-2xl border border-dashed border-emerald-900/60 bg-[#010804] text-center space-y-1 text-xs mt-4">
+                  <div className="flex items-center justify-center gap-1.5 text-white/50 font-bold">
+                    <Lock className="w-4 h-4 text-amber-400" />
+                    <span>Audit Log Kehadiran Terkunci</span>
+                  </div>
+                  <p className="text-[11px] text-white/40">
+                    Role akun Anda (<strong className="text-white">{currentRoleName}</strong>) tidak memiliki izin <strong className="text-emerald-400">log_view</strong> di matriks Hak Akses Role. Hanya role yang dicentang yang dapat melihat riwayat audit log.
+                  </p>
+                </div>
+              )}
             </div>
           )}
 
@@ -6580,6 +6947,139 @@ export default function Home() {
                 ✓ Ya, Override Cuti
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================= */}
+      {/* MODAL: EDIT REKAP ABSENSI (KOREKSI LUPA ABSEN)            */}
+      {/* ========================================================= */}
+      {showEditAttendanceModal && editingAttendance && (
+        <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-[#021008] border border-amber-500/50 ring-2 ring-amber-500/20 rounded-3xl p-6 max-w-lg w-full shadow-2xl space-y-5 animate-in zoom-in-95 duration-150">
+            <div className="flex items-center justify-between border-b border-emerald-900/60 pb-3">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-amber-500/20 text-amber-400 flex items-center justify-center ring-1 ring-amber-400">
+                  <Pencil className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-black text-white text-base">Koreksi Absensi (Lupa Absen)</h3>
+                  <p className="text-[11px] text-white/60">
+                    Perubahan data akan tercatat di Audit Log permanen bertanda merah.
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowEditAttendanceModal(false)}
+                className="w-8 h-8 rounded-lg bg-white/5 hover:bg-white/10 text-white/60 hover:text-white flex items-center justify-center transition-all"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Info Karyawan Terpilih */}
+            <div className="bg-[#010804] p-3.5 rounded-2xl border border-emerald-900/60 flex items-center justify-between">
+              <div>
+                <span className="font-extrabold text-white text-sm block">{editingAttendance.name}</span>
+                <span className="text-[10px] text-white/60 font-mono">No. KTP: {editingAttendance.nik}</span>
+                <span className="text-[10px] text-emerald-400 block mt-0.5">
+                  Dept: {editingAttendance.dept} • {editingAttendance.shift} ({editingAttendance.date})
+                </span>
+              </div>
+              <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40">
+                Log: {editingAttendance.id}
+              </span>
+            </div>
+
+            <form onSubmit={handleSaveEditAttendance} className="space-y-4">
+              <div className="grid grid-cols-2 gap-3 text-xs">
+                <div>
+                  <label className="block text-white font-bold mb-1">
+                    Jam Check-In <span className="text-red-400">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={editAttendanceForm.in}
+                    onChange={(e) => setEditAttendanceForm({ ...editAttendanceForm, in: e.target.value })}
+                    placeholder="07:45 WIB"
+                    className="w-full bg-[#010804] border border-emerald-500/40 rounded-xl p-2.5 text-white font-mono font-bold focus:border-emerald-400 focus:outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-white font-bold mb-1">
+                    Jam Check-Out <span className="text-red-400">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={editAttendanceForm.out}
+                    onChange={(e) => setEditAttendanceForm({ ...editAttendanceForm, out: e.target.value })}
+                    placeholder="15:00 WIB"
+                    className="w-full bg-[#010804] border border-emerald-500/40 rounded-xl p-2.5 text-white font-mono font-bold focus:border-emerald-400 focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              <div className="text-xs">
+                <label className="block text-white font-bold mb-1">Status Kehadiran *</label>
+                <select
+                  value={editAttendanceForm.status}
+                  onChange={(e) => setEditAttendanceForm({ ...editAttendanceForm, status: e.target.value as any })}
+                  className="w-full bg-[#010804] border border-emerald-500/40 rounded-xl p-2.5 text-white font-bold focus:border-emerald-400 focus:outline-none"
+                >
+                  <option value="APPROVED">✓ APPROVED (Tepat Waktu / Sah)</option>
+                  <option value="TERLAMBAT">⚠️ TERLAMBAT</option>
+                  <option value="DITOLAK">❌ DITOLAK</option>
+                </select>
+              </div>
+
+              {/* Keterangan / Alasan Edit (WAJIB) */}
+              <div className="text-xs">
+                <div className="flex justify-between items-center mb-1">
+                  <label className="text-amber-300 font-bold">
+                    Keterangan / Alasan Melakukan Edit <span className="text-red-400">*</span>
+                  </label>
+                  <span className="text-[10px] text-white/50 font-medium">Wajib diisi untuk audit trail</span>
+                </div>
+                <textarea
+                  required
+                  rows={3}
+                  value={editAttendanceForm.reason}
+                  onChange={(e) => setEditAttendanceForm({ ...editAttendanceForm, reason: e.target.value })}
+                  placeholder="Contoh: Karyawan lupa melakukan check-in mandiri karena langsung menghadiri rapat koordinasi pagi bersama klien..."
+                  className="w-full bg-[#010804] border border-amber-500/40 rounded-xl p-2.5 text-white focus:border-amber-400 focus:outline-none text-xs leading-relaxed"
+                />
+              </div>
+
+              {/* Notice Akuntabilitas */}
+              <div className="p-3 rounded-xl border border-red-500/30 bg-red-500/10 text-xs text-red-300 space-y-1">
+                <div className="flex items-center gap-1.5 font-bold text-red-400">
+                  <AlertTriangle className="w-4 h-4 flex-shrink-0" />
+                  <span>Pencatatan Audit Trail Otomatis (Warna Merah)</span>
+                </div>
+                <p className="text-[11px] text-red-200/80 leading-relaxed">
+                  Perubahan ini akan dicatat ke dalam Audit Log dengan <strong>WARNA MERAH</strong> mencantumkan identitas Anda (<strong>{currentActiveEmployee.name} - {currentActiveEmployee.role}</strong>) beserta alasan yang dimasukkan.
+                </p>
+              </div>
+
+              <div className="flex gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowEditAttendanceModal(false)}
+                  className="flex-1 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white font-bold text-xs transition-all"
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-400 hover:from-amber-400 hover:to-amber-300 text-black font-black text-xs transition-all shadow-lg shadow-amber-500/20"
+                >
+                  ✓ Simpan Koreksi Absen
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
