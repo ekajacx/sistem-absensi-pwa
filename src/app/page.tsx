@@ -77,6 +77,23 @@ export default function Home() {
     setOpenSections((prev) => ({ ...prev, [section]: !prev[section] }));
   };
 
+  // ─── Menu Meta: Dynamic Header Title & Subtitle per Active Menu ───────────
+  const menuMeta: Record<string, { title: string; subtitle: string; icon: string }> = {
+    dashboard:        { title: "DASHBOARD",           subtitle: `Ringkasan Data ${companyName}`,                    icon: "🏠" },
+    karyawan:         { title: "KARYAWAN",             subtitle: "Direktori & Master Biometrik Karyawan",            icon: "👥" },
+    departemen:       { title: "DEPARTEMEN",           subtitle: "Manajemen Struktur Organisasi Perusahaan",         icon: "🏢" },
+    jabatan:          { title: "JABATAN",              subtitle: "Daftar Posisi & Level Jabatan Karyawan",           icon: "💼" },
+    kontrak:          { title: "KONTRAK & LIFECYCLE",  subtitle: "Manajemen Kontrak & Masa Kerja Karyawan",         icon: "📄" },
+    absensi:          { title: "ABSENSI (GPS & WAJAH)", subtitle: "Verifikasi Kehadiran Otomatis Real-Time",        icon: "📍" },
+    "rekap-absensi":  { title: "REKAP ABSENSI",        subtitle: "Laporan Kehadiran, Audit Trail & Export Data",    icon: "📊" },
+    "jadwal-shift":   { title: "JADWAL SHIFT",         subtitle: "Konfigurasi Shift Kerja Dinamis & Alokasi SDM",   icon: "📅" },
+    "pengajuan-cuti": { title: "PENGAJUAN CUTI",       subtitle: "Kelola & Pantau Pengajuan Cuti Karyawan",         icon: "🏖️" },
+    "jurnal-kerja":   { title: "JURNAL KERJA",         subtitle: "Catatan Aktivitas, Produktivitas & Log Harian",   icon: "📑" },
+    "user-management":{ title: "USER MANAGEMENT",      subtitle: "Kelola Akun Pengguna & Hak Akses Sistem",         icon: "👤" },
+    pengaturan:       { title: "PENGATURAN SISTEM",    subtitle: "Konfigurasi Geofence, AI & Parameter Sistem",     icon: "⚙️" },
+  };
+  const currentMeta = menuMeta[activeMenu] ?? { title: activeMenu.toUpperCase(), subtitle: "", icon: "📋" };
+
   // Selected Metric in Dashboard
   const [selectedMetric, setSelectedMetric] = useState<string>("all");
 
@@ -231,8 +248,8 @@ export default function Home() {
                           <Pencil className="w-3 h-3" />
                         </button>
                       </div>
-                      <span className="text-[10px] font-bold text-white tracking-widest uppercase block">
-                        DASHBOARD
+                      <span className="text-[10px] font-bold text-white tracking-widest uppercase block truncate">
+                        {currentMeta.title}
                       </span>
                     </div>
                   </div>
@@ -443,11 +460,19 @@ export default function Home() {
         {/* Modern Radial Lighting Effect in the Background */}
         <div className="absolute top-0 right-1/4 w-[600px] h-[350px] bg-emerald-500/5 blur-[140px] pointer-events-none -z-0" />
 
-        {/* Top Header Row (Persis Sesuai Gambar) */}
+        {/* Top Header Row — Dinamis sesuai menu aktif */}
         <header className="px-8 pt-7 pb-4 flex items-center justify-between relative z-10">
-          <div>
-            <h1 className="text-2xl font-black text-white tracking-tight">DASHBOARD</h1>
-            <p className="text-xs text-white/80 mt-0.5">Ringkasan Data {companyName}</p>
+          <div className="flex items-center gap-3">
+            {/* Icon Menu Aktif */}
+            <span className="text-3xl leading-none select-none">{currentMeta.icon}</span>
+            <div>
+              <h1 className="text-2xl font-black text-white tracking-tight leading-tight transition-all duration-300">
+                {currentMeta.title}
+              </h1>
+              <p className="text-xs text-white/70 mt-0.5 transition-all duration-300">
+                {currentMeta.subtitle}
+              </p>
+            </div>
           </div>
 
           {/* Right Header Action Buttons: Dark, Ganti Password, Keluar */}
