@@ -649,14 +649,22 @@ export default function Home() {
     "emp-mkt-stf": { Senin: "Pagi", Selasa: "Pagi", Rabu: "Siang", Kamis: "Siang", Jumat: "Pagi", Sabtu: "Libur", Minggu: "Libur" },
   });
 
-  // Attendances State
+  // Attendances State (Mencakup Seluruh 7 Departemen)
   const [attendances, setAttendances] = useState<AttendanceRecord[]>([
-    { id: "att-1", employeeId: "emp-it-spv", name: "Budi Pratama", nik: "3171080107930601", dept: "IT", shift: "Shift Pagi (Utama)", in: "07:42 WIB", out: "15:02 WIB", dist: 14.2, score: 96.4, status: "APPROVED", date: "17 Nov 2026" },
-    { id: "att-2", employeeId: "emp-hr-spv", name: "Siti Rahmawati", nik: "3171030102900101", dept: "HR", shift: "Shift Pagi (Utama)", in: "07:35 WIB", out: "15:00 WIB", dist: 8.5, score: 98.1, status: "APPROVED", date: "17 Nov 2026" },
-    { id: "att-3", employeeId: "emp-fin-spv", name: "Andi Saputra", nik: "3171040103910201", dept: "Finance", shift: "Shift Pagi (Utama)", in: "07:58 WIB", out: "15:15 WIB", dist: 24.1, score: 95.8, status: "APPROVED", date: "17 Nov 2026" },
-    { id: "att-4", employeeId: "emp-mkt-spv", name: "Dewi Lestari", nik: "3171050104920301", dept: "Marketing", shift: "Shift Pagi (Utama)", in: "08:04 WIB", out: "--:--", dist: 18.9, score: 96.0, status: "TERLAMBAT", date: "17 Nov 2026" },
-    { id: "att-5", employeeId: "emp-ops-spv", name: "Rian Hidayat", nik: "3171070106880501", dept: "Operations", shift: "Shift Siang (Operasional)", in: "14:48 WIB", out: "23:05 WIB", dist: 12.3, score: 94.0, status: "APPROVED", date: "17 Nov 2026" },
-    { id: "att-6", employeeId: "emp-it-stf", name: "Dimas Wicaksono", nik: "3171080207980602", dept: "IT", shift: "Shift Pagi (Utama)", in: "07:40 WIB", out: "15:00 WIB", dist: 11.2, score: 96.1, status: "APPROVED", date: "17 Nov 2026" },
+    { id: "att-1", employeeId: "emp-ceo", name: "Ir. Hendra Gunawan", nik: "3171012401880001", dept: "Direksi", shift: "Shift Pagi (Utama)", in: "07:15 WIB", out: "15:10 WIB", dist: 5.4, score: 99.2, status: "APPROVED", date: "17 Nov 2026" },
+    { id: "att-2", employeeId: "emp-gm", name: "Dr. Kartika Sari, S.E., M.M.", nik: "3171021501890002", dept: "Direksi", shift: "Shift Pagi (Utama)", in: "07:22 WIB", out: "15:05 WIB", dist: 6.8, score: 98.7, status: "APPROVED", date: "17 Nov 2026" },
+    { id: "att-3", employeeId: "emp-hr-spv", name: "Siti Rahmawati", nik: "3171030102900101", dept: "HR", shift: "Shift Pagi (Utama)", in: "07:35 WIB", out: "15:00 WIB", dist: 8.5, score: 98.1, status: "APPROVED", date: "17 Nov 2026" },
+    { id: "att-4", employeeId: "emp-hr-stf", name: "Maya Indah", nik: "3171030202960102", dept: "HR", shift: "Shift Pagi (Utama)", in: "07:45 WIB", out: "15:00 WIB", dist: 9.1, score: 97.0, status: "APPROVED", date: "17 Nov 2026" },
+    { id: "att-5", employeeId: "emp-fin-spv", name: "Andi Saputra", nik: "3171040103910201", dept: "Finance", shift: "Shift Pagi (Utama)", in: "07:58 WIB", out: "15:15 WIB", dist: 24.1, score: 95.8, status: "APPROVED", date: "17 Nov 2026" },
+    { id: "att-6", employeeId: "emp-fin-stf", name: "Farhan Ramadhan", nik: "3171040203970202", dept: "Finance", shift: "Shift Pagi (Utama)", in: "07:50 WIB", out: "15:00 WIB", dist: 18.0, score: 96.2, status: "APPROVED", date: "17 Nov 2026" },
+    { id: "att-7", employeeId: "emp-mkt-spv", name: "Dewi Lestari", nik: "3171050104920301", dept: "Marketing", shift: "Shift Pagi (Utama)", in: "08:04 WIB", out: "--:--", dist: 18.9, score: 96.0, status: "TERLAMBAT", date: "17 Nov 2026" },
+    { id: "att-8", employeeId: "emp-mkt-stf", name: "Aditya Pratama", nik: "3171050204980302", dept: "Marketing", shift: "Shift Pagi (Utama)", in: "07:48 WIB", out: "15:05 WIB", dist: 14.5, score: 96.7, status: "APPROVED", date: "17 Nov 2026" },
+    { id: "att-9", employeeId: "emp-sls-spv", name: "Reza Pahlevi", nik: "3171060105900401", dept: "Sales", shift: "Shift Pagi (Utama)", in: "07:30 WIB", out: "15:00 WIB", dist: 15.3, score: 95.5, status: "APPROVED", date: "17 Nov 2026" },
+    { id: "att-10", employeeId: "emp-sls-stf", name: "Bella Savira", nik: "3171060205970402", dept: "Sales", shift: "Shift Siang (Operasional)", in: "14:52 WIB", out: "--:--", dist: 16.7, score: 94.8, status: "APPROVED", date: "17 Nov 2026" },
+    { id: "att-11", employeeId: "emp-ops-spv", name: "Rian Hidayat", nik: "3171070106880501", dept: "Operations", shift: "Shift Siang (Operasional)", in: "14:48 WIB", out: "23:05 WIB", dist: 12.3, score: 94.0, status: "APPROVED", date: "17 Nov 2026" },
+    { id: "att-12", employeeId: "emp-ops-stf", name: "Joko Susilo", nik: "3171070206960502", dept: "Operations", shift: "Shift Siang (Operasional)", in: "14:55 WIB", out: "23:00 WIB", dist: 19.4, score: 93.8, status: "APPROVED", date: "17 Nov 2026" },
+    { id: "att-13", employeeId: "emp-it-spv", name: "Budi Pratama", nik: "3171080107930601", dept: "IT", shift: "Shift Pagi (Utama)", in: "07:42 WIB", out: "15:02 WIB", dist: 14.2, score: 96.4, status: "APPROVED", date: "17 Nov 2026" },
+    { id: "att-14", employeeId: "emp-it-stf", name: "Dimas Wicaksono", nik: "3171080207980602", dept: "IT", shift: "Shift Pagi (Utama)", in: "07:40 WIB", out: "15:00 WIB", dist: 11.2, score: 96.1, status: "APPROVED", date: "17 Nov 2026" },
   ]);
 
   // Leave Requests State
@@ -976,6 +984,11 @@ export default function Home() {
   const [filterShift, setFilterShift] = useState<string>("ALL");
   const [searchEmployeeQuery, setSearchEmployeeQuery] = useState<string>("");
   const [userManagementTab, setUserManagementTab] = useState<"users" | "rbac">("rbac");
+
+  // Rekap Absensi Filter State (Lengkap 7 Departemen & Ekspor)
+  const [rekapDeptFilter, setRekapDeptFilter] = useState<string>("ALL");
+  const [rekapStatusFilter, setRekapStatusFilter] = useState<string>("ALL");
+  const [rekapSearchQuery, setRekapSearchQuery] = useState<string>("");
 
   // Absensi Simulator State
   const [livenessPassed, setLivenessPassed] = useState(false);
@@ -1814,11 +1827,11 @@ export default function Home() {
 
       const newRecord: AttendanceRecord = {
         id: `att-${Date.now()}`,
-        employeeId: selectedEmployee.id,
-        name: selectedEmployee.name,
-        nik: selectedEmployee.nik,
-        dept: selectedEmployee.dept,
-        shift: shifts.find((s) => s.id === selectedEmployee.shiftId)?.name || "Shift Pagi (Utama)",
+        employeeId: currentActiveEmployee.id,
+        name: currentActiveEmployee.name,
+        nik: currentActiveEmployee.nik,
+        dept: currentActiveEmployee.dept,
+        shift: shifts.find((s) => s.id === currentActiveEmployee.shiftId)?.name || "Shift Pagi (Utama)",
         in: currentTime || "07:45 WIB",
         out: "--:--",
         dist: simulatedDistance,
@@ -1828,7 +1841,7 @@ export default function Home() {
       };
 
       setAttendances((prev) => [newRecord, ...prev]);
-      showToast(`✓ Absensi ${selectedEmployee.name} BERHASIL disahkan secara otomatis (APPROVED)!`);
+      showToast(`✓ Absensi mandiri ${currentActiveEmployee.name} BERHASIL disahkan secara otomatis (APPROVED)!`);
     }, 1200);
   };
 
@@ -1868,6 +1881,67 @@ export default function Home() {
       emp.role.toLowerCase().includes(searchEmployeeQuery.toLowerCase());
     return matchDept && matchShift && matchSearch;
   });
+
+  // Filter Data Rekap Absensi
+  const filteredAttendances = attendances.filter((att) => {
+    const matchDept = rekapDeptFilter === "ALL" || att.dept === rekapDeptFilter;
+    const matchStatus = rekapStatusFilter === "ALL" || att.status === rekapStatusFilter;
+    const matchSearch =
+      rekapSearchQuery === "" ||
+      att.name.toLowerCase().includes(rekapSearchQuery.toLowerCase()) ||
+      att.nik.includes(rekapSearchQuery) ||
+      att.dept.toLowerCase().includes(rekapSearchQuery.toLowerCase()) ||
+      att.shift.toLowerCase().includes(rekapSearchQuery.toLowerCase());
+    return matchDept && matchStatus && matchSearch;
+  });
+
+  // Handler Ekspor Rekap Absensi ke CSV / Excel
+  const handleExportCSV = () => {
+    if (filteredAttendances.length === 0) {
+      showToast("Tidak ada data absensi untuk diekspor!", "error");
+      return;
+    }
+    const headers = [
+      "No",
+      "ID Log",
+      "Nama Karyawan",
+      "Nomor KTP",
+      "Departemen",
+      "Shift Kerja",
+      "Tanggal",
+      "Jam Check-In",
+      "Jam Check-Out",
+      "Jarak ke Kantor (m)",
+      "Skor Validasi AI (%)",
+      "Status Kehadiran",
+    ];
+    const rows = filteredAttendances.map((r, idx) => [
+      idx + 1,
+      r.id,
+      `"${r.name.replace(/"/g, '""')}"`,
+      `'${r.nik}`,
+      `"${r.dept}"`,
+      `"${r.shift}"`,
+      `"${r.date}"`,
+      `"${r.in}"`,
+      `"${r.out}"`,
+      r.dist.toFixed(1),
+      r.score.toFixed(1),
+      r.status,
+    ]);
+    const csvContent = "\uFEFF" + [headers.join(","), ...rows.map((e) => e.join(","))].join("\r\n");
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    const deptTag = rekapDeptFilter === "ALL" ? "Semua_Dept" : rekapDeptFilter;
+    link.setAttribute("href", url);
+    link.setAttribute("download", `Rekap_Absensi_${deptTag}_${new Date().toISOString().slice(0, 10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    showToast(`✓ Berhasil mengekspor ${filteredAttendances.length} data absensi ke file CSV/Excel!`, "success");
+  };
 
   return (
     <div className="flex h-screen overflow-hidden bg-[#010804] text-white font-sans selection:bg-emerald-500 selection:text-black">
@@ -2867,12 +2941,13 @@ export default function Home() {
                         </div>
                         <button
                           onClick={() => {
-                            setSelectedEmployeeId(sub.id);
-                            setActiveMenu("absensi");
+                            setRekapDeptFilter(sub.dept);
+                            setRekapSearchQuery(sub.name);
+                            setActiveMenu("rekap-absensi");
                           }}
                           className="px-2.5 py-1 rounded-lg bg-emerald-500/20 text-emerald-300 text-[10px] font-bold hover:bg-emerald-500 hover:text-black transition-all"
                         >
-                          Cek Absen
+                          Cek Rekap Absen
                         </button>
                       </div>
                     ))}
@@ -3321,43 +3396,57 @@ export default function Home() {
           )}
 
           {/* ===================================================== */}
-          {/* VIEW: ABSENSI (SCANNER GPS & WAJAH)                   */}
+          {/* VIEW: ABSENSI (SCANNER GPS & WAJAH - MANDIRI DI HP)   */}
           {/* ===================================================== */}
           {activeMenu === "absensi" && (
             <div className="max-w-xl mx-auto space-y-6">
-              <div className="bg-[#03150d] rounded-2xl p-4 border border-emerald-900/60 flex items-center justify-between">
-                <div>
-                  <span className="text-[10px] text-amber-400 font-bold uppercase block">Pilih Akun yang Melakukan Absensi:</span>
-                  <span className="text-xs text-white">Simulasikan check-in karyawan:</span>
+              {/* Info Banner: Absensi Mandiri di HP Masing-Masing */}
+              <div className="bg-gradient-to-r from-[#062417] via-[#041a10] to-[#021008] rounded-2xl p-4 border border-emerald-500/40 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-lg">
+                <div className="flex items-center gap-3">
+                  <div className="w-11 h-11 rounded-2xl bg-emerald-500/20 text-emerald-300 ring-1 ring-emerald-500/40 flex items-center justify-center text-xl flex-shrink-0">
+                    📱
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] text-emerald-400 font-black uppercase tracking-wider">
+                        ABSENSI MANDIRI (SELF-SERVICE HP)
+                      </span>
+                      <span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                        Akun Anda
+                      </span>
+                    </div>
+                    <h4 className="font-extrabold text-white text-sm">
+                      {currentActiveEmployee.name}
+                    </h4>
+                    <p className="text-[11px] text-white/70">
+                      {currentActiveEmployee.role} • Dept: <span className="text-emerald-400 font-bold">{currentActiveEmployee.dept}</span>
+                    </p>
+                  </div>
                 </div>
-                <select
-                  value={selectedEmployeeId}
-                  onChange={(e) => {
-                    setSelectedEmployeeId(e.target.value);
-                    setAttendanceState("IDLE");
-                    setLivenessPassed(false);
-                  }}
-                  className="bg-[#010804] border border-emerald-500/40 rounded-xl px-3 py-1.5 text-xs text-white font-bold focus:outline-none"
-                >
-                  {employees.map((emp) => (
-                    <option key={emp.id} value={emp.id} className="bg-[#010804] text-white">
-                      {emp.name} ({emp.dept} - {emp.role})
-                    </option>
-                  ))}
-                </select>
+
+                {(currentActiveEmployee.dept === "HR" || currentActiveEmployee.level === "Supervisor" || currentActiveEmployee.level === "GeneralManager" || currentActiveEmployee.level === "Director" || activePerspective === "admin") && (
+                  <button
+                    onClick={() => setActiveMenu("rekap-absensi")}
+                    className="self-start sm:self-auto px-3.5 py-2 rounded-xl bg-[#010804] hover:bg-emerald-950 text-emerald-300 border border-emerald-500/40 text-xs font-bold transition-all flex items-center gap-1.5 shadow-sm whitespace-nowrap"
+                  >
+                    <BarChart3 className="w-3.5 h-3.5" />
+                    <span>Lihat Rekap Absensi Tim →</span>
+                  </button>
+                )}
               </div>
 
+              {/* Attendance Card untuk currentActiveEmployee */}
               <div className="rounded-3xl bg-gradient-to-b from-[#072a1b] via-[#03150d] to-[#010a06] p-6 border border-emerald-500/30 shadow-2xl relative">
                 <div className="bg-[#020e08] rounded-2xl p-4 border border-emerald-900/60 mb-4 flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <div className="w-12 h-12 rounded-full ring-2 ring-emerald-400 bg-emerald-950 flex items-center justify-center font-black text-white text-base">
-                      {selectedEmployee.avatar}
+                      {currentActiveEmployee.avatar}
                     </div>
                     <div>
-                      <h3 className="font-bold text-white text-base leading-tight">{selectedEmployee.name}</h3>
-                      <p className="text-[11px] text-white/80">No. KTP: {selectedEmployee.nik} • {selectedEmployee.role}</p>
+                      <h3 className="font-bold text-white text-base leading-tight">{currentActiveEmployee.name}</h3>
+                      <p className="text-[11px] text-white/80">No. KTP: {currentActiveEmployee.nik} • {currentActiveEmployee.role}</p>
                       <span className="text-[10px] font-bold text-emerald-400">
-                        Dept: {selectedEmployee.dept} • Atasan: {getDirectSuperior(selectedEmployee)?.name || "Direksi"}
+                        Dept: {currentActiveEmployee.dept} • Atasan: {getDirectSuperior(currentActiveEmployee)?.name || "Direksi"}
                       </span>
                     </div>
                   </div>
@@ -3498,72 +3587,214 @@ export default function Home() {
           )}
 
           {/* ===================================================== */}
-          {/* VIEW: REKAP ABSENSI                                   */}
+          {/* VIEW: REKAP ABSENSI (MONITORING HRD & ATASAN)          */}
           {/* ===================================================== */}
           {activeMenu === "rekap-absensi" && (
             <div className="bg-gradient-to-br from-[#062417] to-[#021008] rounded-2xl p-6 border border-emerald-900/60 space-y-5">
-              <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-3">
+              {/* Header Box & Tombol Ekspor */}
+              <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4 border-b border-emerald-900/60 pb-4">
                 <div>
-                  <h3 className="font-bold text-white text-base">Rekapitulasi Kehadiran Karyawan</h3>
-                  <p className="text-xs text-white/70">
-                    Audit log kehadiran terverifikasi otomatis untuk 6 departemen
+                  <div className="flex items-center gap-2">
+                    <span className="text-xl">📊</span>
+                    <h3 className="font-black text-white text-lg">Rekapitulasi Kehadiran Karyawan</h3>
+                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                      Panel HRD & Manajemen
+                    </span>
+                  </div>
+                  <p className="text-xs text-white/70 mt-1 max-w-2xl">
+                    Audit log kehadiran terverifikasi otomatis. HRD dan atasan memantau rekap absensi tim, memfilter per departemen, dan mengekspor laporan ke file CSV/Excel.
                   </p>
                 </div>
-                <div className="flex gap-2">
+
+                <div className="flex flex-wrap items-center gap-2">
                   <button
-                    onClick={() => showToast("Mengekspor laporan format XLSX...")}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#020d07] text-white border border-emerald-900/60 text-xs font-semibold hover:bg-emerald-950 transition-all"
+                    onClick={handleExportCSV}
+                    className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-400 text-black text-xs font-black hover:brightness-110 shadow-lg shadow-emerald-500/20 transition-all"
+                    title="Unduh data terfilter ke format CSV / Microsoft Excel"
                   >
-                    <Download className="w-3.5 h-3.5" />
-                    <span>Ekspor XLSX</span>
+                    <Download className="w-4 h-4" />
+                    <span>Ekspor CSV / Excel ({filteredAttendances.length})</span>
                   </button>
                   <button
-                    onClick={() => showToast("Mengekspor audit trail PDF...")}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#020d07] text-white border border-emerald-900/60 text-xs font-semibold hover:bg-emerald-950 transition-all"
+                    onClick={() => {
+                      window.print();
+                    }}
+                    className="flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl bg-[#020d07] text-white border border-emerald-900/60 text-xs font-bold hover:bg-emerald-950 transition-all"
+                    title="Cetak atau simpan sebagai PDF"
                   >
-                    <Download className="w-3.5 h-3.5" />
-                    <span>Ekspor PDF</span>
+                    <FileText className="w-4 h-4 text-emerald-400" />
+                    <span>Cetak / PDF</span>
                   </button>
                 </div>
               </div>
 
+              {/* Filter Controls Bar (Filter Lengkap 7 Departemen & Status) */}
+              <div className="bg-[#010804] p-4 rounded-2xl border border-emerald-900/60 space-y-3">
+                <span className="text-[10px] font-black uppercase text-emerald-400 tracking-wider block">
+                  FILTER DATA REKAP ABSENSI
+                </span>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                  {/* Filter 1: Departemen Lengkap (7 Dept) */}
+                  <div>
+                    <label className="block text-[11px] text-white/70 font-bold mb-1">
+                      Departemen ({standardDepartments.length})
+                    </label>
+                    <select
+                      value={rekapDeptFilter}
+                      onChange={(e) => setRekapDeptFilter(e.target.value)}
+                      className="w-full bg-[#021008] border border-emerald-500/50 rounded-xl px-3 py-2 text-xs text-white font-bold focus:border-emerald-400 focus:outline-none"
+                    >
+                      <option value="ALL">Semua Departemen ({standardDepartments.length})</option>
+                      {standardDepartments.map((d) => (
+                        <option key={d.id} value={d.id}>
+                          {d.icon} {d.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Filter 2: Status Kehadiran */}
+                  <div>
+                    <label className="block text-[11px] text-white/70 font-bold mb-1">
+                      Status Kehadiran
+                    </label>
+                    <select
+                      value={rekapStatusFilter}
+                      onChange={(e) => setRekapStatusFilter(e.target.value)}
+                      className="w-full bg-[#021008] border border-emerald-500/50 rounded-xl px-3 py-2 text-xs text-white font-bold focus:border-emerald-400 focus:outline-none"
+                    >
+                      <option value="ALL">Semua Status</option>
+                      <option value="APPROVED">✓ APPROVED (Tepat Waktu)</option>
+                      <option value="TERLAMBAT">⚠️ TERLAMBAT</option>
+                    </select>
+                  </div>
+
+                  {/* Filter 3: Pencarian Nama / NIK */}
+                  <div className="sm:col-span-2">
+                    <label className="block text-[11px] text-white/70 font-bold mb-1">
+                      Cari Karyawan / No. KTP
+                    </label>
+                    <div className="relative">
+                      <Search className="w-4 h-4 text-white/40 absolute left-3 top-2.5" />
+                      <input
+                        type="text"
+                        value={rekapSearchQuery}
+                        onChange={(e) => setRekapSearchQuery(e.target.value)}
+                        placeholder="Ketik nama, No. KTP, atau shift..."
+                        className="w-full bg-[#021008] border border-emerald-500/50 rounded-xl pl-9 pr-3 py-2 text-xs text-white focus:border-emerald-400 focus:outline-none"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Status Bar Filter Aktif & Reset */}
+                {(rekapDeptFilter !== "ALL" || rekapStatusFilter !== "ALL" || rekapSearchQuery !== "") && (
+                  <div className="flex items-center justify-between pt-2 border-t border-emerald-900/40 text-xs">
+                    <span className="text-white/60 text-[11px]">
+                      Menampilkan <strong>{filteredAttendances.length}</strong> dari {attendances.length} data log
+                      {rekapDeptFilter !== "ALL" && ` • Dept: ${rekapDeptFilter}`}
+                      {rekapStatusFilter !== "ALL" && ` • Status: ${rekapStatusFilter}`}
+                    </span>
+                    <button
+                      onClick={() => {
+                        setRekapDeptFilter("ALL");
+                        setRekapStatusFilter("ALL");
+                        setRekapSearchQuery("");
+                      }}
+                      className="px-2.5 py-1 rounded-lg bg-red-950/60 text-red-300 border border-red-500/40 text-xs font-semibold hover:bg-red-900 transition-all"
+                    >
+                      Reset Filter
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {/* Ringkasan Metrik Singkat */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <div className="bg-[#010804] p-3.5 rounded-2xl border border-emerald-900/60">
+                  <span className="text-[10px] text-white/60 block font-bold uppercase">Total Kehadiran</span>
+                  <span className="text-lg font-black text-white">{filteredAttendances.length} Log</span>
+                </div>
+                <div className="bg-[#010804] p-3.5 rounded-2xl border border-emerald-900/60">
+                  <span className="text-[10px] text-emerald-400 block font-bold uppercase">Hadir Tepat Waktu</span>
+                  <span className="text-lg font-black text-emerald-400">
+                    {filteredAttendances.filter((a) => a.status === "APPROVED").length}
+                  </span>
+                </div>
+                <div className="bg-[#010804] p-3.5 rounded-2xl border border-emerald-900/60">
+                  <span className="text-[10px] text-amber-400 block font-bold uppercase">Terlambat</span>
+                  <span className="text-lg font-black text-amber-400">
+                    {filteredAttendances.filter((a) => a.status === "TERLAMBAT").length}
+                  </span>
+                </div>
+                <div className="bg-[#010804] p-3.5 rounded-2xl border border-emerald-900/60">
+                  <span className="text-[10px] text-sky-400 block font-bold uppercase">Rata-rata AI Face</span>
+                  <span className="text-lg font-black text-sky-300">
+                    {filteredAttendances.length > 0
+                      ? (filteredAttendances.reduce((acc, c) => acc + c.score, 0) / filteredAttendances.length).toFixed(1) + "%"
+                      : "0%"}
+                  </span>
+                </div>
+              </div>
+
+              {/* Tabel Data Rekap Absensi */}
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-xs">
                   <thead>
                     <tr className="border-b border-emerald-900/60 text-white text-[10px] uppercase font-bold">
+                      <th className="py-3 pl-3">No</th>
                       <th className="py-3">Karyawan</th>
                       <th className="py-3">Departemen</th>
                       <th className="py-3">Shift</th>
+                      <th className="py-3">Tanggal</th>
                       <th className="py-3">Check-In</th>
                       <th className="py-3">Check-Out</th>
                       <th className="py-3">Jarak</th>
                       <th className="py-3">Skor AI</th>
-                      <th className="py-3">Status</th>
+                      <th className="py-3 pr-3 text-center">Status</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-emerald-900/30">
-                    {attendances.map((r) => (
-                      <tr key={r.id} className="hover:bg-emerald-950/20 transition-colors">
-                        <td className="py-3 font-bold text-white">{r.name}</td>
-                        <td className="py-3 text-white/80 font-semibold">{r.dept}</td>
-                        <td className="py-3 text-white/70">{r.shift}</td>
-                        <td className="py-3 font-mono text-white">{r.in}</td>
-                        <td className="py-3 font-mono text-white/70">{r.out}</td>
-                        <td className="py-3 font-mono text-white">{r.dist.toFixed(1)}m</td>
-                        <td className="py-3 font-mono text-white font-bold">{r.score}%</td>
-                        <td className="py-3">
-                          <span
-                            className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                              r.status === "APPROVED"
-                                ? "bg-emerald-500/20 text-white border border-emerald-400/40"
-                                : "bg-amber-500/20 text-amber-300 border border-amber-400/40"
-                            }`}
-                          >
-                            {r.status}
-                          </span>
+                    {filteredAttendances.length > 0 ? (
+                      filteredAttendances.map((r, idx) => (
+                        <tr key={r.id} className="hover:bg-emerald-950/20 transition-colors">
+                          <td className="py-3 pl-3 text-white/40 font-mono text-[11px]">{idx + 1}</td>
+                          <td className="py-3">
+                            <span className="font-bold text-white block leading-tight">{r.name}</span>
+                            <span className="text-[10px] text-white/50 font-mono">No. KTP: {r.nik}</span>
+                          </td>
+                          <td className="py-3">
+                            <span className="font-bold text-emerald-400 px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-[10px]">
+                              {r.dept}
+                            </span>
+                          </td>
+                          <td className="py-3 text-white/70">{r.shift}</td>
+                          <td className="py-3 font-mono text-white/80">{r.date}</td>
+                          <td className="py-3 font-mono text-white font-bold">{r.in}</td>
+                          <td className="py-3 font-mono text-white/60">{r.out}</td>
+                          <td className="py-3 font-mono text-white">{r.dist.toFixed(1)}m</td>
+                          <td className="py-3 font-mono text-sky-300 font-bold">{r.score}%</td>
+                          <td className="py-3 pr-3 text-center">
+                            <span
+                              className={`px-2.5 py-1 rounded-full text-[10px] font-extrabold uppercase border ${
+                                r.status === "APPROVED"
+                                  ? "bg-emerald-500/20 text-emerald-300 border-emerald-400/40"
+                                  : "bg-amber-500/20 text-amber-300 border border-amber-400/40"
+                              }`}
+                            >
+                              {r.status === "APPROVED" ? "✓ APPROVED" : "⚠️ TERLAMBAT"}
+                            </span>
+                          </td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <td colSpan={10} className="py-8 text-center text-white/50 text-xs">
+                          Tidak ada catatan absensi yang sesuai dengan filter yang dipilih.
                         </td>
                       </tr>
-                    ))}
+                    )}
                   </tbody>
                 </table>
               </div>
