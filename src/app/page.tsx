@@ -65,6 +65,8 @@ import {
 type DepartmentType = "HR" | "Finance" | "Marketing" | "Sales" | "Operations" | "IT" | "Direksi";
 type HierarchyLevel = "Director" | "GeneralManager" | "Supervisor" | "Staff";
 type ContractType = "Tetap" | "Kontrak" | "Magang" | "DW";
+type DayOfWeek = "Senin" | "Selasa" | "Rabu" | "Kamis" | "Jumat" | "Sabtu" | "Minggu";
+type ShiftSlotType = "Pagi" | "Siang" | "Libur";
 
 interface Employee {
   id: string;
@@ -622,12 +624,29 @@ export default function Home() {
     },
   ]);
 
-  // Shifts Master Data
+  // Shifts Master Data (Shift Malam Ditiadakan, Khusus Pagi & Siang)
   const [shifts, setShifts] = useState<Shift[]>([
-    { id: "shift-1", name: "Shift Pagi (Utama)", startTime: "07:00", endTime: "15:00", tolerance: "15 Menit", openBefore: "60 Menit", status: "Aktif" },
+    { id: "shift-1", name: "Shift Pagi (Utama / Office)", startTime: "07:00", endTime: "15:00", tolerance: "15 Menit", openBefore: "60 Menit", status: "Aktif" },
     { id: "shift-2", name: "Shift Siang (Operasional)", startTime: "15:00", endTime: "23:00", tolerance: "15 Menit", openBefore: "45 Menit", status: "Aktif" },
-    { id: "shift-3", name: "Shift Malam (Teknis / Lintas Hari)", startTime: "23:00", endTime: "07:00", tolerance: "10 Menit", openBefore: "30 Menit", status: "Aktif" },
   ]);
+
+  // Master Jadwal Shift Mingguan Seluruh 14 Karyawan
+  const [weeklySchedules, setWeeklySchedules] = useState<Record<string, Record<DayOfWeek, ShiftSlotType>>>({
+    "emp-ceo": { Senin: "Pagi", Selasa: "Pagi", Rabu: "Pagi", Kamis: "Pagi", Jumat: "Pagi", Sabtu: "Libur", Minggu: "Libur" },
+    "emp-gm": { Senin: "Pagi", Selasa: "Pagi", Rabu: "Pagi", Kamis: "Pagi", Jumat: "Pagi", Sabtu: "Libur", Minggu: "Libur" },
+    "emp-hr-spv": { Senin: "Pagi", Selasa: "Pagi", Rabu: "Pagi", Kamis: "Pagi", Jumat: "Pagi", Sabtu: "Libur", Minggu: "Libur" },
+    "emp-hr-stf": { Senin: "Pagi", Selasa: "Pagi", Rabu: "Pagi", Kamis: "Pagi", Jumat: "Pagi", Sabtu: "Libur", Minggu: "Libur" },
+    "emp-fin-spv": { Senin: "Pagi", Selasa: "Pagi", Rabu: "Pagi", Kamis: "Pagi", Jumat: "Pagi", Sabtu: "Libur", Minggu: "Libur" },
+    "emp-fin-stf": { Senin: "Pagi", Selasa: "Pagi", Rabu: "Pagi", Kamis: "Pagi", Jumat: "Pagi", Sabtu: "Libur", Minggu: "Libur" },
+    "emp-it-spv": { Senin: "Pagi", Selasa: "Pagi", Rabu: "Pagi", Kamis: "Pagi", Jumat: "Pagi", Sabtu: "Libur", Minggu: "Libur" },
+    "emp-it-stf": { Senin: "Pagi", Selasa: "Pagi", Rabu: "Pagi", Kamis: "Pagi", Jumat: "Pagi", Sabtu: "Libur", Minggu: "Libur" },
+    "emp-ops-spv": { Senin: "Pagi", Selasa: "Pagi", Rabu: "Pagi", Kamis: "Pagi", Jumat: "Pagi", Sabtu: "Siang", Minggu: "Libur" },
+    "emp-ops-stf": { Senin: "Siang", Selasa: "Siang", Rabu: "Siang", Kamis: "Pagi", Jumat: "Pagi", Sabtu: "Siang", Minggu: "Libur" },
+    "emp-sls-spv": { Senin: "Pagi", Selasa: "Pagi", Rabu: "Pagi", Kamis: "Pagi", Jumat: "Pagi", Sabtu: "Libur", Minggu: "Libur" },
+    "emp-sls-stf": { Senin: "Pagi", Selasa: "Siang", Rabu: "Pagi", Kamis: "Siang", Jumat: "Pagi", Sabtu: "Siang", Minggu: "Libur" },
+    "emp-mkt-spv": { Senin: "Pagi", Selasa: "Pagi", Rabu: "Pagi", Kamis: "Pagi", Jumat: "Pagi", Sabtu: "Libur", Minggu: "Libur" },
+    "emp-mkt-stf": { Senin: "Pagi", Selasa: "Pagi", Rabu: "Siang", Kamis: "Siang", Jumat: "Pagi", Sabtu: "Libur", Minggu: "Libur" },
+  });
 
   // Attendances State
   const [attendances, setAttendances] = useState<AttendanceRecord[]>([
@@ -1171,6 +1190,174 @@ export default function Home() {
     currentActiveEmployee.level === "Director" ||
     currentActiveEmployee.level === "GeneralManager" ||
     currentActiveEmployee.level === "Supervisor";
+
+  // ─────────────────────────────────────────────────────────────
+  // MANAJEMEN SHIFT & JADWAL ROSTER MINGGUAN TIM
+  // ─────────────────────────────────────────────────────────────
+  const DAYS_OF_WEEK: DayOfWeek[] = ["Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu", "Minggu"];
+
+  const isOfficeDept = (dept: string): boolean => {
+    return dept === "HR" || dept === "Finance" || dept === "IT" || dept === "Direksi";
+  };
+
+  const getSchedulableEmployees = (): Employee[] => {
+    if (activePerspective === "admin" || currentRoleName === "Super Admin" || currentRoleName === "HR Supervisor") {
+      return employees;
+    }
+    if (currentActiveEmployee.level === "GeneralManager") {
+      return employees.filter((e) => e.level !== "Director");
+    }
+    if (currentActiveEmployee.level === "Supervisor") {
+      // Supervisor dapat mengatur shift kerja dirinya dan seluruh staf bawahannya
+      return employees.filter(
+        (e) => e.id === currentActiveEmployee.id || (e.dept === currentActiveEmployee.dept && e.level === "Staff")
+      );
+    }
+    // Staff hanya melihat dirinya
+    return [currentActiveEmployee];
+  };
+
+  const [shiftActiveTab, setShiftActiveTab] = useState<"roster" | "master">("roster");
+  const [selectedScheduleEmpId, setSelectedScheduleEmpId] = useState<string>("emp-ops-spv");
+
+  const [draftSchedule, setDraftSchedule] = useState<Record<DayOfWeek, ShiftSlotType>>({
+    Senin: "Pagi",
+    Selasa: "Pagi",
+    Rabu: "Pagi",
+    Kamis: "Pagi",
+    Jumat: "Pagi",
+    Sabtu: "Libur",
+    Minggu: "Libur",
+  });
+
+  const handleSelectScheduleEmployee = (empId: string) => {
+    setSelectedScheduleEmpId(empId);
+    const existing = weeklySchedules[empId];
+    const targetEmp = employees.find((e) => e.id === empId);
+    if (existing) {
+      setDraftSchedule({ ...existing });
+    } else if (targetEmp && isOfficeDept(targetEmp.dept)) {
+      setDraftSchedule({
+        Senin: "Pagi",
+        Selasa: "Pagi",
+        Rabu: "Pagi",
+        Kamis: "Pagi",
+        Jumat: "Pagi",
+        Sabtu: "Libur",
+        Minggu: "Libur",
+      });
+    } else {
+      setDraftSchedule({
+        Senin: "Pagi",
+        Selasa: "Pagi",
+        Rabu: "Pagi",
+        Kamis: "Pagi",
+        Jumat: "Pagi",
+        Sabtu: "Siang",
+        Minggu: "Libur",
+      });
+    }
+  };
+
+  const handleSaveWeeklySchedule = (e: React.FormEvent) => {
+    e.preventDefault();
+    const targetEmp = employees.find((emp) => emp.id === selectedScheduleEmpId);
+    if (!targetEmp) return;
+
+    // Pastikan karyawan office tidak terkena Shift Siang
+    let finalSchedule = { ...draftSchedule };
+    if (isOfficeDept(targetEmp.dept)) {
+      DAYS_OF_WEEK.forEach((day) => {
+        if (finalSchedule[day] === "Siang") {
+          finalSchedule[day] = "Pagi";
+        }
+      });
+    }
+
+    setWeeklySchedules((prev) => ({
+      ...prev,
+      [selectedScheduleEmpId]: finalSchedule,
+    }));
+    showToast(`✓ Jadwal shift mingguan untuk ${targetEmp.name} berhasil disimpan!`, "success");
+  };
+
+  // Master Shift CRUD Modal State
+  const [showShiftModal, setShowShiftModal] = useState<boolean>(false);
+  const [editingShiftId, setEditingShiftId] = useState<string | null>(null);
+  const [shiftForm, setShiftForm] = useState<{
+    name: string;
+    startTime: string;
+    endTime: string;
+    tolerance: string;
+    openBefore: string;
+    status: "Aktif" | "Non-Aktif";
+  }>({
+    name: "",
+    startTime: "07:00",
+    endTime: "15:00",
+    tolerance: "15 Menit",
+    openBefore: "60 Menit",
+    status: "Aktif",
+  });
+
+  const [deleteShiftConfirm, setDeleteShiftConfirm] = useState<Shift | null>(null);
+
+  const handleOpenAddShift = () => {
+    setEditingShiftId(null);
+    setShiftForm({
+      name: "",
+      startTime: "07:00",
+      endTime: "15:00",
+      tolerance: "15 Menit",
+      openBefore: "60 Menit",
+      status: "Aktif",
+    });
+    setShowShiftModal(true);
+  };
+
+  const handleOpenEditShift = (s: Shift) => {
+    setEditingShiftId(s.id);
+    setShiftForm({
+      name: s.name,
+      startTime: s.startTime,
+      endTime: s.endTime,
+      tolerance: s.tolerance,
+      openBefore: s.openBefore,
+      status: s.status,
+    });
+    setShowShiftModal(true);
+  };
+
+  const handleSaveShift = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!shiftForm.name.trim()) {
+      showToast("Nama shift wajib diisi!", "error");
+      return;
+    }
+
+    if (editingShiftId) {
+      setShifts((prev) =>
+        prev.map((s) => (s.id === editingShiftId ? { ...s, ...shiftForm } : s))
+      );
+      showToast(`✓ Shift "${shiftForm.name}" berhasil diperbarui!`, "success");
+    } else {
+      const newShift: Shift = {
+        id: `shift-${Date.now()}`,
+        ...shiftForm,
+      };
+      setShifts((prev) => [...prev, newShift]);
+      showToast(`✓ Shift baru "${shiftForm.name}" berhasil ditambahkan!`, "success");
+    }
+    setShowShiftModal(false);
+  };
+
+  const handleDeleteShift = () => {
+    if (!deleteShiftConfirm) return;
+    const name = deleteShiftConfirm.name;
+    setShifts((prev) => prev.filter((s) => s.id !== deleteShiftConfirm.id));
+    setDeleteShiftConfirm(null);
+    showToast(`✓ Shift "${name}" telah dihapus dari sistem!`, "info");
+  };
 
   // Pop-up Kredensial Sekali Muncul untuk HRD
   const [newlyCreatedCredentials, setNewlyCreatedCredentials] = useState<{
@@ -3464,43 +3651,550 @@ export default function Home() {
           )}
 
           {/* ===================================================== */}
-          {/* VIEW: JADWAL SHIFT                                    */}
+          {/* VIEW: JADWAL SHIFT & ROSTER KERJA MINGGUAN             */}
           {/* ===================================================== */}
-          {activeMenu === "jadwal-shift" && (
-            <div className="space-y-6">
-              <div>
-                <h3 className="font-bold text-white text-base">Manajemen Shift Kerja Dinamis</h3>
-                <p className="text-xs text-white">Konfigurasi jam kerja untuk 6 departemen</p>
-              </div>
+          {activeMenu === "jadwal-shift" && (() => {
+            const schedulableEmployees = getSchedulableEmployees();
+            const currentSchedTarget =
+              employees.find((e) => e.id === selectedScheduleEmpId) || schedulableEmployees[0] || employees[0];
+            const isTargetOffice = isOfficeDept(currentSchedTarget.dept);
+            const isSupervisorRole = currentActiveEmployee.level === "Supervisor";
+            const isAdminOrHR = activePerspective === "admin" || currentRoleName === "Super Admin" || currentRoleName === "HR Supervisor";
 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                {shifts.map((s) => {
-                  const shiftStaffCount = employees.filter((e) => e.shiftId === s.id).length;
-                  return (
-                    <div
-                      key={s.id}
-                      className="bg-gradient-to-br from-[#062417] to-[#021008] p-6 rounded-2xl border border-emerald-900/60 shadow-lg flex flex-col justify-between"
+            return (
+              <div className="space-y-6">
+                {/* Header Information Box */}
+                <div className="bg-gradient-to-r from-[#062417] via-[#041910] to-[#021008] rounded-3xl p-6 border border-emerald-900/60 shadow-xl space-y-4">
+                  <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xl">📅</span>
+                        <h3 className="font-black text-white text-lg tracking-wide">
+                          Manajemen Shift & Penjadwalan Roster Kerja
+                        </h3>
+                        <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                          {isSupervisorRole ? "Wewenang Supervisor" : isAdminOrHR ? "Wewenang Direksi / HR" : "Akses Jadwal"}
+                        </span>
+                      </div>
+                      <p className="text-xs text-white/70 mt-1 max-w-2xl leading-relaxed">
+                        Supervisor dapat mengatur jadwal shift mingguan untuk diri sendiri dan seluruh staf di departemennya.
+                        Khusus karyawan <strong>Office (HR, Finance, IT, Direksi)</strong> bekerja <strong>Shift Pagi</strong> pada hari kerja dan libur di akhir pekan.
+                        Shift Malam telah ditiadakan sesuai kebijakan efisiensi jam operasional.
+                      </p>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] font-mono font-bold px-3 py-1.5 rounded-xl bg-amber-500/10 text-amber-300 border border-amber-500/30 flex items-center gap-1.5">
+                        <span>🌙</span>
+                        <span>Shift Malam Ditiadakan (Hanya Pagi & Siang)</span>
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Tab Selector: [📅 Roster Mingguan] vs [⚙️ Master Shift] */}
+                  <div className="flex items-center gap-3 pt-2 border-t border-emerald-900/60">
+                    <button
+                      onClick={() => setShiftActiveTab("roster")}
+                      className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-xs transition-all ${
+                        shiftActiveTab === "roster"
+                          ? "bg-emerald-500 text-black shadow-lg shadow-emerald-500/20 font-extrabold"
+                          : "bg-[#021008] text-white/70 hover:text-white border border-emerald-900/60"
+                      }`}
                     >
-                      <div>
-                        <div className="flex justify-between items-center mb-3">
-                          <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-500/20 text-white border border-emerald-500/30">
-                            {s.status}
+                      <CalendarDays className="w-4 h-4" />
+                      <span>Penjadwalan Roster Mingguan (7 Hari)</span>
+                    </button>
+
+                    <button
+                      onClick={() => setShiftActiveTab("master")}
+                      className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-xs transition-all ${
+                        shiftActiveTab === "master"
+                          ? "bg-emerald-500 text-black shadow-lg shadow-emerald-500/20 font-extrabold"
+                          : "bg-[#021008] text-white/70 hover:text-white border border-emerald-900/60"
+                      }`}
+                    >
+                      <Settings className="w-4 h-4" />
+                      <span>Master Jam Shift ({shifts.length} Shift Aktif)</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* =================================================== */}
+                {/* TAB 1: PENJADWALAN ROSTER MINGGUAN (7 HARI)         */}
+                {/* =================================================== */}
+                {shiftActiveTab === "roster" && (
+                  <div className="space-y-6">
+                    {/* Panel Form Penjadwalan */}
+                    <div className="bg-[#021008] border border-emerald-900/60 rounded-3xl p-6 shadow-xl space-y-5">
+                      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-emerald-900/60 pb-4">
+                        <div>
+                          <span className="text-[10px] text-emerald-400 font-black uppercase tracking-wider block">
+                            PENGATURAN ROSTER SHIFT MINGGUAN
                           </span>
-                          <span className="text-xs text-white font-bold">{shiftStaffCount} Anggota</span>
+                          <h4 className="font-bold text-white text-base">
+                            Atur Jadwal Kerja: {currentSchedTarget.name}
+                          </h4>
                         </div>
-                        <h4 className="font-bold text-white text-base mb-2">{s.name}</h4>
-                        <div className="bg-[#010804] p-3 rounded-xl border border-emerald-900/40 text-center my-3">
-                          <span className="font-mono text-xl font-extrabold text-white">
-                            {s.startTime} - {s.endTime}
+
+                        {/* Dropdown Pemilih Karyawan */}
+                        <div className="flex items-center gap-2 min-w-[280px]">
+                          <span className="text-xs text-white/60 font-bold whitespace-nowrap">Pilih Karyawan:</span>
+                          <select
+                            value={selectedScheduleEmpId}
+                            onChange={(e) => handleSelectScheduleEmployee(e.target.value)}
+                            className="w-full bg-[#010804] border border-emerald-500/50 rounded-xl px-3 py-2 text-xs text-white font-bold focus:border-emerald-400 focus:outline-none"
+                          >
+                            {schedulableEmployees.map((emp) => (
+                              <option key={emp.id} value={emp.id}>
+                                {emp.name} — {emp.role} ({emp.dept}) {emp.id === currentActiveEmployee.id ? "(Saya)" : ""}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
+
+                      {/* Card Info Karyawan Terpilih */}
+                      <div className="bg-[#010804] p-4 rounded-2xl border border-emerald-900/60 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                        <div className="flex items-center gap-3.5">
+                          <div className="w-12 h-12 rounded-2xl bg-emerald-950 flex items-center justify-center font-black text-white text-base ring-1 ring-emerald-500/40 flex-shrink-0">
+                            {currentSchedTarget.avatar}
+                          </div>
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <h5 className="font-black text-white text-sm">{currentSchedTarget.name}</h5>
+                              {currentSchedTarget.id === currentActiveEmployee.id && (
+                                <span className="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 text-[10px] font-bold">
+                                  Akun Saya
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-xs text-white/70 mt-0.5 font-medium">
+                              {currentSchedTarget.role} • Dept: <span className="text-emerald-400 font-bold">{currentSchedTarget.dept}</span>
+                            </p>
+                            <span className="text-[10px] text-white/50 font-mono">No. KTP: {currentSchedTarget.nik}</span>
+                          </div>
+                        </div>
+
+                        {/* Badge Kategori Kerja (Office vs Operasional) */}
+                        <div className="flex flex-col sm:items-end">
+                          <span
+                            className={`px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider border ${
+                              isTargetOffice
+                                ? "bg-blue-500/20 text-blue-300 border-blue-500/40"
+                                : "bg-emerald-500/20 text-emerald-300 border-emerald-500/40"
+                            }`}
+                          >
+                            {isTargetOffice ? "🏢 Staf Office (Khusus Pagi Saja)" : "⚙️ Staf Operasional / Lapangan"}
+                          </span>
+                          <span className="text-[10px] text-white/50 mt-1">
+                            {isTargetOffice
+                              ? "Otomatis terjadwal Shift Pagi pada hari kerja dan Libur di akhir pekan."
+                              : "Fleksibel: dapat diatur Shift Pagi, Shift Siang, ataupun Libur per hari."}
                           </span>
                         </div>
                       </div>
+
+                      {/* Tombol Preset Cepat */}
+                      <div className="space-y-2">
+                        <span className="text-[10px] text-white/60 font-bold uppercase tracking-wider block">
+                          Terapkan Preset Jadwal Cepat:
+                        </span>
+                        <div className="flex flex-wrap gap-2">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setDraftSchedule({
+                                Senin: "Pagi",
+                                Selasa: "Pagi",
+                                Rabu: "Pagi",
+                                Kamis: "Pagi",
+                                Jumat: "Pagi",
+                                Sabtu: "Libur",
+                                Minggu: "Libur",
+                              });
+                              showToast("✓ Preset Office (Sen-Jum Pagi, Sab-Min Libur) diterapkan!");
+                            }}
+                            className="px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-white text-xs font-semibold border border-white/10 transition-all flex items-center gap-1.5"
+                          >
+                            <span>⚡</span>
+                            <span>Preset Office (Senin-Jumat Pagi, Sabtu-Minggu Libur)</span>
+                          </button>
+
+                          {!isTargetOffice && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setDraftSchedule({
+                                  Senin: "Siang",
+                                  Selasa: "Siang",
+                                  Rabu: "Siang",
+                                  Kamis: "Siang",
+                                  Jumat: "Siang",
+                                  Sabtu: "Libur",
+                                  Minggu: "Libur",
+                                });
+                                showToast("✓ Preset Operasional Siang diterapkan!");
+                              }}
+                              className="px-3 py-1.5 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 text-xs font-semibold border border-amber-500/30 transition-all flex items-center gap-1.5"
+                            >
+                              <span>🌤️</span>
+                              <span>Preset Operasional Siang (Senin-Jumat Siang)</span>
+                            </button>
+                          )}
+
+                          {!isTargetOffice && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setDraftSchedule({
+                                  Senin: "Pagi",
+                                  Selasa: "Pagi",
+                                  Rabu: "Pagi",
+                                  Kamis: "Siang",
+                                  Jumat: "Siang",
+                                  Sabtu: "Siang",
+                                  Minggu: "Libur",
+                                });
+                                showToast("✓ Preset Rolling 6 Hari diterapkan!");
+                              }}
+                              className="px-3 py-1.5 rounded-xl bg-teal-500/10 hover:bg-teal-500/20 text-teal-300 text-xs font-semibold border border-teal-500/30 transition-all flex items-center gap-1.5"
+                            >
+                              <span>🔄</span>
+                              <span>Preset Rolling 6 Hari (3 Pagi, 3 Siang, 1 Libur)</span>
+                            </button>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Grid 7 Hari Mingguan */}
+                      <form onSubmit={handleSaveWeeklySchedule} className="space-y-5">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-7 gap-3">
+                          {DAYS_OF_WEEK.map((day) => {
+                            const currentVal = draftSchedule[day] || "Pagi";
+                            const isWeekend = day === "Sabtu" || day === "Minggu";
+
+                            return (
+                              <div
+                                key={day}
+                                className={`p-3.5 rounded-2xl border transition-all ${
+                                  currentVal === "Pagi"
+                                    ? "bg-emerald-950/40 border-emerald-500/40 shadow-sm"
+                                    : currentVal === "Siang"
+                                    ? "bg-amber-950/40 border-amber-500/40 shadow-sm"
+                                    : "bg-[#010804] border-emerald-900/40 opacity-90"
+                                }`}
+                              >
+                                <div className="flex justify-between items-center mb-2.5">
+                                  <span className={`font-black text-xs ${isWeekend ? "text-amber-400" : "text-white"}`}>
+                                    {day}
+                                  </span>
+                                  <span
+                                    className={`text-[9px] font-black px-1.5 py-0.5 rounded uppercase ${
+                                      currentVal === "Pagi"
+                                        ? "bg-emerald-500/20 text-emerald-300"
+                                        : currentVal === "Siang"
+                                        ? "bg-amber-500/20 text-amber-300"
+                                        : "bg-red-500/20 text-red-300"
+                                    }`}
+                                  >
+                                    {currentVal}
+                                  </span>
+                                </div>
+
+                                <div className="space-y-1.5">
+                                  {/* Pilihan 1: Shift Pagi */}
+                                  <button
+                                    type="button"
+                                    onClick={() => setDraftSchedule((prev) => ({ ...prev, [day]: "Pagi" }))}
+                                    className={`w-full py-2 px-2.5 rounded-xl text-[11px] font-bold flex items-center justify-between transition-all ${
+                                      currentVal === "Pagi"
+                                        ? "bg-emerald-500 text-black shadow-md shadow-emerald-500/30"
+                                        : "bg-white/5 text-white/70 hover:bg-white/10 hover:text-white"
+                                    }`}
+                                  >
+                                    <span>☀️ Pagi</span>
+                                    <span className="text-[9px] font-mono opacity-80">07:00</span>
+                                  </button>
+
+                                  {/* Pilihan 2: Shift Siang */}
+                                  <button
+                                    type="button"
+                                    disabled={isTargetOffice}
+                                    onClick={() => {
+                                      if (isTargetOffice) {
+                                        showToast("Karyawan office tidak dijadwalkan shift siang!", "error");
+                                        return;
+                                      }
+                                      setDraftSchedule((prev) => ({ ...prev, [day]: "Siang" }));
+                                    }}
+                                    className={`w-full py-2 px-2.5 rounded-xl text-[11px] font-bold flex items-center justify-between transition-all ${
+                                      currentVal === "Siang"
+                                        ? "bg-amber-400 text-black shadow-md shadow-amber-400/30"
+                                        : isTargetOffice
+                                        ? "bg-white/5 text-white/20 cursor-not-allowed opacity-40"
+                                        : "bg-white/5 text-white/70 hover:bg-white/10 hover:text-white"
+                                    }`}
+                                    title={isTargetOffice ? "Khusus Office: Hanya Shift Pagi" : "Shift Siang"}
+                                  >
+                                    <span>🌤️ Siang</span>
+                                    <span className="text-[9px] font-mono opacity-80">
+                                      {isTargetOffice ? "Office ❌" : "15:00"}
+                                    </span>
+                                  </button>
+
+                                  {/* Pilihan 3: Libur */}
+                                  <button
+                                    type="button"
+                                    onClick={() => setDraftSchedule((prev) => ({ ...prev, [day]: "Libur" }))}
+                                    className={`w-full py-2 px-2.5 rounded-xl text-[11px] font-bold flex items-center justify-between transition-all ${
+                                      currentVal === "Libur"
+                                        ? "bg-red-500/80 text-white shadow-md shadow-red-500/30"
+                                        : "bg-white/5 text-white/70 hover:bg-white/10 hover:text-white"
+                                    }`}
+                                  >
+                                    <span>🏖️ Libur</span>
+                                    <span className="text-[9px] font-mono opacity-80">OFF</span>
+                                  </button>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+
+                        {/* Submit Button */}
+                        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-2 border-t border-emerald-900/60">
+                          <p className="text-xs text-white/60">
+                            Jadwal mingguan ini akan berlaku untuk siklus absensi dan batas toleransi check-in harian karyawan.
+                          </p>
+
+                          <button
+                            type="submit"
+                            className="px-6 py-3 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-400 hover:from-emerald-400 hover:to-teal-300 text-black font-black text-xs flex items-center gap-2 shadow-lg shadow-emerald-500/20 transition-all hover:scale-[1.02] active:scale-[0.98]"
+                          >
+                            <CheckCircle2 className="w-4 h-4" />
+                            <span>Simpan Jadwal Mingguan ({currentSchedTarget.name})</span>
+                          </button>
+                        </div>
+                      </form>
                     </div>
-                  );
-                })}
+
+                    {/* Matriks Roster Mingguan Tim */}
+                    <div className="bg-[#021008] border border-emerald-900/60 rounded-3xl p-6 shadow-xl space-y-4">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-emerald-900/60 pb-3">
+                        <div>
+                          <h4 className="font-bold text-white text-base flex items-center gap-2">
+                            <span>📋</span>
+                            <span>Matriks Roster Jadwal Mingguan Tim ({schedulableEmployees.length} Karyawan)</span>
+                          </h4>
+                          <p className="text-xs text-white/60">
+                            Rekap jadwal 7 hari seluruh karyawan yang berada di bawah wewenang supervisi Anda.
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-left text-xs text-white/90 border-collapse">
+                          <thead>
+                            <tr className="border-b border-emerald-900/60 text-[11px] text-emerald-400 font-extrabold uppercase tracking-wider">
+                              <th className="pb-3 pl-3">Karyawan</th>
+                              <th className="pb-3">Departemen</th>
+                              <th className="pb-3">Tipe</th>
+                              {DAYS_OF_WEEK.map((d) => (
+                                <th key={d} className="pb-3 text-center">
+                                  {d}
+                                </th>
+                              ))}
+                              <th className="pb-3 text-center pr-3">Aksi</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-emerald-900/30">
+                            {schedulableEmployees.map((emp) => {
+                              const empSched = weeklySchedules[emp.id] || {
+                                Senin: "Pagi",
+                                Selasa: "Pagi",
+                                Rabu: "Pagi",
+                                Kamis: "Pagi",
+                                Jumat: "Pagi",
+                                Sabtu: "Libur",
+                                Minggu: "Libur",
+                              };
+                              const isOff = isOfficeDept(emp.dept);
+                              const isSelected = emp.id === selectedScheduleEmpId;
+
+                              return (
+                                <tr
+                                  key={emp.id}
+                                  className={`transition-colors ${
+                                    isSelected ? "bg-emerald-500/10 font-medium" : "hover:bg-emerald-950/30"
+                                  }`}
+                                >
+                                  <td className="py-3 pl-3">
+                                    <div className="flex items-center gap-2.5">
+                                      <div className="w-8 h-8 rounded-full bg-emerald-950 flex items-center justify-center font-bold text-white text-xs ring-1 ring-emerald-500/30 flex-shrink-0">
+                                        {emp.avatar}
+                                      </div>
+                                      <div>
+                                        <span className="font-bold text-white block leading-tight">{emp.name}</span>
+                                        <span className="text-[10px] text-white/50">{emp.role}</span>
+                                      </div>
+                                    </div>
+                                  </td>
+                                  <td className="py-3 font-semibold text-white/80">{emp.dept}</td>
+                                  <td className="py-3">
+                                    <span
+                                      className={`text-[9px] font-bold px-2 py-0.5 rounded-full ${
+                                        isOff ? "bg-blue-500/20 text-blue-300" : "bg-emerald-500/20 text-emerald-300"
+                                      }`}
+                                    >
+                                      {isOff ? "Office" : "Operasional"}
+                                    </span>
+                                  </td>
+                                  {DAYS_OF_WEEK.map((d) => {
+                                    const val = empSched[d];
+                                    return (
+                                      <td key={d} className="py-3 text-center">
+                                        <span
+                                          className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${
+                                            val === "Pagi"
+                                              ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30"
+                                              : val === "Siang"
+                                              ? "bg-amber-500/20 text-amber-300 border border-amber-500/30"
+                                              : "bg-red-500/20 text-red-300 border border-red-500/30"
+                                          }`}
+                                        >
+                                          {val === "Pagi" ? "☀️ Pagi" : val === "Siang" ? "🌤️ Siang" : "🏖️ Off"}
+                                        </span>
+                                      </td>
+                                    );
+                                  })}
+                                  <td className="py-3 text-center pr-3">
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        handleSelectScheduleEmployee(emp.id);
+                                        window.scrollTo({ top: 0, behavior: "smooth" });
+                                        showToast(`Jadwal ${emp.name} dimuat ke form editor!`, "info");
+                                      }}
+                                      className="px-2.5 py-1 rounded-lg bg-emerald-500/20 hover:bg-emerald-500 hover:text-black text-emerald-300 text-[10px] font-bold transition-all"
+                                    >
+                                      Atur Jadwal
+                                    </button>
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* =================================================== */}
+                {/* TAB 2: MASTER KONFIGURASI SHIFT (CRUD SHIFT)        */}
+                {/* =================================================== */}
+                {shiftActiveTab === "master" && (
+                  <div className="space-y-6">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-[#021008] p-5 rounded-3xl border border-emerald-900/60 shadow-xl">
+                      <div>
+                        <h4 className="font-bold text-white text-base">Master Jam Shift Operasional</h4>
+                        <p className="text-xs text-white/60">
+                          Tambah, edit jam kerja, dan kelola toleransi keterlambatan shift kantor & operasional.
+                        </p>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={handleOpenAddShift}
+                        className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-400 hover:from-emerald-400 hover:to-teal-300 text-black font-black text-xs flex items-center gap-2 shadow-lg shadow-emerald-500/20 transition-all hover:scale-[1.02]"
+                      >
+                        <Plus className="w-4 h-4" />
+                        <span>+ Tambah Shift Baru</span>
+                      </button>
+                    </div>
+
+                    {/* Grid Cards Master Shifts */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                      {shifts.map((s) => {
+                        const shiftStaffCount = employees.filter((e) => e.shiftId === s.id).length;
+
+                        return (
+                          <div
+                            key={s.id}
+                            className="bg-gradient-to-br from-[#062417] to-[#021008] p-6 rounded-3xl border border-emerald-900/60 shadow-xl flex flex-col justify-between space-y-4 relative overflow-hidden"
+                          >
+                            <div className="space-y-3">
+                              <div className="flex justify-between items-center">
+                                <span
+                                  className={`text-[10px] font-black px-2.5 py-0.5 rounded-full border uppercase tracking-wider ${
+                                    s.status === "Aktif"
+                                      ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/30"
+                                      : "bg-red-500/20 text-red-300 border-red-500/30"
+                                  }`}
+                                >
+                                  {s.status}
+                                </span>
+                                <span className="text-xs font-bold text-white/80 bg-[#010804] px-2.5 py-1 rounded-lg border border-emerald-900/60">
+                                  👥 {shiftStaffCount} Staf Terkait
+                                </span>
+                              </div>
+
+                              <h4 className="font-extrabold text-white text-base">{s.name}</h4>
+
+                              {/* Jam Masuk - Jam Pulang Block */}
+                              <div className="bg-[#010804] p-4 rounded-2xl border border-emerald-900/60 text-center space-y-1">
+                                <span className="text-[10px] text-white/50 uppercase tracking-widest font-bold block">
+                                  JAM KERJA OPERASIONAL
+                                </span>
+                                <div className="font-mono text-2xl font-black text-white tracking-wider">
+                                  {s.startTime} - {s.endTime}
+                                </div>
+                                <span className="text-[10px] text-emerald-400 font-semibold block">Waktu Indonesia Barat (WIB)</span>
+                              </div>
+
+                              {/* Detail Toleransi & Buka Absen */}
+                              <div className="bg-[#010804] p-3 rounded-xl border border-emerald-900/40 text-xs space-y-2">
+                                <div className="flex justify-between">
+                                  <span className="text-white/60">Toleransi Terlambat:</span>
+                                  <span className="font-bold text-amber-300">{s.tolerance}</span>
+                                </div>
+                                <div className="flex justify-between">
+                                  <span className="text-white/60">Buka Absen Masuk:</span>
+                                  <span className="font-bold text-teal-300">{s.openBefore} sebelum jam kerja</span>
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Tombol Aksi: Edit & Hapus Shift */}
+                            <div className="pt-2 border-t border-emerald-900/60 flex gap-2">
+                              <button
+                                type="button"
+                                onClick={() => handleOpenEditShift(s)}
+                                className="flex-1 py-2 rounded-xl bg-emerald-500/20 hover:bg-emerald-500 hover:text-black text-emerald-300 text-xs font-bold transition-all text-center flex items-center justify-center gap-1.5"
+                              >
+                                <Pencil className="w-3.5 h-3.5" />
+                                <span>Edit Shift</span>
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={() => setDeleteShiftConfirm(s)}
+                                className="py-2 px-3 rounded-xl bg-red-500/20 hover:bg-red-500 hover:text-white text-red-300 text-xs font-bold transition-all text-center flex items-center justify-center gap-1.5"
+                                title="Hapus Shift"
+                              >
+                                <span>🗑️</span>
+                                <span>Hapus</span>
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
               </div>
-            </div>
-          )}
+            );
+          })()}
 
           {/* ===================================================== */}
           {/* VIEW: PENGAJUAN CUTI & PERSETUJUAN BERJENJANG         */}
@@ -5259,6 +5953,192 @@ export default function Home() {
                 }`}
               >
                 {confirmDialog.type === "delete" ? "🗑️ Hapus Permanen" : "🚫 Ya, Nonaktifkan"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================= */}
+      {/* MODAL: TAMBAH / EDIT SHIFT KERJA                          */}
+      {/* ========================================================= */}
+      {showShiftModal && (
+        <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-[#021008] border border-emerald-500/40 rounded-3xl p-7 max-w-md w-full shadow-2xl space-y-4">
+            <div className="flex justify-between items-center border-b border-emerald-900/60 pb-3">
+              <div>
+                <span className="text-[10px] text-emerald-400 font-black uppercase tracking-wider block">
+                  KONFIGURASI MASTER SHIFT KERJA
+                </span>
+                <h3 className="font-black text-white text-base">
+                  {editingShiftId ? "Edit Konfigurasi Shift" : "Tambah Shift Baru"}
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowShiftModal(false)}
+                className="text-white/60 hover:text-white p-1 rounded-lg hover:bg-white/10"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveShift} className="space-y-3.5 text-xs">
+              <div>
+                <label className="block text-white/80 font-bold mb-1">
+                  Nama Shift Kerja <span className="text-red-400">*</span>
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="Contoh: Shift Pagi (Utama / Office)"
+                  value={shiftForm.name}
+                  onChange={(e) => setShiftForm({ ...shiftForm, name: e.target.value })}
+                  className="w-full bg-[#010804] border border-emerald-900/80 rounded-xl p-2.5 text-white focus:border-emerald-400 focus:outline-none"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-white/80 font-bold mb-1">
+                    Jam Mulai Masuk <span className="text-red-400">*</span>
+                  </label>
+                  <input
+                    type="time"
+                    required
+                    value={shiftForm.startTime}
+                    onChange={(e) => setShiftForm({ ...shiftForm, startTime: e.target.value })}
+                    className="w-full bg-[#010804] border border-emerald-900/80 rounded-xl p-2.5 text-white font-mono focus:border-emerald-400 focus:outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-white/80 font-bold mb-1">
+                    Jam Selesai Pulang <span className="text-red-400">*</span>
+                  </label>
+                  <input
+                    type="time"
+                    required
+                    value={shiftForm.endTime}
+                    onChange={(e) => setShiftForm({ ...shiftForm, endTime: e.target.value })}
+                    className="w-full bg-[#010804] border border-emerald-900/80 rounded-xl p-2.5 text-white font-mono focus:border-emerald-400 focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-white/80 font-bold mb-1">Toleransi Keterlambatan</label>
+                  <select
+                    value={shiftForm.tolerance}
+                    onChange={(e) => setShiftForm({ ...shiftForm, tolerance: e.target.value })}
+                    className="w-full bg-[#010804] border border-emerald-900/80 rounded-xl p-2.5 text-white focus:border-emerald-400 focus:outline-none"
+                  >
+                    <option value="5 Menit">5 Menit</option>
+                    <option value="10 Menit">10 Menit</option>
+                    <option value="15 Menit">15 Menit</option>
+                    <option value="30 Menit">30 Menit</option>
+                    <option value="Tanpa Toleransi">Tanpa Toleransi</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-white/80 font-bold mb-1">Buka Absen Masuk</label>
+                  <select
+                    value={shiftForm.openBefore}
+                    onChange={(e) => setShiftForm({ ...shiftForm, openBefore: e.target.value })}
+                    className="w-full bg-[#010804] border border-emerald-900/80 rounded-xl p-2.5 text-white focus:border-emerald-400 focus:outline-none"
+                  >
+                    <option value="15 Menit">15 Menit Sebelum</option>
+                    <option value="30 Menit">30 Menit Sebelum</option>
+                    <option value="45 Menit">45 Menit Sebelum</option>
+                    <option value="60 Menit">60 Menit Sebelum</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-white/80 font-bold mb-1">Status Shift</label>
+                <select
+                  value={shiftForm.status}
+                  onChange={(e) => setShiftForm({ ...shiftForm, status: e.target.value as "Aktif" | "Non-Aktif" })}
+                  className="w-full bg-[#010804] border border-emerald-900/80 rounded-xl p-2.5 text-white focus:border-emerald-400 focus:outline-none"
+                >
+                  <option value="Aktif">🟢 Aktif Berjalan</option>
+                  <option value="Non-Aktif">🔴 Non-Aktif (Ditangguhkan)</option>
+                </select>
+              </div>
+
+              <div className="pt-2 flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => setShowShiftModal(false)}
+                  className="flex-1 py-3 rounded-2xl bg-white/10 hover:bg-white/20 text-white font-bold transition-all"
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 py-3 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-400 hover:brightness-110 text-black font-black transition-all shadow-lg shadow-emerald-500/20"
+                >
+                  {editingShiftId ? "Simpan Perubahan" : "Tambahkan Shift"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================= */}
+      {/* MODAL: ALERT KONFIRMASI HAPUS SHIFT                       */}
+      {/* ========================================================= */}
+      {deleteShiftConfirm && (
+        <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-[#021008] border border-red-500/60 ring-2 ring-red-500/20 rounded-3xl p-6 max-w-md w-full shadow-2xl space-y-4 animate-in zoom-in-95 duration-150">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-2xl bg-red-500/20 text-red-400 flex items-center justify-center ring-1 ring-red-400 flex-shrink-0">
+                <AlertTriangle className="w-6 h-6" />
+              </div>
+              <div>
+                <span className="text-[10px] text-red-400 font-black uppercase tracking-wider block">
+                  PERINGATAN BAHAYA SISTEM
+                </span>
+                <h3 className="font-black text-white text-base">Hapus Shift Kerja?</h3>
+              </div>
+            </div>
+
+            <div className="bg-[#010804] p-4 rounded-2xl border border-emerald-900/60 space-y-2 text-xs">
+              <div className="flex justify-between">
+                <span className="text-white/60">Nama Shift:</span>
+                <span className="font-bold text-white">{deleteShiftConfirm.name}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-white/60">Jam Kerja:</span>
+                <span className="font-mono text-emerald-300">
+                  {deleteShiftConfirm.startTime} - {deleteShiftConfirm.endTime} WIB
+                </span>
+              </div>
+            </div>
+
+            <div className="p-3 rounded-xl border border-red-500/30 bg-red-500/10 text-xs text-red-300 leading-relaxed">
+              <strong className="block text-red-400 font-bold mb-0.5">⚠️ Konfirmasi Penghapusan:</strong>
+              Shift ini akan dihapus dari konfigurasi sistem. Pastikan seluruh karyawan yang menggunakan shift ini telah dipindahkan jadwalnya ke shift lain.
+            </div>
+
+            <div className="flex gap-2 pt-1">
+              <button
+                type="button"
+                onClick={() => setDeleteShiftConfirm(null)}
+                className="flex-1 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white font-bold text-xs transition-all"
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                onClick={handleDeleteShift}
+                className="flex-1 py-2.5 rounded-xl bg-red-500 hover:bg-red-600 text-white font-black text-xs transition-all shadow-lg shadow-red-500/20"
+              >
+                🗑️ Ya, Hapus Shift
               </button>
             </div>
           </div>
