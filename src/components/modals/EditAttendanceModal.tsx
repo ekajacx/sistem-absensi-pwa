@@ -66,7 +66,7 @@ export default function EditAttendanceModal() {
                 required
                 value={editAttendanceForm.in}
                 onChange={(e) => setEditAttendanceForm({ ...editAttendanceForm, in: e.target.value })}
-                placeholder="07:45 WIB"
+                placeholder="07:45 WITA"
                 className="w-full bg-[#010804] border border-emerald-500/40 rounded-xl p-2.5 text-white font-mono font-bold focus:border-emerald-400 focus:outline-none"
               />
             </div>
@@ -79,7 +79,7 @@ export default function EditAttendanceModal() {
                 required
                 value={editAttendanceForm.out}
                 onChange={(e) => setEditAttendanceForm({ ...editAttendanceForm, out: e.target.value })}
-                placeholder="15:00 WIB"
+                placeholder="15:00 WITA"
                 className="w-full bg-[#010804] border border-emerald-500/40 rounded-xl p-2.5 text-white font-mono font-bold focus:border-emerald-400 focus:outline-none"
               />
             </div>

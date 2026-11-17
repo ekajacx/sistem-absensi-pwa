@@ -2,12 +2,13 @@
 
 import React from "react";
 import { useApp } from "@/context/AppContext";
-import { Search } from "lucide-react";
+import { Search, Download } from "lucide-react";
 
 export default function AuditLogView() {
   const {
     activityLogs,
     filteredActivityLogs,
+    handleExportAuditLogsExcel,
     logDeptFilter,
     logSearchQuery,
     logTypeFilter,
@@ -81,6 +82,16 @@ export default function AuditLogView() {
                 className="bg-[#021008] border border-emerald-900/70 text-white text-xs rounded-xl pl-8 pr-3 py-2 w-48 focus:outline-none focus:ring-1 focus:ring-emerald-500 placeholder-white/30"
               />
             </div>
+
+            {/* Tombol Ekspor Audit Log (.xlsx) */}
+            <button
+              onClick={handleExportAuditLogsExcel}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-[#021008] border border-emerald-500/50 text-emerald-300 font-extrabold text-xs hover:bg-emerald-950 transition-all shadow-md cursor-pointer"
+              title="Unduh rekam jejak audit log ke format Microsoft Excel (.xlsx)"
+            >
+              <Download className="w-3.5 h-3.5 text-emerald-400" />
+              <span>Ekspor Excel ({filteredActivityLogs.length})</span>
+            </button>
           </div>
         </div>
 

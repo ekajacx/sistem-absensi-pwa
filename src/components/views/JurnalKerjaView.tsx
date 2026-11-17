@@ -2,11 +2,12 @@
 
 import React from "react";
 import { useApp } from "@/context/AppContext";
-import { CheckCircle2, Plus } from "lucide-react";
+import { CheckCircle2, Plus, Download } from "lucide-react";
 
 export default function JurnalKerjaView() {
   const {
     currentActiveEmployee,
+    handleExportJournalsExcel,
     isStaff,
     journals,
     setShowAddJournalModal,
@@ -36,13 +37,23 @@ export default function JurnalKerjaView() {
                     </p>
                   </div>
 
-                  <button
-                    onClick={() => setShowAddJournalModal(true)}
-                    className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-black font-extrabold text-xs flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/20 transition-all hover:scale-[1.02] active:scale-[0.98] flex-shrink-0"
-                  >
-                    <Plus className="w-4 h-4" />
-                    <span>+ Tambah Jurnal Kerja Harian</span>
-                  </button>
+                  <div className="flex flex-wrap items-center gap-2 flex-shrink-0">
+                    <button
+                      onClick={() => setShowAddJournalModal(true)}
+                      className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-black font-extrabold text-xs flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/20 transition-all hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
+                    >
+                      <Plus className="w-4 h-4" />
+                      <span>+ Tambah Jurnal</span>
+                    </button>
+                    <button
+                      onClick={handleExportJournalsExcel}
+                      className="px-3.5 py-2.5 rounded-xl bg-[#021008] border border-emerald-500/50 text-emerald-300 font-extrabold text-xs flex items-center justify-center gap-1.5 shadow-md hover:bg-emerald-950 transition-all cursor-pointer"
+                      title="Unduh rekap jurnal kerja harian ke format Microsoft Excel (.xlsx)"
+                    >
+                      <Download className="w-4 h-4 text-emerald-400" />
+                      <span>Ekspor Excel ({displayJournals.length})</span>
+                    </button>
+                  </div>
                 </div>
 
                 {displayJournals.length === 0 ? (

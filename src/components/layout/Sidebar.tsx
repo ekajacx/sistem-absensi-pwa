@@ -8,7 +8,6 @@ export default function Sidebar() {
   const {
     activeMenu,
     activityLogs,
-    attendances,
     companyLogoUrl,
     companyName,
     currentActiveEmployee,
@@ -34,6 +33,7 @@ export default function Sidebar() {
     tempCompanyName,
     toggleSection,
     users,
+    visibleAttendances,
     visibleEmployees,
   } = useApp();
 
@@ -219,14 +219,14 @@ export default function Sidebar() {
 
               {openSections.kehadiran && (
                 <div className="mt-1 space-y-0.5 pl-3 border-l-2 border-emerald-900/60 ml-4">
-                  {(isStaff
+                  {(isStaff || (!hasPermission("att_all") && !hasPermission("att_team"))
                     ? [
                         { id: "absensi", label: "Absensi", icon: "📍" },
                         { id: "jadwal-shift", label: "Jadwal Shift", icon: "📅", badge: shifts.length },
                       ]
                     : [
                         { id: "absensi", label: "Absensi", icon: "📍" },
-                        { id: "rekap-absensi", label: "Rekap Absensi", icon: "📊", badge: attendances.length },
+                        { id: "rekap-absensi", label: "Rekap Absensi", icon: "📊", badge: visibleAttendances.length },
                         { id: "jadwal-shift", label: "Jadwal Shift", icon: "📅", badge: shifts.length },
                       ]
                   ).map((item) => (

@@ -128,4 +128,12 @@ export interface PermissionItem {
   description: string;
 }
 
+export interface CompanyProfile {
+  name: string;
+  address: string;
+  phone: string;
+  email: string;
+  logoUrl: string | null;
+}
+
 export type LivenessChallengeType = "blink" | "smile" | "turnRight" | "turnLeft" | "nod";

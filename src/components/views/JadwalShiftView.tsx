@@ -2,7 +2,7 @@
 
 import React from "react";
 import { useApp } from "@/context/AppContext";
-import { CheckCircle2, AlertTriangle, Settings, Phone, CalendarDays } from "lucide-react";
+import { CheckCircle2, AlertTriangle, Settings, Phone, CalendarDays, Download } from "lucide-react";
 
 export default function JadwalShiftView() {
   const {
@@ -18,6 +18,7 @@ export default function JadwalShiftView() {
     getLeaveOnDate,
     getMondayOfWeek,
     getSchedulableEmployees,
+    handleExportWeeklyScheduleExcel,
     handleSaveWeeklySchedule,
     handleSelectScheduleEmployee,
     hasPermission,
@@ -82,11 +83,19 @@ export default function JadwalShiftView() {
                       </p>
                     </div>
 
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
                       <span className="text-[10px] font-mono font-bold px-3 py-1.5 rounded-xl bg-amber-500/10 text-amber-300 border border-amber-500/30 flex items-center gap-1.5">
                         <span>🌙</span>
                         <span>Shift Malam Ditiadakan (Hanya Pagi & Siang)</span>
                       </span>
+                      <button
+                        onClick={handleExportWeeklyScheduleExcel}
+                        className="px-3.5 py-1.5 rounded-xl bg-[#021008] border border-emerald-500/50 text-emerald-300 font-extrabold text-xs hover:bg-emerald-950 transition-all flex items-center gap-1.5 shadow-md cursor-pointer"
+                        title="Unduh jadwal roster shift mingguan ke format Microsoft Excel (.xlsx)"
+                      >
+                        <Download className="w-3.5 h-3.5 text-emerald-400" />
+                        <span>Ekspor Roster (.xlsx)</span>
+                      </button>
                     </div>
                   </div>
 
@@ -298,7 +307,7 @@ export default function JadwalShiftView() {
                                         <span>☀️</span>
                                         <span>Shift Pagi</span>
                                       </div>
-                                      <div className="font-mono text-[11px] font-bold text-white">07:00 - 15:00 WIB</div>
+                                      <div className="font-mono text-[11px] font-bold text-white">07:00 - 15:00 WITA</div>
                                       <span className="text-[10px] text-white/50 block">Wajib Hadir Kerja</span>
                                     </div>
                                   ) : currentVal === "Siang" ? (
@@ -307,7 +316,7 @@ export default function JadwalShiftView() {
                                         <span>🌤️</span>
                                         <span>Shift Siang</span>
                                       </div>
-                                      <div className="font-mono text-[11px] font-bold text-white">15:00 - 23:00 WIB</div>
+                                      <div className="font-mono text-[11px] font-bold text-white">15:00 - 23:00 WITA</div>
                                       <span className="text-[10px] text-white/50 block">Wajib Hadir Kerja</span>
                                     </div>
                                   ) : (
@@ -426,7 +435,7 @@ export default function JadwalShiftView() {
                                       <span>☀️</span>
                                       <span>Shift Pagi</span>
                                     </div>
-                                    <div className="font-mono text-[11px] font-bold text-white">07:00 - 15:00 WIB</div>
+                                    <div className="font-mono text-[11px] font-bold text-white">07:00 - 15:00 WITA</div>
                                     <span className="text-[10px] text-white/50 block">Wajib Hadir Kerja</span>
                                   </div>
                                 ) : currentVal === "Siang" ? (
@@ -435,7 +444,7 @@ export default function JadwalShiftView() {
                                       <span>🌤️</span>
                                       <span>Shift Siang</span>
                                     </div>
-                                    <div className="font-mono text-[11px] font-bold text-white">15:00 - 23:00 WIB</div>
+                                    <div className="font-mono text-[11px] font-bold text-white">15:00 - 23:00 WITA</div>
                                     <span className="text-[10px] text-white/50 block">Wajib Hadir Kerja</span>
                                   </div>
                                 ) : (
@@ -688,7 +697,7 @@ export default function JadwalShiftView() {
                                         <span>☀️</span>
                                         <span>Shift Pagi</span>
                                       </div>
-                                      <div className="font-mono text-[11px] font-bold text-white">07:00 - 15:00 WIB</div>
+                                      <div className="font-mono text-[11px] font-bold text-white">07:00 - 15:00 WITA</div>
                                       <span className="text-[10px] text-white/50 block">Wajib Hadir Kerja</span>
                                     </div>
                                   ) : currentVal === "Siang" ? (
@@ -697,7 +706,7 @@ export default function JadwalShiftView() {
                                         <span>🌤️</span>
                                         <span>Shift Siang</span>
                                       </div>
-                                      <div className="font-mono text-[11px] font-bold text-white">15:00 - 23:00 WIB</div>
+                                      <div className="font-mono text-[11px] font-bold text-white">15:00 - 23:00 WITA</div>
                                       <span className="text-[10px] text-white/50 block">Wajib Hadir Kerja</span>
                                     </div>
                                   ) : (

@@ -2,7 +2,7 @@
 
 import React from "react";
 import { useApp } from "@/context/AppContext";
-import { Plus, Check, X } from "lucide-react";
+import { Plus, Check, X, Download } from "lucide-react";
 
 export default function PengajuanCutiView() {
   const {
@@ -12,6 +12,7 @@ export default function PengajuanCutiView() {
     directSuperior,
     employees,
     handleApproveLeave,
+    handleExportLeavesExcel,
     handleRejectLeave,
     isStaff,
     leaveActiveTab,
@@ -66,10 +67,18 @@ export default function PengajuanCutiView() {
                   <div className="flex flex-col sm:flex-row gap-3">
                     <button
                       onClick={() => setShowApplyLeaveModal(true)}
-                      className="px-5 py-3 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-black font-black text-xs flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/20 transition-all hover:scale-[1.02] active:scale-[0.98]"
+                      className="px-5 py-3 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-black font-black text-xs flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/20 transition-all hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
                     >
                       <Plus className="w-4 h-4" />
                       Ajukan Cuti Baru
+                    </button>
+                    <button
+                      onClick={handleExportLeavesExcel}
+                      className="px-4 py-3 rounded-2xl bg-[#021008] border border-emerald-500/50 text-emerald-300 font-bold text-xs flex items-center justify-center gap-2 shadow-lg shadow-black hover:bg-emerald-950 transition-all cursor-pointer"
+                      title="Unduh laporan riwayat cuti ke format Excel (.xlsx)"
+                    >
+                      <Download className="w-4 h-4 text-emerald-400" />
+                      <span>Ekspor Excel (.xlsx)</span>
                     </button>
                   </div>
                 </div>

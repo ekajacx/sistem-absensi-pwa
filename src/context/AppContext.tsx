@@ -14,7 +14,9 @@ import {
   LeaveRequest,
   WorkJournal,
   SystemUser,
+  CompanyProfile,
 } from "@/types";
+import { exportToExcel } from "@/utils/excelExport";
 import {
   standardDepartments,
   initialEmployees,
@@ -25,6 +27,7 @@ import {
   initialJournals,
   initialUsers,
   initialSettings,
+  initialCompanyProfile,
   initialActivityLogs,
   allPermissions,
   initialRolePermissions,
@@ -37,12 +40,68 @@ function useAppProviderValue() {
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState<boolean>(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState<boolean>(false);
 
-  // Dynamic Company Profile State
-  const [companyName, setCompanyName] = useState<string>("AbsenKu");
+  // Dynamic Company Profile State (Kop Surat & Identitas Perusahaan)
+  const [companyProfile, setCompanyProfile] = useState<CompanyProfile>(initialCompanyProfile);
+  const [companyProfileForm, setCompanyProfileForm] = useState<CompanyProfile>(initialCompanyProfile);
+  const [companyName, setCompanyName] = useState<string>(initialCompanyProfile.name);
   const [isEditingCompany, setIsEditingCompany] = useState<boolean>(false);
-  const [tempCompanyName, setTempCompanyName] = useState<string>("AbsenKu");
-  const [companyLogoUrl, setCompanyLogoUrl] = useState<string | null>(null);
+  const [tempCompanyName, setTempCompanyName] = useState<string>(initialCompanyProfile.name);
+  const [companyLogoUrl, setCompanyLogoUrl] = useState<string | null>(initialCompanyProfile.logoUrl);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const companyLogoInputRef = useRef<HTMLInputElement>(null);
+
+  const handleSaveCompanyProfile = () => {
+    if (!companyProfileForm.name.trim()) {
+      showToast("Nama perusahaan tidak boleh kosong!", "error");
+      return;
+    }
+    const updated: CompanyProfile = {
+      ...companyProfileForm,
+      name: companyProfileForm.name.trim(),
+      address: companyProfileForm.address.trim(),
+      phone: companyProfileForm.phone.trim(),
+      email: companyProfileForm.email.trim(),
+    };
+    setCompanyProfile(updated);
+    setCompanyName(updated.name);
+    setTempCompanyName(updated.name);
+    if (updated.logoUrl !== companyLogoUrl) {
+      setCompanyLogoUrl(updated.logoUrl);
+    }
+    showToast("✓ Informasi profil perusahaan & Kop Surat berhasil diperbarui!", "success");
+  };
+
+  const handleUpdateCompanyLogo = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (companyProfileForm.logoUrl && companyProfileForm.logoUrl.startsWith("blob:")) {
+        try {
+          URL.revokeObjectURL(companyProfileForm.logoUrl);
+        } catch (err) {
+          console.warn("Failed to revoke previous company logo URL:", err);
+        }
+      }
+      const url = URL.createObjectURL(file);
+      setCompanyProfileForm((prev) => ({ ...prev, logoUrl: url }));
+      setCompanyProfile((prev) => ({ ...prev, logoUrl: url }));
+      setCompanyLogoUrl(url);
+      showToast("Logo perusahaan berhasil diunggah!");
+    }
+  };
+
+  const handleRemoveCompanyLogo = () => {
+    if (companyProfileForm.logoUrl && companyProfileForm.logoUrl.startsWith("blob:")) {
+      try {
+        URL.revokeObjectURL(companyProfileForm.logoUrl);
+      } catch (err) {
+        console.warn("Failed to revoke company logo URL:", err);
+      }
+    }
+    setCompanyProfileForm((prev) => ({ ...prev, logoUrl: null }));
+    setCompanyProfile((prev) => ({ ...prev, logoUrl: null }));
+    setCompanyLogoUrl(null);
+    showToast("Logo perusahaan telah dihapus.");
+  };
 
   // Toast Notification State
   const [toastMessage, setToastMessage] = useState<{ text: string; type: "success" | "error" | "info" } | null>(null);
@@ -193,6 +252,9 @@ function useAppProviderValue() {
   useEffect(() => {
     if (isStaff && ["departemen", "jabatan", "kontrak", "rekap-absensi", "user-management", "izin-akses", "pengaturan", "log-aktivitas"].includes(activeMenu)) {
       setActiveMenu("karyawan");
+    }
+    if (activeMenu === "rekap-absensi" && !hasPermission("att_all") && !hasPermission("att_team")) {
+      setActiveMenu("dashboard");
     }
     if (activeMenu === "user-management" && !hasPermission("menu_user_mgmt")) {
       setActiveMenu("dashboard");
@@ -474,7 +536,7 @@ function useAppProviderValue() {
     setEditingAttendance(att);
     setEditAttendanceForm({
       in: att.in,
-      out: att.out === "--:--" ? "15:00 WIB" : att.out,
+      out: att.out === "--:--" ? "15:00 WITA" : att.out,
       status: att.status,
       reason: att.editReason || "",
     });
@@ -864,7 +926,7 @@ function useAppProviderValue() {
 
   const [shiftActiveTab, setShiftActiveTab] = useState<"roster" | "master">("roster");
   const [selectedScheduleEmpId, setSelectedScheduleEmpId] = useState<string>("emp-ops-spv");
-  const [pengaturanTab, setPengaturanTab] = useState<"lokasi" | "shift">("lokasi");
+  const [pengaturanTab, setPengaturanTab] = useState<"perusahaan" | "lokasi" | "shift">("perusahaan");
 
   // ─── Device Lock / Anti-Titip Absen States ───────────────────────────────
   const [simulatedDeviceId, setSimulatedDeviceId] = useState<string>("DEV-IT-601");
@@ -1530,9 +1592,26 @@ function useAppProviderValue() {
     return matchDept && matchShift && matchSearch;
   });
 
-  // Filter Data Rekap Absensi
-  const filteredAttendances = attendances.filter((att) => {
-    const matchDept = rekapDeptFilter === "ALL" || att.dept === rekapDeptFilter;
+  // Hak Akses Rekap Absensi: Global (att_all) vs Tim Bawahan (att_team)
+  const canViewAllAttendances = hasPermission("att_all");
+  const canViewTeamAttendances = hasPermission("att_team");
+
+  // 1. Dataset absensi dasar yang diizinkan untuk diakses sesuai wewenang RBAC
+  const visibleAttendances = attendances.filter((att) => {
+    if (canViewAllAttendances) return true;
+    if (canViewTeamAttendances) {
+      return att.dept === currentActiveEmployee.dept;
+    }
+    // Jika tidak memiliki att_all maupun att_team (misal Staff), hanya boleh melihat diri sendiri
+    return att.employeeId === currentActiveEmployee.id;
+  });
+
+  // 2. Filter Data Rekap Absensi (Departemen, Status, Search)
+  const filteredAttendances = visibleAttendances.filter((att) => {
+    const matchDept =
+      !canViewAllAttendances
+        ? att.dept === currentActiveEmployee.dept
+        : rekapDeptFilter === "ALL" || att.dept === rekapDeptFilter;
     const matchStatus = rekapStatusFilter === "ALL" || att.status === rekapStatusFilter;
     const matchSearch =
       rekapSearchQuery === "" ||
@@ -1555,52 +1634,444 @@ function useAppProviderValue() {
     return matchDept && matchSearch;
   });
 
-  // Handler Ekspor Rekap Absensi ke CSV / Excel
-  const handleExportCSV = () => {
+  // ─────────────────────────────────────────────────────────────
+  // MODUL EXPORT EXCEL (.XLSX) STANDAR PERUSAHAAN (DARK FOREST EMERALD)
+  // ─────────────────────────────────────────────────────────────
+
+  // Helper Kop Surat Resmi Menggunakan Profil Perusahaan Dinamis
+  const getCompanyKopSurat = (reportTitle: string, periodText?: string) => ({
+    companyName: companyProfile.name || companyName || "AbsenKu",
+    companyAddress: companyProfile.address || settings.officeName || "Kantor Pusat - Sudirman Tower Lt. 12",
+    companyContact: [
+      companyProfile.phone ? `Telp: ${companyProfile.phone}` : "",
+      companyProfile.email ? `Email: ${companyProfile.email}` : "",
+    ].filter(Boolean).join("  •  ") || "info@perusahaan.id",
+    reportTitle,
+    periodText,
+    exportedAt: new Date().toLocaleDateString("id-ID", {
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+      timeZone: "Asia/Makassar",
+    }),
+    exportedBy: currentActiveEmployee.name || "HRD Administrator",
+    logoUrl: companyProfile.logoUrl || companyLogoUrl,
+  });
+
+  // 1. Ekspor Rekap Kehadiran
+  const handleExportExcel = async () => {
     if (filteredAttendances.length === 0) {
       showToast("Tidak ada data absensi untuk diekspor!", "error");
       return;
     }
-    const headers = [
-      "No",
-      "ID Log",
-      "Nama Karyawan",
-      "Nomor KTP",
-      "Departemen",
-      "Shift Kerja",
-      "Tanggal",
-      "Jam Check-In",
-      "Jam Check-Out",
-      "Jarak ke Kantor (m)",
-      "Skor Validasi AI (%)",
-      "Status Kehadiran",
-    ];
-    const rows = filteredAttendances.map((r, idx) => [
-      idx + 1,
-      r.id,
-      `"${r.name.replace(/"/g, '""')}"`,
-      `'${r.nik}`,
-      `"${r.dept}"`,
-      `"${r.shift}"`,
-      `"${r.date}"`,
-      `"${r.in}"`,
-      `"${r.out}"`,
-      r.dist.toFixed(1),
-      r.score.toFixed(1),
-      r.status,
-    ]);
-    const csvContent = "\uFEFF" + [headers.join(","), ...rows.map((e) => e.join(","))].join("\r\n");
-    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    const deptTag = rekapDeptFilter === "ALL" ? "Semua_Dept" : rekapDeptFilter;
-    link.setAttribute("href", url);
-    link.setAttribute("download", `Rekap_Absensi_${deptTag}_${new Date().toISOString().slice(0, 10)}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
-    showToast(`✓ Berhasil mengekspor ${filteredAttendances.length} data absensi ke file CSV/Excel!`, "success");
+
+    try {
+      const deptTag = !canViewAllAttendances
+        ? currentActiveEmployee.dept
+        : rekapDeptFilter === "ALL"
+        ? "Semua_Dept"
+        : rekapDeptFilter;
+      const todayStr = new Date()
+        .toLocaleDateString("id-ID", {
+          year: "numeric",
+          month: "2-digit",
+          day: "2-digit",
+          timeZone: "Asia/Makassar",
+        })
+        .replace(/\//g, "-");
+      const fileName = `Laporan_Rekap_Absensi_${deptTag}_${todayStr}.xlsx`;
+
+      const approvedCount = filteredAttendances.filter((a) => a.status === "APPROVED").length;
+      const lateCount = filteredAttendances.filter((a) => a.status === "TERLAMBAT").length;
+      const avgScore =
+        filteredAttendances.length > 0
+          ? (
+              filteredAttendances.reduce((acc, c) => acc + c.score, 0) /
+              filteredAttendances.length
+            ).toFixed(1) + "%"
+          : "0%";
+
+      const periodDesc = !canViewAllAttendances
+        ? `Departemen: ${currentActiveEmployee.dept} (Tim Bawahan) • Status: ${rekapStatusFilter}`
+        : `Departemen: ${deptTag} • Status: ${rekapStatusFilter}`;
+
+      await exportToExcel<AttendanceRecord>({
+        fileName,
+        sheetName: "Rekap Kehadiran",
+        kopSurat: getCompanyKopSurat("Laporan Rekapitulasi Kehadiran Karyawan", periodDesc),
+        summaryMetrics: [
+          { label: "Total Log Kehadiran", value: `${filteredAttendances.length} Log` },
+          { label: "Hadir Tepat Waktu", value: `${approvedCount} Log` },
+          { label: "Keterlambatan", value: `${lateCount} Log` },
+          { label: "Rata-rata Skor AI", value: avgScore },
+        ],
+        columns: [
+          { header: "No", key: "no", width: 6, align: "center", getter: (_, idx) => idx + 1 },
+          { header: "ID Log", key: "id", width: 14, align: "center", getter: (r) => r.id },
+          { header: "Nama Karyawan", key: "name", width: 24, align: "left", getter: (r) => r.name },
+          { header: "Nomor KTP (NIK)", key: "nik", width: 20, align: "center", format: "@", getter: (r) => r.nik },
+          { header: "Departemen", key: "dept", width: 16, align: "left", getter: (r) => r.dept },
+          { header: "Shift Kerja", key: "shift", width: 14, align: "center", getter: (r) => r.shift },
+          { header: "Tanggal", key: "date", width: 14, align: "center", getter: (r) => r.date },
+          { header: "Jam Masuk", key: "in", width: 14, align: "center", getter: (r) => (r.in ? `${r.in} WITA` : "-") },
+          { header: "Jam Pulang", key: "out", width: 14, align: "center", getter: (r) => (r.out ? `${r.out} WITA` : "-") },
+          { header: "Jarak GPS (m)", key: "dist", width: 14, align: "right", format: "#,##0.0", getter: (r) => r.dist },
+          { header: "Skor AI (%)", key: "score", width: 13, align: "right", format: '0.0"%"', getter: (r) => r.score },
+          { header: "Status Kehadiran", key: "status", width: 16, align: "center", getter: (r) => r.status },
+        ],
+        data: filteredAttendances,
+        orientation: "landscape",
+      });
+
+      showToast(`✓ Berhasil mengunduh ${filteredAttendances.length} data absensi ke format Excel (.xlsx)!`, "success");
+    } catch (err) {
+      console.error("Export Excel Error:", err);
+      showToast("Gagal mengekspor data absensi ke Excel!", "error");
+    }
+  };
+
+  // Alias handleExportCSV untuk kompatibilitas penuh tombol lama
+  const handleExportCSV = handleExportExcel;
+
+  // 2. Ekspor Direktori Karyawan
+  const handleExportEmployeesExcel = async () => {
+    if (filteredEmployees.length === 0) {
+      showToast("Tidak ada data karyawan untuk diekspor!", "error");
+      return;
+    }
+
+    try {
+      const deptTag = filterDept === "ALL" ? "Semua_Dept" : filterDept;
+      const todayStr = new Date()
+        .toLocaleDateString("id-ID", {
+          year: "numeric",
+          month: "2-digit",
+          day: "2-digit",
+          timeZone: "Asia/Makassar",
+        })
+        .replace(/\//g, "-");
+      const fileName = `Laporan_Data_Karyawan_${deptTag}_${todayStr}.xlsx`;
+
+      const tetapCount = filteredEmployees.filter((e) => e.contractType === "Tetap").length;
+      const kontrakCount = filteredEmployees.filter((e) => e.contractType === "Kontrak").length;
+      const magangDwCount = filteredEmployees.filter(
+        (e) => e.contractType === "Magang" || e.contractType === "DW"
+      ).length;
+
+      await exportToExcel<Employee>({
+        fileName,
+        sheetName: "Direktori Karyawan",
+        kopSurat: getCompanyKopSurat(
+          "Laporan Direktori Karyawan & Status Kepegawaian",
+          `Departemen: ${deptTag} • Shift: ${filterShift}`
+        ),
+        summaryMetrics: [
+          { label: "Total Karyawan", value: `${filteredEmployees.length} Orang` },
+          { label: "Karyawan Tetap (PKWTT)", value: `${tetapCount} Orang` },
+          { label: "Karyawan Kontrak (PKWT)", value: `${kontrakCount} Orang` },
+          { label: "Magang & DW", value: `${magangDwCount} Orang` },
+        ],
+        columns: [
+          { header: "No", key: "no", width: 6, align: "center", getter: (_, idx) => idx + 1 },
+          { header: "ID Karyawan", key: "id", width: 14, align: "center", getter: (e) => e.id },
+          { header: "Nomor KTP (NIK)", key: "nik", width: 20, align: "center", format: "@", getter: (e) => e.nik },
+          { header: "Nama Lengkap", key: "name", width: 24, align: "left", getter: (e) => e.name },
+          { header: "Email", key: "email", width: 24, align: "left", getter: (e) => e.email },
+          { header: "No. Telepon", key: "phone", width: 16, align: "center", format: "@", getter: (e) => e.phone },
+          { header: "Departemen", key: "dept", width: 15, align: "left", getter: (e) => e.dept },
+          { header: "Jabatan / Role", key: "role", width: 22, align: "left", getter: (e) => e.role },
+          { header: "Level Hirarki", key: "level", width: 16, align: "center", getter: (e) => e.level },
+          { header: "Tipe Kontrak", key: "contractType", width: 16, align: "center", getter: (e) => e.contractType },
+          { header: "Tanggal Bergabung", key: "joinDate", width: 16, align: "center", getter: (e) => e.joinDate },
+          { header: "Status Kepegawaian", key: "status", width: 16, align: "center", getter: (e) => e.status },
+        ],
+        data: filteredEmployees,
+        orientation: "landscape",
+      });
+
+      showToast(`✓ Berhasil mengunduh ${filteredEmployees.length} data karyawan ke format Excel (.xlsx)!`, "success");
+    } catch (err) {
+      console.error("Export Employees Error:", err);
+      showToast("Gagal mengekspor data karyawan ke Excel!", "error");
+    }
+  };
+
+  // 3. Ekspor Pengajuan & Riwayat Cuti
+  const handleExportLeavesExcel = async () => {
+    const targetLeaves = leaveActiveTab === "subordinate-leaves" ? subordinateLeaves : myLeaves;
+    if (targetLeaves.length === 0) {
+      showToast("Tidak ada data pengajuan cuti untuk diekspor!", "error");
+      return;
+    }
+
+    try {
+      const todayStr = new Date()
+        .toLocaleDateString("id-ID", {
+          year: "numeric",
+          month: "2-digit",
+          day: "2-digit",
+          timeZone: "Asia/Makassar",
+        })
+        .replace(/\//g, "-");
+      const fileName = `Laporan_Pengajuan_Cuti_${todayStr}.xlsx`;
+
+      const disetujuiCount = targetLeaves.filter((l) => l.status === "DISETUJUI").length;
+      const pendingCount = targetLeaves.filter((l) => l.status === "MENUNGGU").length;
+      const ditolakCount = targetLeaves.filter((l) => l.status === "DITOLAK").length;
+
+      await exportToExcel<LeaveRequest>({
+        fileName,
+        sheetName: "Data Cuti",
+        kopSurat: getCompanyKopSurat(
+          "Laporan Pengajuan & Persetujuan Cuti Karyawan",
+          `Kategori: ${leaveActiveTab === "subordinate-leaves" ? "Persetujuan Cuti Tim / Bawahan" : "Riwayat Cuti Mandiri"}`
+        ),
+        summaryMetrics: [
+          { label: "Total Pengajuan", value: `${targetLeaves.length} Berkas` },
+          { label: "Disetujui", value: `${disetujuiCount} Berkas` },
+          { label: "Menunggu Approval", value: `${pendingCount} Berkas` },
+          { label: "Ditolak", value: `${ditolakCount} Berkas` },
+        ],
+        columns: [
+          { header: "No", key: "no", width: 6, align: "center", getter: (_, idx) => idx + 1 },
+          { header: "ID Cuti", key: "id", width: 14, align: "center", getter: (l) => l.id },
+          { header: "Nama Karyawan", key: "name", width: 24, align: "left", getter: (l) => l.name },
+          { header: "Departemen", key: "dept", width: 16, align: "left", getter: (l) => l.dept },
+          { header: "Tipe Cuti", key: "type", width: 14, align: "center", getter: (l) => l.type },
+          { header: "Tgl Mulai", key: "start", width: 14, align: "center", getter: (l) => l.start },
+          { header: "Tgl Selesai", key: "end", width: 14, align: "center", getter: (l) => l.end },
+          { header: "Durasi (Hari)", key: "days", width: 13, align: "right", format: "#,##0", getter: (l) => l.days },
+          { header: "Alasan Cuti", key: "reason", width: 30, align: "left", wrapText: true, getter: (l) => l.reason },
+          { header: "Status", key: "status", width: 16, align: "center", getter: (l) => l.status },
+          { header: "Atasan Penyetuju (N+1)", key: "approver", width: 22, align: "left", getter: (l) => l.approverName || "-" },
+          { header: "Tgl Disetujui", key: "approvedAt", width: 16, align: "center", getter: (l) => l.approvedAt || "-" },
+        ],
+        data: targetLeaves,
+        orientation: "landscape",
+      });
+
+      showToast(`✓ Berhasil mengunduh ${targetLeaves.length} data cuti ke format Excel (.xlsx)!`, "success");
+    } catch (err) {
+      console.error("Export Leaves Error:", err);
+      showToast("Gagal mengekspor data cuti ke Excel!", "error");
+    }
+  };
+
+  // 4. Ekspor Audit Log Aktivitas & Modifikasi Manual
+  const handleExportAuditLogsExcel = async () => {
+    if (filteredActivityLogs.length === 0) {
+      showToast("Tidak ada data audit log untuk diekspor!", "error");
+      return;
+    }
+
+    try {
+      const todayStr = new Date()
+        .toLocaleDateString("id-ID", {
+          year: "numeric",
+          month: "2-digit",
+          day: "2-digit",
+          timeZone: "Asia/Makassar",
+        })
+        .replace(/\//g, "-");
+      const fileName = `Laporan_Audit_Log_${todayStr}.xlsx`;
+
+      const manualCount = filteredActivityLogs.filter((l) => l.isEdited).length;
+      const autoCount = filteredActivityLogs.filter((l) => !l.isEdited).length;
+
+      await exportToExcel<ActivityLog>({
+        fileName,
+        sheetName: "Audit Log",
+        kopSurat: getCompanyKopSurat(
+          "Laporan Audit Trail Aktivitas Kehadiran & Sistem",
+          `Filter Dept: ${logDeptFilter} • Jenis Log: ${logTypeFilter}`
+        ),
+        summaryMetrics: [
+          { label: "Total Aktivitas", value: `${filteredActivityLogs.length} Log` },
+          { label: "Modifikasi Manual (Merah)", value: `${manualCount} Log` },
+          { label: "Aktivitas Otomatis", value: `${autoCount} Log` },
+        ],
+        columns: [
+          { header: "No", key: "no", width: 6, align: "center", getter: (_, idx) => idx + 1 },
+          { header: "ID Log", key: "id", width: 14, align: "center", getter: (l) => l.id },
+          { header: "Waktu Aktivitas (WITA)", key: "timestamp", width: 22, align: "center", getter: (l) => l.timestamp },
+          { header: "Tipe Log", key: "type", width: 16, align: "center", getter: (l) => l.type },
+          { header: "Judul Aktivitas", key: "title", width: 28, align: "left", getter: (l) => l.title },
+          { header: "Karyawan Terkait", key: "employeeName", width: 24, align: "left", getter: (l) => l.employeeName },
+          { header: "Departemen", key: "dept", width: 15, align: "left", getter: (l) => l.dept },
+          { header: "Aktor Pelaksana", key: "actorName", width: 22, align: "left", getter: (l) => l.actorName },
+          { header: "Role Aktor", key: "actorRole", width: 20, align: "left", getter: (l) => l.actorRole },
+          { header: "Status", key: "isEdited", width: 16, align: "center", getter: (l) => (l.isEdited ? "Modifikasi Manual" : "Otomatis") },
+          { header: "Alasan Koreksi Manual", key: "editReason", width: 32, align: "left", wrapText: true, getter: (l) => l.editReason || "-" },
+        ],
+        data: filteredActivityLogs,
+        orientation: "landscape",
+      });
+
+      showToast(`✓ Berhasil mengunduh ${filteredActivityLogs.length} audit log ke format Excel (.xlsx)!`, "success");
+    } catch (err) {
+      console.error("Export Audit Logs Error:", err);
+      showToast("Gagal mengekspor audit log ke Excel!", "error");
+    }
+  };
+
+  // 5. Ekspor Jadwal Roster Shift Mingguan
+  const handleExportWeeklyScheduleExcel = async () => {
+    const schedEmployees = getSchedulableEmployees();
+    if (schedEmployees.length === 0) {
+      showToast("Tidak ada jadwal shift untuk diekspor!", "error");
+      return;
+    }
+
+    try {
+      const todayStr = new Date()
+        .toLocaleDateString("id-ID", {
+          year: "numeric",
+          month: "2-digit",
+          day: "2-digit",
+          timeZone: "Asia/Makassar",
+        })
+        .replace(/\//g, "-");
+      const fileName = `Laporan_Roster_Shift_Mingguan_${todayStr}.xlsx`;
+
+      const days: DayOfWeek[] = ["Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu", "Minggu"];
+
+      await exportToExcel<Employee>({
+        fileName,
+        sheetName: "Roster Shift",
+        kopSurat: getCompanyKopSurat(
+          "Laporan Penjadwalan Roster Kerja Mingguan (7 Hari)",
+          `Mulai Tanggal: ${rosterWeekStart}`
+        ),
+        summaryMetrics: [
+          { label: "Total Karyawan Terjadwal", value: `${schedEmployees.length} Orang` },
+          { label: "Shift Pagi", value: "07:00 - 15:00 WITA" },
+          { label: "Shift Siang", value: "14:00 - 22:00 WITA" },
+          { label: "Libur (OFF)", value: "Jadwal Istirahat" },
+        ],
+        columns: [
+          { header: "No", key: "no", width: 6, align: "center", getter: (_, idx) => idx + 1 },
+          { header: "ID Karyawan", key: "id", width: 14, align: "center", getter: (e) => e.id },
+          { header: "Nama Karyawan", key: "name", width: 24, align: "left", getter: (e) => e.name },
+          { header: "Departemen", key: "dept", width: 16, align: "left", getter: (e) => e.dept },
+          { header: "Senin", key: "senin", width: 14, align: "center", getter: (e) => (weeklySchedules[e.id]?.Senin || "Pagi") },
+          { header: "Selasa", key: "selasa", width: 14, align: "center", getter: (e) => (weeklySchedules[e.id]?.Selasa || "Pagi") },
+          { header: "Rabu", key: "rabu", width: 14, align: "center", getter: (e) => (weeklySchedules[e.id]?.Rabu || "Pagi") },
+          { header: "Kamis", key: "kamis", width: 14, align: "center", getter: (e) => (weeklySchedules[e.id]?.Kamis || "Pagi") },
+          { header: "Jumat", key: "jumat", width: 14, align: "center", getter: (e) => (weeklySchedules[e.id]?.Jumat || "Pagi") },
+          { header: "Sabtu", key: "sabtu", width: 14, align: "center", getter: (e) => (weeklySchedules[e.id]?.Sabtu || "Libur") },
+          { header: "Minggu", key: "minggu", width: 14, align: "center", getter: (e) => (weeklySchedules[e.id]?.Minggu || "Libur") },
+          {
+            header: "Total Shift Masuk",
+            key: "workDays",
+            width: 16,
+            align: "right",
+            format: "#,##0",
+            getter: (e) => {
+              const sched = weeklySchedules[e.id] || {
+                Senin: "Pagi",
+                Selasa: "Pagi",
+                Rabu: "Pagi",
+                Kamis: "Pagi",
+                Jumat: "Pagi",
+                Sabtu: "Libur",
+                Minggu: "Libur",
+              };
+              return days.filter((d) => sched[d] !== "Libur").length;
+            },
+          },
+          {
+            header: "Total Libur (OFF)",
+            key: "offDays",
+            width: 16,
+            align: "right",
+            format: "#,##0",
+            getter: (e) => {
+              const sched = weeklySchedules[e.id] || {
+                Senin: "Pagi",
+                Selasa: "Pagi",
+                Rabu: "Pagi",
+                Kamis: "Pagi",
+                Jumat: "Pagi",
+                Sabtu: "Libur",
+                Minggu: "Libur",
+              };
+              return days.filter((d) => sched[d] === "Libur").length;
+            },
+          },
+        ],
+        data: schedEmployees,
+        orientation: "landscape",
+      });
+
+      showToast(`✓ Berhasil mengunduh ${schedEmployees.length} jadwal roster ke format Excel (.xlsx)!`, "success");
+    } catch (err) {
+      console.error("Export Roster Error:", err);
+      showToast("Gagal mengekspor jadwal roster ke Excel!", "error");
+    }
+  };
+
+  // 6. Ekspor Jurnal Kerja Harian
+  const handleExportJournalsExcel = async () => {
+    const targetJournals = isStaff
+      ? journals.filter((j) => j.employeeId === currentActiveEmployee.id)
+      : journals;
+
+    if (targetJournals.length === 0) {
+      showToast("Tidak ada data jurnal kerja untuk diekspor!", "error");
+      return;
+    }
+
+    try {
+      const todayStr = new Date()
+        .toLocaleDateString("id-ID", {
+          year: "numeric",
+          month: "2-digit",
+          day: "2-digit",
+          timeZone: "Asia/Makassar",
+        })
+        .replace(/\//g, "-");
+      const fileName = `Laporan_Jurnal_Kerja_${todayStr}.xlsx`;
+
+      const avgScore =
+        targetJournals.length > 0
+          ? (
+              targetJournals.reduce((acc, j) => acc + j.score, 0) / targetJournals.length
+            ).toFixed(1) + "%"
+          : "0%";
+
+      await exportToExcel<WorkJournal>({
+        fileName,
+        sheetName: "Jurnal Kerja",
+        kopSurat: getCompanyKopSurat(
+          "Laporan Jurnal Kerja Harian Karyawan",
+          `Kategori: ${isStaff ? `Jurnal Mandiri (${currentActiveEmployee.name})` : "Laporan Jurnal Tim"}`
+        ),
+        summaryMetrics: [
+          { label: "Total Jurnal Tercatat", value: `${targetJournals.length} Laporan` },
+          { label: "Rata-rata Skor Kualitas", value: avgScore },
+        ],
+        columns: [
+          { header: "No", key: "no", width: 6, align: "center", getter: (_, idx) => idx + 1 },
+          { header: "ID Jurnal", key: "id", width: 14, align: "center", getter: (j) => j.id },
+          { header: "Tanggal", key: "date", width: 14, align: "center", getter: (j) => j.date },
+          { header: "Nama Karyawan", key: "name", width: 24, align: "left", getter: (j) => j.name },
+          { header: "Departemen", key: "dept", width: 16, align: "left", getter: (j) => j.dept },
+          { header: "Durasi Jam Kerja", key: "hours", width: 16, align: "center", getter: (j) => j.hours },
+          { header: "Skor Kualitas (%)", key: "score", width: 16, align: "right", format: '0.0"%"', getter: (j) => j.score },
+          { header: "Rincian Tugas / Aktivitas", key: "tasks", width: 45, align: "left", wrapText: true, getter: (j) => j.tasks.join("; ") },
+          { header: "Catatan Reviewer", key: "notes", width: 30, align: "left", wrapText: true, getter: (j) => j.notes || "-" },
+        ],
+        data: targetJournals,
+        orientation: "landscape",
+      });
+
+      showToast(`✓ Berhasil mengunduh ${targetJournals.length} jurnal kerja ke format Excel (.xlsx)!`, "success");
+    } catch (err) {
+      console.error("Export Journals Error:", err);
+      showToast("Gagal mengekspor jurnal kerja ke Excel!", "error");
+    }
   };
 
   // Filter Data Audit Log Aktivitas (Menu SISTEM -> Audit Log)
@@ -1633,17 +2104,22 @@ function useAppProviderValue() {
     attendanceState,
     attendances,
     canApproveLeaves,
+    canViewAllAttendances,
+    canViewTeamAttendances,
     challengeDefinitions,
     challengeStepStatus,
+    companyLogoInputRef,
     companyLogoUrl,
     companyName,
+    companyProfile,
+    companyProfileForm,
     confirmDialog,
     copyCredentialsToClipboard,
     currentActiveEmployee,
     currentChallengeIndex,
     currentMeta,
     currentRoleName,
-    currentTime: "--:-- WIB",
+    currentTime: "--:-- WITA",
     getCurrentTime: getFormattedServerTime,
     getFormattedServerTime,
     cutiOverrideConfirm,
@@ -1679,7 +2155,13 @@ function useAppProviderValue() {
     handleConfirmAction,
     handleDeleteShift,
     handleDeptChange,
+    handleExportAuditLogsExcel,
     handleExportCSV,
+    handleExportEmployeesExcel,
+    handleExportExcel,
+    handleExportJournalsExcel,
+    handleExportLeavesExcel,
+    handleExportWeeklyScheduleExcel,
     handleForcedPasswordSubmit,
     handleLevelChange,
     handleLogoUpload,
@@ -1690,6 +2172,8 @@ function useAppProviderValue() {
     handlePassCurrentChallenge,
     handleRegisterEmployeeSubmit,
     handleRejectLeave,
+    handleRemoveCompanyLogo,
+    handleSaveCompanyProfile,
     handleSaveEditAttendance,
     handleSaveEditEmployee,
     handleSaveJournal,
@@ -1697,6 +2181,7 @@ function useAppProviderValue() {
     handleSaveWeeklySchedule,
     handleSelectScheduleEmployee,
     handleSimulateSpoofAttack,
+    handleUpdateCompanyLogo,
     hasPermission,
     isCapturing,
     isEditingCompany,
@@ -1750,6 +2235,8 @@ function useAppProviderValue() {
     setChallengeStepStatus,
     setCompanyLogoUrl,
     setCompanyName,
+    setCompanyProfile,
+    setCompanyProfileForm,
     setConfirmDialog,
     setCurrentChallengeIndex,
     setCurrentTime: () => {},
@@ -1848,6 +2335,7 @@ function useAppProviderValue() {
     userSearchQuery,
     users,
     videoRef,
+    visibleAttendances,
     visibleEmployees,
     weeklySchedules,
   };

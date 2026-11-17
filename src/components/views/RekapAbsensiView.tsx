@@ -2,13 +2,14 @@
 
 import React from "react";
 import { useApp } from "@/context/AppContext";
-import { FileText, Search, Download, Pencil } from "lucide-react";
+import { Search, Download, Pencil } from "lucide-react";
 
 export default function RekapAbsensiView() {
   const {
-    attendances,
+    canViewAllAttendances,
+    currentActiveEmployee,
     filteredAttendances,
-    handleExportCSV,
+    handleExportExcel,
     handleOpenEditAttendance,
     hasPermission,
     rekapDeptFilter,
@@ -19,6 +20,7 @@ export default function RekapAbsensiView() {
     setRekapSearchQuery,
     setRekapStatusFilter,
     standardDepartments,
+    visibleAttendances,
   } = useApp();
 
   return (
@@ -30,32 +32,24 @@ export default function RekapAbsensiView() {
                     <span className="text-xl">📊</span>
                     <h3 className="font-black text-white text-lg">Rekapitulasi Kehadiran Karyawan</h3>
                     <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
-                      Panel HRD & Manajemen
+                      {canViewAllAttendances ? "Panel HRD & Manajemen (Semua Dept)" : `Panel Supervisor: Dept. ${currentActiveEmployee.dept}`}
                     </span>
                   </div>
                   <p className="text-xs text-white/70 mt-1 max-w-2xl">
-                    Audit log kehadiran terverifikasi otomatis. HRD dan atasan memantau rekap absensi tim, memfilter per departemen, dan mengekspor laporan ke file CSV/Excel.
+                    {canViewAllAttendances
+                      ? "Audit log kehadiran terverifikasi otomatis. HRD dan manajemen memantau rekap absensi tim, memfilter per departemen, dan mengekspor laporan ke file Microsoft Excel (.xlsx)."
+                      : `Pemantauan absensi terverifikasi khusus staf tim bawahan di Departemen ${currentActiveEmployee.dept}. Terkunci otomatis sesuai wewenang role Supervisor.`}
                   </p>
                 </div>
 
                 <div className="flex flex-wrap items-center gap-2">
                   <button
-                    onClick={handleExportCSV}
-                    className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-400 text-black text-xs font-black hover:brightness-110 shadow-lg shadow-emerald-500/20 transition-all"
-                    title="Unduh data terfilter ke format CSV / Microsoft Excel"
+                    onClick={handleExportExcel}
+                    className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-400 text-black text-xs font-black hover:brightness-110 shadow-lg shadow-emerald-500/20 transition-all cursor-pointer"
+                    title="Unduh data terfilter ke format Microsoft Excel (.xlsx)"
                   >
                     <Download className="w-4 h-4" />
-                    <span>Ekspor CSV / Excel ({filteredAttendances.length})</span>
-                  </button>
-                  <button
-                    onClick={() => {
-                      window.print();
-                    }}
-                    className="flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl bg-[#020d07] text-white border border-emerald-900/60 text-xs font-bold hover:bg-emerald-950 transition-all"
-                    title="Cetak atau simpan sebagai PDF"
-                  >
-                    <FileText className="w-4 h-4 text-emerald-400" />
-                    <span>Cetak / PDF</span>
+                    <span>Ekspor Excel (.xlsx) ({filteredAttendances.length})</span>
                   </button>
                 </div>
               </div>
@@ -67,23 +61,35 @@ export default function RekapAbsensiView() {
                 </span>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-                  {/* Filter 1: Departemen Lengkap (7 Dept) */}
+                  {/* Filter 1: Departemen */}
                   <div>
                     <label className="block text-[11px] text-white/70 font-bold mb-1">
-                      Departemen ({standardDepartments.length})
+                      Departemen {canViewAllAttendances ? `(${standardDepartments.length})` : "(Terkunci: Tim Bawahan)"}
                     </label>
-                    <select
-                      value={rekapDeptFilter}
-                      onChange={(e) => setRekapDeptFilter(e.target.value)}
-                      className="w-full bg-[#021008] border border-emerald-500/50 rounded-xl px-3 py-2 text-xs text-white font-bold focus:border-emerald-400 focus:outline-none"
-                    >
-                      <option value="ALL">Semua Departemen ({standardDepartments.length})</option>
-                      {standardDepartments.map((d) => (
-                        <option key={d.id} value={d.id}>
-                          {d.icon} {d.name}
-                        </option>
-                      ))}
-                    </select>
+                    {canViewAllAttendances ? (
+                      <select
+                        value={rekapDeptFilter}
+                        onChange={(e) => setRekapDeptFilter(e.target.value)}
+                        className="w-full bg-[#021008] border border-emerald-500/50 rounded-xl px-3 py-2 text-xs text-white font-bold focus:border-emerald-400 focus:outline-none cursor-pointer"
+                      >
+                        <option value="ALL">Semua Departemen ({standardDepartments.length})</option>
+                        {standardDepartments.map((d) => (
+                          <option key={d.id} value={d.id}>
+                            {d.icon} {d.name}
+                          </option>
+                        ))}
+                      </select>
+                    ) : (
+                      <div className="w-full bg-[#021008] border border-emerald-500/40 rounded-xl px-3 py-2 text-xs text-white font-bold flex items-center justify-between shadow-sm">
+                        <span className="flex items-center gap-1.5 text-emerald-300">
+                          <span>{standardDepartments.find((d) => d.id === currentActiveEmployee.dept)?.icon || "🏢"}</span>
+                          <span>{standardDepartments.find((d) => d.id === currentActiveEmployee.dept)?.name || currentActiveEmployee.dept}</span>
+                        </span>
+                        <span className="text-[10px] px-2 py-0.5 rounded-md bg-emerald-500/20 text-emerald-400 font-extrabold border border-emerald-500/30">
+                          🔒 Otoritas Tim
+                        </span>
+                      </div>
+                    )}
                   </div>
 
                   {/* Filter 2: Status Kehadiran */}
@@ -94,7 +100,7 @@ export default function RekapAbsensiView() {
                     <select
                       value={rekapStatusFilter}
                       onChange={(e) => setRekapStatusFilter(e.target.value)}
-                      className="w-full bg-[#021008] border border-emerald-500/50 rounded-xl px-3 py-2 text-xs text-white font-bold focus:border-emerald-400 focus:outline-none"
+                      className="w-full bg-[#021008] border border-emerald-500/50 rounded-xl px-3 py-2 text-xs text-white font-bold focus:border-emerald-400 focus:outline-none cursor-pointer"
                     >
                       <option value="ALL">Semua Status</option>
                       <option value="APPROVED">✓ APPROVED (Tepat Waktu)</option>
@@ -121,20 +127,21 @@ export default function RekapAbsensiView() {
                 </div>
 
                 {/* Status Bar Filter Aktif & Reset */}
-                {(rekapDeptFilter !== "ALL" || rekapStatusFilter !== "ALL" || rekapSearchQuery !== "") && (
+                {((canViewAllAttendances && rekapDeptFilter !== "ALL") || rekapStatusFilter !== "ALL" || rekapSearchQuery !== "") && (
                   <div className="flex items-center justify-between pt-2 border-t border-emerald-900/40 text-xs">
                     <span className="text-white/60 text-[11px]">
-                      Menampilkan <strong>{filteredAttendances.length}</strong> dari {attendances.length} data log
-                      {rekapDeptFilter !== "ALL" && ` • Dept: ${rekapDeptFilter}`}
+                      Menampilkan <strong>{filteredAttendances.length}</strong> dari {visibleAttendances.length} data log
+                      {canViewAllAttendances && rekapDeptFilter !== "ALL" && ` • Dept: ${rekapDeptFilter}`}
+                      {!canViewAllAttendances && ` • Tim Dept: ${currentActiveEmployee.dept}`}
                       {rekapStatusFilter !== "ALL" && ` • Status: ${rekapStatusFilter}`}
                     </span>
                     <button
                       onClick={() => {
-                        setRekapDeptFilter("ALL");
+                        setRekapDeptFilter(canViewAllAttendances ? "ALL" : currentActiveEmployee.dept);
                         setRekapStatusFilter("ALL");
                         setRekapSearchQuery("");
                       }}
-                      className="px-2.5 py-1 rounded-lg bg-red-950/60 text-red-300 border border-red-500/40 text-xs font-semibold hover:bg-red-900 transition-all"
+                      className="px-2.5 py-1 rounded-lg bg-red-950/60 text-red-300 border border-red-500/40 text-xs font-semibold hover:bg-red-900 transition-all cursor-pointer"
                     >
                       Reset Filter
                     </button>

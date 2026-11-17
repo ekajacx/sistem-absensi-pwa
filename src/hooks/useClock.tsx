@@ -3,17 +3,19 @@
 import React, { useState, useEffect } from "react";
 
 /**
- * Helper murni untuk menghasilkan format waktu WIB terkini (misal: "07:45:21 WIB")
+ * Helper murni untuk menghasilkan format waktu WITA (Bali/Makassar, UTC+8) terkini
  * tanpa memicu re-render atau bergantung pada interval state React.
  */
 export function getFormattedServerTime(): string {
   const now = new Date();
   return (
     now.toLocaleTimeString("id-ID", {
+      timeZone: "Asia/Makassar",
       hour: "2-digit",
       minute: "2-digit",
       second: "2-digit",
-    }) + " WIB"
+      hour12: false,
+    }) + " WITA"
   );
 }
 
@@ -43,7 +45,7 @@ export function useClock(): string {
  */
 export function ServerClock({
   className,
-  fallback = "--:--:-- WIB",
+  fallback = "--:--:-- WITA",
 }: {
   className?: string;
   fallback?: string;

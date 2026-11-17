@@ -2,7 +2,7 @@
 
 import React from "react";
 import { useApp } from "@/context/AppContext";
-import { ShieldCheck, Users, CheckCircle2, Smartphone, Search, UserPlus, Phone, Copy } from "lucide-react";
+import { ShieldCheck, Users, CheckCircle2, Smartphone, Search, UserPlus, Phone, Copy, Download } from "lucide-react";
 
 export default function KaryawanView() {
   const {
@@ -14,6 +14,7 @@ export default function KaryawanView() {
     filterDept,
     filteredEmployees,
     getDirectSuperior,
+    handleExportEmployeesExcel,
     handleOpenEditModal,
     hasPermission,
     isStaff,
@@ -243,7 +244,7 @@ export default function KaryawanView() {
                         <span className="text-white/60">Jadwal Shift Utama:</span>
                         <span className="font-bold text-white text-right">
                           {currentActiveEmployee.shiftId === "shift-1"
-                            ? "Shift Pagi (08:00 - 17:00 WIB)"
+                            ? "Shift Pagi (08:00 - 17:00 WITA)"
                             : "Shift Fleksibel Roster"}
                         </span>
                       </div>
@@ -379,6 +380,14 @@ export default function KaryawanView() {
                     >
                       <ShieldCheck className="w-4 h-4 text-amber-300" />
                       <span>+ Tambah Atasan (Pimpinan)</span>
+                    </button>
+                    <button
+                      onClick={handleExportEmployeesExcel}
+                      className="px-3.5 py-2.5 rounded-xl bg-[#021008] border border-emerald-500/50 text-emerald-300 font-extrabold text-xs hover:bg-emerald-950 transition-all flex items-center gap-1.5 shadow-lg shadow-black cursor-pointer"
+                      title="Unduh seluruh data direktori karyawan ke format Excel (.xlsx)"
+                    >
+                      <Download className="w-4 h-4 text-emerald-400" />
+                      <span>Ekspor Excel ({filteredEmployees.length})</span>
                     </button>
                   </div>
                 )}

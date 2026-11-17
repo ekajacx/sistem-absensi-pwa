@@ -10,6 +10,7 @@ import {
   WorkJournal,
   SystemUser,
   PermissionItem,
+  CompanyProfile,
 } from '@/types';
 
 export const standardDepartments: { id: DepartmentType; name: string; supervisorRole: string; staffRole: string; icon: string; desc: string }[] = [
@@ -454,20 +455,20 @@ export const initialWeeklySchedules: Record<string, Record<DayOfWeek, ShiftSlotT
   };
 
 export const initialAttendances: AttendanceRecord[] = [
-    { id: "att-1", employeeId: "emp-ceo", name: "Ir. Hendra Gunawan", nik: "3171012401880001", dept: "Direksi", shift: "Shift Pagi (Utama)", in: "07:15 WIB", out: "15:10 WIB", dist: 5.4, score: 99.2, status: "APPROVED", date: "17 Nov 2026" },
-    { id: "att-2", employeeId: "emp-gm", name: "Dr. Kartika Sari, S.E., M.M.", nik: "3171021501890002", dept: "Direksi", shift: "Shift Pagi (Utama)", in: "07:22 WIB", out: "15:05 WIB", dist: 6.8, score: 98.7, status: "APPROVED", date: "17 Nov 2026" },
-    { id: "att-3", employeeId: "emp-hr-spv", name: "Siti Rahmawati", nik: "3171030102900101", dept: "HR", shift: "Shift Pagi (Utama)", in: "07:35 WIB", out: "15:00 WIB", dist: 8.5, score: 98.1, status: "APPROVED", date: "17 Nov 2026" },
-    { id: "att-4", employeeId: "emp-hr-stf", name: "Maya Indah", nik: "3171030202960102", dept: "HR", shift: "Shift Pagi (Utama)", in: "07:45 WIB", out: "15:00 WIB", dist: 9.1, score: 97.0, status: "APPROVED", date: "17 Nov 2026" },
-    { id: "att-5", employeeId: "emp-fin-spv", name: "Andi Saputra", nik: "3171040103910201", dept: "Finance", shift: "Shift Pagi (Utama)", in: "07:58 WIB", out: "15:15 WIB", dist: 24.1, score: 95.8, status: "APPROVED", date: "17 Nov 2026" },
-    { id: "att-6", employeeId: "emp-fin-stf", name: "Farhan Ramadhan", nik: "3171040203970202", dept: "Finance", shift: "Shift Pagi (Utama)", in: "07:50 WIB", out: "15:00 WIB", dist: 18.0, score: 96.2, status: "APPROVED", date: "17 Nov 2026" },
-    { id: "att-7", employeeId: "emp-mkt-spv", name: "Dewi Lestari", nik: "3171050104920301", dept: "Marketing", shift: "Shift Pagi (Utama)", in: "08:04 WIB", out: "--:--", dist: 18.9, score: 96.0, status: "TERLAMBAT", date: "17 Nov 2026" },
-    { id: "att-8", employeeId: "emp-mkt-stf", name: "Aditya Pratama", nik: "3171050204980302", dept: "Marketing", shift: "Shift Pagi (Utama)", in: "07:48 WIB", out: "15:05 WIB", dist: 14.5, score: 96.7, status: "APPROVED", date: "17 Nov 2026" },
-    { id: "att-9", employeeId: "emp-sls-spv", name: "Reza Pahlevi", nik: "3171060105900401", dept: "Sales", shift: "Shift Pagi (Utama)", in: "07:30 WIB", out: "15:00 WIB", dist: 15.3, score: 95.5, status: "APPROVED", date: "17 Nov 2026" },
-    { id: "att-10", employeeId: "emp-sls-stf", name: "Bella Savira", nik: "3171060205970402", dept: "Sales", shift: "Shift Siang (Operasional)", in: "14:52 WIB", out: "--:--", dist: 16.7, score: 94.8, status: "APPROVED", date: "17 Nov 2026" },
-    { id: "att-11", employeeId: "emp-ops-spv", name: "Rian Hidayat", nik: "3171070106880501", dept: "Operations", shift: "Shift Siang (Operasional)", in: "14:48 WIB", out: "23:05 WIB", dist: 12.3, score: 94.0, status: "APPROVED", date: "17 Nov 2026" },
-    { id: "att-12", employeeId: "emp-ops-stf", name: "Joko Susilo", nik: "3171070206960502", dept: "Operations", shift: "Shift Siang (Operasional)", in: "14:55 WIB", out: "23:00 WIB", dist: 19.4, score: 93.8, status: "APPROVED", date: "17 Nov 2026" },
-    { id: "att-13", employeeId: "emp-it-spv", name: "Budi Pratama", nik: "3171080107930601", dept: "IT", shift: "Shift Pagi (Utama)", in: "07:42 WIB", out: "15:02 WIB", dist: 14.2, score: 96.4, status: "APPROVED", date: "17 Nov 2026" },
-    { id: "att-14", employeeId: "emp-it-stf", name: "Dimas Wicaksono", nik: "3171080207980602", dept: "IT", shift: "Shift Pagi (Utama)", in: "07:40 WIB", out: "15:00 WIB", dist: 11.2, score: 96.1, status: "APPROVED", date: "17 Nov 2026" },
+    { id: "att-1", employeeId: "emp-ceo", name: "Ir. Hendra Gunawan", nik: "3171012401880001", dept: "Direksi", shift: "Shift Pagi (Utama)", in: "07:15 WITA", out: "15:10 WITA", dist: 5.4, score: 99.2, status: "APPROVED", date: "17 Nov 2026" },
+    { id: "att-2", employeeId: "emp-gm", name: "Dr. Kartika Sari, S.E., M.M.", nik: "3171021501890002", dept: "Direksi", shift: "Shift Pagi (Utama)", in: "07:22 WITA", out: "15:05 WITA", dist: 6.8, score: 98.7, status: "APPROVED", date: "17 Nov 2026" },
+    { id: "att-3", employeeId: "emp-hr-spv", name: "Siti Rahmawati", nik: "3171030102900101", dept: "HR", shift: "Shift Pagi (Utama)", in: "07:35 WITA", out: "15:00 WITA", dist: 8.5, score: 98.1, status: "APPROVED", date: "17 Nov 2026" },
+    { id: "att-4", employeeId: "emp-hr-stf", name: "Maya Indah", nik: "3171030202960102", dept: "HR", shift: "Shift Pagi (Utama)", in: "07:45 WITA", out: "15:00 WITA", dist: 9.1, score: 97.0, status: "APPROVED", date: "17 Nov 2026" },
+    { id: "att-5", employeeId: "emp-fin-spv", name: "Andi Saputra", nik: "3171040103910201", dept: "Finance", shift: "Shift Pagi (Utama)", in: "07:58 WITA", out: "15:15 WITA", dist: 24.1, score: 95.8, status: "APPROVED", date: "17 Nov 2026" },
+    { id: "att-6", employeeId: "emp-fin-stf", name: "Farhan Ramadhan", nik: "3171040203970202", dept: "Finance", shift: "Shift Pagi (Utama)", in: "07:50 WITA", out: "15:00 WITA", dist: 18.0, score: 96.2, status: "APPROVED", date: "17 Nov 2026" },
+    { id: "att-7", employeeId: "emp-mkt-spv", name: "Dewi Lestari", nik: "3171050104920301", dept: "Marketing", shift: "Shift Pagi (Utama)", in: "08:04 WITA", out: "--:--", dist: 18.9, score: 96.0, status: "TERLAMBAT", date: "17 Nov 2026" },
+    { id: "att-8", employeeId: "emp-mkt-stf", name: "Aditya Pratama", nik: "3171050204980302", dept: "Marketing", shift: "Shift Pagi (Utama)", in: "07:48 WITA", out: "15:05 WITA", dist: 14.5, score: 96.7, status: "APPROVED", date: "17 Nov 2026" },
+    { id: "att-9", employeeId: "emp-sls-spv", name: "Reza Pahlevi", nik: "3171060105900401", dept: "Sales", shift: "Shift Pagi (Utama)", in: "07:30 WITA", out: "15:00 WITA", dist: 15.3, score: 95.5, status: "APPROVED", date: "17 Nov 2026" },
+    { id: "att-10", employeeId: "emp-sls-stf", name: "Bella Savira", nik: "3171060205970402", dept: "Sales", shift: "Shift Siang (Operasional)", in: "14:52 WITA", out: "--:--", dist: 16.7, score: 94.8, status: "APPROVED", date: "17 Nov 2026" },
+    { id: "att-11", employeeId: "emp-ops-spv", name: "Rian Hidayat", nik: "3171070106880501", dept: "Operations", shift: "Shift Siang (Operasional)", in: "14:48 WITA", out: "23:05 WITA", dist: 12.3, score: 94.0, status: "APPROVED", date: "17 Nov 2026" },
+    { id: "att-12", employeeId: "emp-ops-stf", name: "Joko Susilo", nik: "3171070206960502", dept: "Operations", shift: "Shift Siang (Operasional)", in: "14:55 WITA", out: "23:00 WITA", dist: 19.4, score: 93.8, status: "APPROVED", date: "17 Nov 2026" },
+    { id: "att-13", employeeId: "emp-it-spv", name: "Budi Pratama", nik: "3171080107930601", dept: "IT", shift: "Shift Pagi (Utama)", in: "07:42 WITA", out: "15:02 WITA", dist: 14.2, score: 96.4, status: "APPROVED", date: "17 Nov 2026" },
+    { id: "att-14", employeeId: "emp-it-stf", name: "Dimas Wicaksono", nik: "3171080207980602", dept: "IT", shift: "Shift Pagi (Utama)", in: "07:40 WITA", out: "15:00 WITA", dist: 11.2, score: 96.1, status: "APPROVED", date: "17 Nov 2026" },
   ];
 
 export const initialLeaves: LeaveRequest[] = [
@@ -642,10 +643,18 @@ export const initialSettings = {
     aiFaceThreshold: 80,
   };
 
+export const initialCompanyProfile: CompanyProfile = {
+    name: "AbsenKu",
+    address: "Kantor Pusat - Sudirman Tower Lt. 12, Jl. Jend. Sudirman Kav. 25, Denpasar, Bali",
+    phone: "(0361) 234-5678",
+    email: "info@perusahaan.id",
+    logoUrl: null,
+  };
+
 export const initialActivityLogs: ActivityLog[] = [
     {
       id: "log-1",
-      timestamp: "17 Nov 2026, 07:15 WIB",
+      timestamp: "17 Nov 2026, 07:15 WITA",
       type: "CHECK_IN",
       title: "Check-In Mandiri Otomatis",
       description: "Absensi hadir masuk terverifikasi via GPS (5.4m) & AI Liveness Face Match 99.2%",
@@ -657,7 +666,7 @@ export const initialActivityLogs: ActivityLog[] = [
     },
     {
       id: "log-2",
-      timestamp: "17 Nov 2026, 07:22 WIB",
+      timestamp: "17 Nov 2026, 07:22 WITA",
       type: "CHECK_IN",
       title: "Check-In Mandiri Otomatis",
       description: "Absensi hadir masuk terverifikasi via GPS (6.8m) & AI Liveness Face Match 98.7%",
@@ -669,7 +678,7 @@ export const initialActivityLogs: ActivityLog[] = [
     },
     {
       id: "log-3",
-      timestamp: "17 Nov 2026, 07:35 WIB",
+      timestamp: "17 Nov 2026, 07:35 WITA",
       type: "CHECK_IN",
       title: "Check-In Mandiri Otomatis",
       description: "Absensi hadir masuk terverifikasi via GPS (8.5m) & AI Liveness Face Match 98.1%",
@@ -681,7 +690,7 @@ export const initialActivityLogs: ActivityLog[] = [
     },
     {
       id: "log-4",
-      timestamp: "17 Nov 2026, 08:04 WIB",
+      timestamp: "17 Nov 2026, 08:04 WITA",
       type: "CHECK_IN",
       title: "Check-In Mandiri (Terlambat)",
       description: "Absensi hadir masuk terdeteksi terlambat 4 menit dari batas toleransi shift pagi",
@@ -693,7 +702,7 @@ export const initialActivityLogs: ActivityLog[] = [
     },
     {
       id: "log-5",
-      timestamp: "17 Nov 2026, 08:30 WIB",
+      timestamp: "17 Nov 2026, 08:30 WITA",
       type: "LEAVE_APPROVE",
       title: "Persetujuan Cuti Tahunan (Approved)",
       description: "Persetujuan cuti 3 hari Maya Indah (Acara wisuda saudara kandung) telah disetujui",
@@ -705,10 +714,10 @@ export const initialActivityLogs: ActivityLog[] = [
     },
     {
       id: "log-6",
-      timestamp: "17 Nov 2026, 09:15 WIB",
+      timestamp: "17 Nov 2026, 09:15 WITA",
       type: "MANUAL_EDIT",
       title: "⚠️ Koreksi Manual Rekap Absensi",
-      description: "Koreksi data absen: Check-In disesuaikan ke 07:50 WIB & Check-Out 15:00 WIB (Status: APPROVED)",
+      description: "Koreksi data absen: Check-In disesuaikan ke 07:50 WITA & Check-Out 15:00 WITA (Status: APPROVED)",
       employeeName: "Farhan Ramadhan",
       dept: "Finance",
       actorName: "Siti Rahmawati",
@@ -718,7 +727,7 @@ export const initialActivityLogs: ActivityLog[] = [
     },
     {
       id: "log-7",
-      timestamp: "17 Nov 2026, 14:48 WIB",
+      timestamp: "17 Nov 2026, 14:48 WITA",
       type: "CHECK_IN",
       title: "Check-In Mandiri Otomatis",
       description: "Absensi hadir shift siang terverifikasi via GPS (12.3m) & AI Liveness Face Match 94.0%",

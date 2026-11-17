@@ -32,7 +32,7 @@ export default function DeleteShiftModal() {
           <div className="flex justify-between">
             <span className="text-white/60">Jam Kerja:</span>
             <span className="font-mono text-emerald-300">
-              {deleteShiftConfirm.startTime} - {deleteShiftConfirm.endTime} WIB
+              {deleteShiftConfirm.startTime} - {deleteShiftConfirm.endTime} WITA
             </span>
           </div>
         </div>

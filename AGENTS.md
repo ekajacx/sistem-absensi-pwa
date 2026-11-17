@@ -44,7 +44,7 @@ Setiap agent atau pengembang yang mengerjakan tugas koding pada repositori ini *
    * Menggunakan *Haversine Formula* untuk menghitung jarak ke titik koordinat kantor.
    * Tolak pengiriman absensi jika jarak melebihi batas radius kantor atau akurasi GPS terdeteksi palsu (*mock provider*).
 4. **Integritas Waktu (Anti-Time Tampering):**
-   * Jam absensi dicatat menggunakan format Server Time WIB dan diisolasi agar tidak memicu re-render cascade ke seluruh view.
+   * Jam absensi dicatat menggunakan format Server Time WITA (Waktu Indonesia Tengah / Bali, UTC+8) dan diisolasi agar tidak memicu re-render cascade ke seluruh view.
 5. **Idempotensi & Keandalan Jaringan:**
    * Setiap request absensi (Check-in / Check-out) wajib menyertakan header `X-Idempotency-Key` (UUID) untuk mencegah *double-logging* saat jaringan lambat.
 6. **Shift Kerja Dinamis:**
