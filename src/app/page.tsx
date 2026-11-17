@@ -44,7 +44,6 @@ import {
   Phone,
   Mail,
   Shield,
-  CheckSquare,
   Square,
   Network,
   GitFork,
@@ -1166,7 +1165,10 @@ export default function Home() {
   const [filterDept, setFilterDept] = useState<string>("ALL");
   const [filterShift, setFilterShift] = useState<string>("ALL");
   const [searchEmployeeQuery, setSearchEmployeeQuery] = useState<string>("");
-  const [userManagementTab, setUserManagementTab] = useState<"users" | "rbac">("rbac");
+
+  // User Management Filter State
+  const [userDeptFilter, setUserDeptFilter] = useState<string>("ALL");
+  const [userSearchQuery, setUserSearchQuery] = useState<string>("");
 
   // Rekap Absensi Filter State (Lengkap 7 Departemen & Ekspor)
   const [rekapDeptFilter, setRekapDeptFilter] = useState<string>("ALL");
@@ -2227,7 +2229,8 @@ export default function Home() {
     "jadwal-shift": { title: "JADWAL SHIFT", subtitle: `Konfigurasi Shift Kerja Dinamis (${shifts.length} Shift Aktif)`, icon: "📅" },
     "pengajuan-cuti": { title: "PENGAJUAN CUTI", subtitle: `Self-Service Permohonan Cuti & Persetujuan Berjenjang N+1 (${pendingSubordinateCount} Pending Approval)`, icon: "⛱️" },
     "jurnal-kerja": { title: "JURNAL KERJA", subtitle: `Catatan Produktivitas Harian & Penilaian Supervisor (${journals.length} Jurnal Tercatat)`, icon: "📝" },
-    "user-management": { title: "USER MANAGEMENT", subtitle: `Kelola Akun, Wewenang Khusus HR & IT (${users.length} Akun)`, icon: "👤" },
+    "user-management": { title: "USER MANAGEMENT", subtitle: `Kelola Akun Pengguna Sistem (${users.length} Akun Terdaftar)`, icon: "👤" },
+    "izin-akses": { title: "IZIN AKSES (RBAC)", subtitle: "Matriks Wewenang & Hak Akses Berdasarkan Peran Sistem (Role-Based Access Control)", icon: "🛡️" },
     pengaturan: { title: "PENGATURAN", subtitle: `Konfigurasi Geofence Kantor (${settings.geofenceRadius}m) & AI Match (${settings.aiFaceThreshold}%)`, icon: "⚙️" },
   };
 
@@ -2256,6 +2259,18 @@ export default function Home() {
       att.dept.toLowerCase().includes(rekapSearchQuery.toLowerCase()) ||
       att.shift.toLowerCase().includes(rekapSearchQuery.toLowerCase());
     return matchDept && matchStatus && matchSearch;
+  });
+
+  // Filter Data User Management (Departemen + Search)
+  const filteredUsers = users.filter((u) => {
+    const matchDept = userDeptFilter === "ALL" || u.dept === userDeptFilter;
+    const matchSearch =
+      userSearchQuery === "" ||
+      u.name.toLowerCase().includes(userSearchQuery.toLowerCase()) ||
+      u.email.toLowerCase().includes(userSearchQuery.toLowerCase()) ||
+      u.role.toLowerCase().includes(userSearchQuery.toLowerCase()) ||
+      u.dept.toLowerCase().includes(userSearchQuery.toLowerCase());
+    return matchDept && matchSearch;
   });
 
   // Handler Ekspor Rekap Absensi ke CSV / Excel
@@ -2653,6 +2668,7 @@ export default function Home() {
             {(() => {
               const systemMenuItems = [
                 { id: "user-management", label: "User Management", icon: "👤", badge: users.length, permId: "menu_user_mgmt" },
+                { id: "izin-akses", label: "Izin Akses", icon: "🛡️", permId: "menu_user_mgmt" },
                 { id: "pengaturan", label: "Pengaturan", icon: "⚙️", permId: "menu_settings" },
               ].filter((item) => hasPermission(item.permId));
 
@@ -3937,34 +3953,42 @@ export default function Home() {
           )}
 
           {/* ===================================================== */}
-          {/* VIEW: USER MANAGEMENT & RBAC                          */}
+          {/* VIEW: USER MANAGEMENT (DATA AKUN + FILTER DEPARTEMEN)  */}
           {/* ===================================================== */}
           {activeMenu === "user-management" && hasPermission("menu_user_mgmt") && (
-            <div className="space-y-6">
-              <div className="flex items-center justify-between border-b border-emerald-900/60 pb-3">
-                <div className="flex gap-3">
-                  <button
-                    onClick={() => setUserManagementTab("rbac")}
-                    className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
-                      userManagementTab === "rbac"
-                        ? "bg-emerald-500 text-black shadow-lg"
-                        : "bg-[#021008] text-white hover:bg-emerald-950/60 border border-emerald-900/60"
-                    }`}
+            <div className="space-y-5">
+              {/* Toolbar: Filter + Search + Tambah */}
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                <div className="flex flex-wrap items-center gap-2">
+                  {/* Filter Departemen */}
+                  <select
+                    value={userDeptFilter}
+                    onChange={(e) => setUserDeptFilter(e.target.value)}
+                    className="bg-[#021008] border border-emerald-900/70 text-white text-xs rounded-xl px-3 py-2 focus:outline-none focus:ring-1 focus:ring-emerald-500 cursor-pointer"
                   >
-                    <CheckSquare className="w-4 h-4" />
-                    <span>Matriks Izin Akses (HR & IT Khusus)</span>
-                  </button>
-                  <button
-                    onClick={() => setUserManagementTab("users")}
-                    className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
-                      userManagementTab === "users"
-                        ? "bg-emerald-500 text-black shadow-lg"
-                        : "bg-[#021008] text-white hover:bg-emerald-950/60 border border-emerald-900/60"
-                    }`}
-                  >
-                    <Users className="w-4 h-4" />
-                    <span>Daftar Akun User ({users.length})</span>
-                  </button>
+                    <option value="ALL">🏢 Semua Departemen</option>
+                    <option value="Direksi">🏛️ Direksi</option>
+                    <option value="HR">👥 HR</option>
+                    <option value="Finance">💰 Finance</option>
+                    <option value="Marketing">📈 Marketing</option>
+                    <option value="Sales">🤝 Sales</option>
+                    <option value="Operations">⚙️ Operations</option>
+                    <option value="IT">💻 IT</option>
+                  </select>
+                  {/* Search */}
+                  <div className="relative">
+                    <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-white/40" />
+                    <input
+                      type="text"
+                      placeholder="Cari nama, email, role..."
+                      value={userSearchQuery}
+                      onChange={(e) => setUserSearchQuery(e.target.value)}
+                      className="bg-[#021008] border border-emerald-900/70 text-white text-xs rounded-xl pl-8 pr-3 py-2 w-56 focus:outline-none focus:ring-1 focus:ring-emerald-500 placeholder-white/30"
+                    />
+                  </div>
+                  <span className="text-[11px] text-white/50 font-mono">
+                    {filteredUsers.length} dari {users.length} akun
+                  </span>
                 </div>
 
                 {hasPermission("emp_manage_hr") && (
@@ -3987,129 +4011,180 @@ export default function Home() {
                 )}
               </div>
 
-              {/* TAB 1: RBAC MATRIX DENGAN PEMBAGIAN KHUSUS HR & IT */}
-              {userManagementTab === "rbac" && (
-                <div className="space-y-4">
-                  <div className="bg-[#03150d] rounded-2xl p-4 border border-emerald-900/60 space-y-2">
-                    <span className="text-[10px] text-amber-400 font-bold uppercase block">
-                      PEMBAGIAN KHUSUS WEWENANG SISTEM (HR & IT)
-                    </span>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
-                      <div className="bg-[#010804] p-3 rounded-xl border border-pink-500/30">
-                        <span className="font-bold text-pink-300 block mb-0.5">👔 Wewenang Khusus HR:</span>
-                        <p className="text-[11px] text-white/80">
-                          HR Supervisor atau HR Staff yang diberi izin dapat membuat akun karyawan, mendaftarkan karyawan baru, dan mengatur data jabatan/departemen.
-                        </p>
-                      </div>
-                      <div className="bg-[#010804] p-3 rounded-xl border border-blue-500/30">
-                        <span className="font-bold text-blue-300 block mb-0.5">🛡️ Wewenang Khusus IT:</span>
-                        <p className="text-[11px] text-white/80">
-                          IT Supervisor atau IT Staff mengurus server, database, maintenance, perbaikan bug, dan keamanan teknis (Geofence GPS).
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="bg-gradient-to-br from-[#062417] to-[#021008] rounded-2xl p-5 border border-emerald-900/60 overflow-x-auto">
-                    <table className="w-full text-left text-xs">
-                      <thead>
-                        <tr className="border-b border-emerald-900/60 text-white text-[10px] uppercase font-bold">
-                          <th className="pb-3 w-1/4">Izin Akses & Fitur Sistem</th>
-                          <th className="pb-3 text-center">Super Admin</th>
-                          <th className="pb-3 text-center">General Manager</th>
-                          <th className="pb-3 text-center">HR Supervisor</th>
-                          <th className="pb-3 text-center">HR Staff</th>
-                          <th className="pb-3 text-center">IT Supervisor</th>
-                          <th className="pb-3 text-center">IT Staff</th>
-                          <th className="pb-3 text-center">Supervisor (Umum)</th>
-                          <th className="pb-3 text-center">Staff (Umum)</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-emerald-900/30">
-                        {allPermissions.map((perm) => (
-                          <tr key={perm.id} className="hover:bg-emerald-950/20 transition-colors">
-                            <td className="py-3">
-                              <span className="text-[10px] font-bold text-emerald-400 uppercase block">{perm.category}</span>
-                              <span className="font-bold text-white text-xs block">{perm.name}</span>
-                              <span className="text-[10px] text-white/60">{perm.description}</span>
-                            </td>
-                            {["Super Admin", "General Manager", "HR Supervisor", "HR Staff", "IT Supervisor", "IT Staff", "Supervisor", "Staff"].map((role) => {
-                              const isChecked = (rolePermissions[role] || []).includes(perm.id);
-                              return (
-                                <td key={role} className="py-3 text-center">
-                                  <button
-                                    onClick={() => togglePermission(role, perm.id)}
-                                    className={`w-6 h-6 rounded-lg flex items-center justify-center mx-auto transition-all ${
-                                      isChecked
-                                        ? "bg-emerald-500 text-black hover:bg-emerald-400"
-                                        : "bg-[#010804] border border-emerald-900/80 text-white/30 hover:border-emerald-500/50"
-                                    }`}
-                                  >
-                                    {isChecked ? <Check className="w-4 h-4 stroke-[3]" /> : null}
-                                  </button>
-                                </td>
-                              );
-                            })}
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              )}
-
-              {/* TAB 2: LIST USER AKUN */}
-              {userManagementTab === "users" && (
-                <div className="bg-gradient-to-br from-[#062417] to-[#021008] rounded-2xl p-5 border border-emerald-900/60 overflow-x-auto">
-                  <table className="w-full text-left text-xs">
-                    <thead>
-                      <tr className="border-b border-emerald-900/60 text-white/60 text-[10px] uppercase font-bold">
-                        <th className="pb-3">Nama Karyawan</th>
-                        <th className="pb-3">Email Login</th>
-                        <th className="pb-3">Departemen</th>
-                        <th className="pb-3">Role Hak Akses</th>
-                        <th className="pb-3">Status Password</th>
-                        <th className="pb-3">Status Akun</th>
+              {/* Tabel Akun User */}
+              <div className="bg-gradient-to-br from-[#062417] to-[#021008] rounded-2xl p-5 border border-emerald-900/60 overflow-x-auto">
+                <table className="w-full text-left text-xs">
+                  <thead>
+                    <tr className="border-b border-emerald-900/60 text-white/60 text-[10px] uppercase font-bold">
+                      <th className="pb-3 pr-4">No</th>
+                      <th className="pb-3 pr-4">Nama Karyawan</th>
+                      <th className="pb-3 pr-4">Email Login</th>
+                      <th className="pb-3 pr-4">Departemen</th>
+                      <th className="pb-3 pr-4">Role Hak Akses</th>
+                      <th className="pb-3 pr-4">Status Password</th>
+                      <th className="pb-3">Status Akun</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-emerald-900/30">
+                    {filteredUsers.length === 0 ? (
+                      <tr>
+                        <td colSpan={7} className="py-10 text-center text-white/40 text-xs">
+                          Tidak ada akun yang cocok dengan filter.
+                        </td>
                       </tr>
-                    </thead>
-                    <tbody className="divide-y divide-emerald-900/30">
-                      {users.map((u) => {
+                    ) : (
+                      filteredUsers.map((u, idx) => {
                         const linkedEmp = employees.find((e) => e.email === u.email);
                         const isTemp = linkedEmp?.isFirstLogin && linkedEmp?.temporaryPassword;
-
                         return (
                           <tr key={u.id} className="hover:bg-emerald-950/20 transition-colors">
-                            <td className="py-3 font-bold text-white">{u.name}</td>
-                            <td className="py-3 font-mono text-white/80">{u.email}</td>
-                            <td className="py-3 font-bold text-white">{u.dept}</td>
-                            <td className="py-3">
-                              <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/20 text-emerald-300">
+                            <td className="py-3 pr-4 text-white/40 font-mono">{idx + 1}</td>
+                            <td className="py-3 pr-4 font-bold text-white whitespace-nowrap">{u.name}</td>
+                            <td className="py-3 pr-4 font-mono text-white/70 text-[11px]">{u.email}</td>
+                            <td className="py-3 pr-4">
+                              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-900/60 text-emerald-300 border border-emerald-700/40">
+                                {u.dept}
+                              </span>
+                            </td>
+                            <td className="py-3 pr-4">
+                              <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                                u.role === "Super Admin"
+                                  ? "bg-amber-500/20 text-amber-300 border border-amber-500/30"
+                                  : u.role === "General Manager"
+                                  ? "bg-purple-500/20 text-purple-300 border border-purple-500/30"
+                                  : u.role.includes("HR")
+                                  ? "bg-pink-500/20 text-pink-300 border border-pink-500/30"
+                                  : u.role.includes("IT")
+                                  ? "bg-blue-500/20 text-blue-300 border border-blue-500/30"
+                                  : u.role.includes("Supervisor")
+                                  ? "bg-teal-500/20 text-teal-300 border border-teal-500/30"
+                                  : "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30"
+                              }`}>
                                 {u.role}
                               </span>
                             </td>
-                            <td className="py-3">
+                            <td className="py-3 pr-4">
                               {isTemp ? (
                                 <span className="px-2.5 py-1 rounded-lg bg-amber-500/20 border border-amber-400/40 text-amber-300 font-mono font-bold text-[10px]">
                                   🔑 Pass Sementara: {linkedEmp.temporaryPassword}
                                 </span>
                               ) : (
                                 <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
-                                  ✓ Password Aktif (Rahasia)
+                                  ✓ Password Aktif
                                 </span>
                               )}
                             </td>
                             <td className="py-3">
-                              <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/20 text-white border border-emerald-400/30">
-                                {u.status}
+                              <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                                u.status === "AKTIF"
+                                  ? "bg-emerald-500/20 text-emerald-300 border border-emerald-400/30"
+                                  : "bg-red-500/20 text-red-300 border border-red-400/30"
+                              }`}>
+                                {u.status === "AKTIF" ? "● AKTIF" : "○ " + u.status}
                               </span>
                             </td>
                           </tr>
                         );
-                      })}
-                    </tbody>
-                  </table>
+                      })
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {/* ===================================================== */}
+          {/* VIEW: IZIN AKSES (RBAC MATRIX) — Submenu Baru          */}
+          {/* ===================================================== */}
+          {activeMenu === "izin-akses" && hasPermission("menu_user_mgmt") && (
+            <div className="space-y-5">
+              {/* Info box pembagian khusus HR & IT */}
+              <div className="bg-[#03150d] rounded-2xl p-4 border border-emerald-900/60 space-y-3">
+                <span className="text-[10px] text-amber-400 font-bold uppercase tracking-wider block">
+                  ⚠️ PEMBAGIAN KHUSUS WEWENANG SISTEM (HR & IT)
+                </span>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+                  <div className="bg-[#010804] p-3 rounded-xl border border-pink-500/30">
+                    <span className="font-bold text-pink-300 block mb-1">👔 Wewenang Khusus HR:</span>
+                    <p className="text-[11px] text-white/80 leading-relaxed">
+                      HR Supervisor atau HR Staff yang diberi izin dapat membuat akun karyawan, mendaftarkan karyawan baru, dan mengatur data jabatan/departemen.
+                    </p>
+                  </div>
+                  <div className="bg-[#010804] p-3 rounded-xl border border-blue-500/30">
+                    <span className="font-bold text-blue-300 block mb-1">🛡️ Wewenang Khusus IT:</span>
+                    <p className="text-[11px] text-white/80 leading-relaxed">
+                      IT Supervisor atau IT Staff mengurus server, database, maintenance, perbaikan bug, dan keamanan teknis termasuk konfigurasi Geofence GPS.
+                    </p>
+                  </div>
                 </div>
-              )}
+              </div>
+
+              {/* Tabel Matriks RBAC */}
+              <div className="bg-gradient-to-br from-[#062417] to-[#021008] rounded-2xl p-5 border border-emerald-900/60 overflow-x-auto">
+                <div className="mb-4">
+                  <h3 className="text-sm font-extrabold text-white">Matriks Hak Akses Per Peran (Role)</h3>
+                  <p className="text-[11px] text-white/50 mt-0.5">Klik centang untuk toggle izin akses masing-masing peran.</p>
+                </div>
+                <table className="w-full text-left text-xs min-w-[900px]">
+                  <thead>
+                    <tr className="border-b border-emerald-900/60 text-white text-[10px] uppercase font-bold">
+                      <th className="pb-3 pr-4 w-56">Izin Akses & Fitur Sistem</th>
+                      <th className="pb-3 text-center px-2">
+                        <span className="text-amber-300">Super Admin</span>
+                      </th>
+                      <th className="pb-3 text-center px-2">
+                        <span className="text-purple-300">Gen. Manager</span>
+                      </th>
+                      <th className="pb-3 text-center px-2">
+                        <span className="text-pink-300">HR Spv</span>
+                      </th>
+                      <th className="pb-3 text-center px-2">
+                        <span className="text-pink-200">HR Staff</span>
+                      </th>
+                      <th className="pb-3 text-center px-2">
+                        <span className="text-blue-300">IT Spv</span>
+                      </th>
+                      <th className="pb-3 text-center px-2">
+                        <span className="text-blue-200">IT Staff</span>
+                      </th>
+                      <th className="pb-3 text-center px-2">
+                        <span className="text-teal-300">Supervisor</span>
+                      </th>
+                      <th className="pb-3 text-center px-2">
+                        <span className="text-emerald-300">Staff</span>
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-emerald-900/30">
+                    {allPermissions.map((perm) => (
+                      <tr key={perm.id} className="hover:bg-emerald-950/20 transition-colors">
+                        <td className="py-3 pr-4">
+                          <span className="text-[10px] font-bold text-emerald-400 uppercase block">{perm.category}</span>
+                          <span className="font-bold text-white text-xs block">{perm.name}</span>
+                          <span className="text-[10px] text-white/50">{perm.description}</span>
+                        </td>
+                        {["Super Admin", "General Manager", "HR Supervisor", "HR Staff", "IT Supervisor", "IT Staff", "Supervisor", "Staff"].map((role) => {
+                          const isChecked = (rolePermissions[role] || []).includes(perm.id);
+                          return (
+                            <td key={role} className="py-3 text-center px-2">
+                              <button
+                                onClick={() => togglePermission(role, perm.id)}
+                                className={`w-6 h-6 rounded-lg flex items-center justify-center mx-auto transition-all ${
+                                  isChecked
+                                    ? "bg-emerald-500 text-black hover:bg-emerald-400 shadow-md shadow-emerald-900/40"
+                                    : "bg-[#010804] border border-emerald-900/80 text-white/20 hover:border-emerald-500/50"
+                                }`}
+                              >
+                                {isChecked ? <Check className="w-4 h-4 stroke-[3]" /> : null}
+                              </button>
+                            </td>
+                          );
+                        })}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
           )}
 
