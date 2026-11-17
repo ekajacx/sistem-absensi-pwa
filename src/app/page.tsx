@@ -3135,38 +3135,50 @@ export default function Home() {
                 </div>
               </div>
 
-              {/* Atasan Langsung (N+1) Auto-Link & Select */}
-              <div className="bg-[#010804] p-3 rounded-2xl border border-emerald-500/40 space-y-1.5">
-                <div className="flex items-center justify-between">
-                  <label className="block text-emerald-400 font-bold text-xs">
-                    Atasan Langsung (N+1) *
-                  </label>
-                  <span className="text-[10px] font-extrabold text-amber-400 bg-amber-400/10 px-2 py-0.5 rounded-full border border-amber-400/30 flex items-center gap-1">
-                    <span>⚡</span> Terhubung Otomatis
-                  </span>
-                </div>
-                <select
-                  value={newEmployeeForm.managerId}
-                  onChange={(e) => setNewEmployeeForm({ ...newEmployeeForm, managerId: e.target.value })}
-                  className="w-full bg-[#021008] border border-emerald-900/80 rounded-xl p-2.5 text-white font-bold focus:border-emerald-400 focus:outline-none"
-                >
-                  {employees
-                    .filter((e) => e.level === "Director" || e.level === "Supervisor")
-                    .map((mgr) => (
-                      <option key={mgr.id} value={mgr.id}>
-                        {mgr.name} — {mgr.role} ({mgr.dept})
-                      </option>
-                    ))}
-                </select>
-                <div className="flex items-center gap-1.5 pt-0.5 text-[11px] text-white/80">
-                  <span className="text-emerald-400 font-bold">✓ Relasi:</span>
-                  <span>
-                    {newEmployeeForm.level === "Staff"
-                      ? `Staf ini otomatis melapor ke ${employees.find((e) => e.id === newEmployeeForm.managerId)?.name || "Supervisor"} dan masuk dalam pengawasan langsung beliau.`
-                      : `Supervisor ini bertanggung jawab dan melapor langsung ke ${employees.find((e) => e.id === newEmployeeForm.managerId)?.name || "Direktur Utama"}.`}
-                  </span>
-                </div>
-              </div>
+              {/* Atasan Langsung (N+1) Read-Only Textbox (Terkunci Sesuai Hirarki) */}
+              {(() => {
+                const selectedSuperior =
+                  employees.find((e) => e.id === newEmployeeForm.managerId) ||
+                  (newEmployeeForm.level === "Staff"
+                    ? employees.find((e) => e.dept === newEmployeeForm.dept && e.level === "Supervisor") || employees[0]
+                    : employees[0]);
+                const superiorDisplayText = `${selectedSuperior.name} — ${selectedSuperior.role} (${selectedSuperior.dept})`;
+
+                return (
+                  <div className="bg-[#010804] p-3 rounded-2xl border border-emerald-500/40 space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <label className="block text-emerald-400 font-bold text-xs">
+                        Atasan Langsung (N+1) *
+                      </label>
+                      <span className="text-[10px] font-extrabold text-amber-400 bg-amber-400/10 px-2 py-0.5 rounded-full border border-amber-400/30 flex items-center gap-1">
+                        <Lock className="w-3 h-3 text-amber-400" />
+                        <span>Terkunci Otomatis</span>
+                      </span>
+                    </div>
+
+                    <div className="relative">
+                      <input
+                        type="text"
+                        readOnly
+                        value={superiorDisplayText}
+                        className="w-full bg-[#021008] border border-emerald-900/80 rounded-xl p-2.5 pr-10 text-white font-bold cursor-not-allowed select-none opacity-90 focus:outline-none"
+                      />
+                      <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-emerald-400">
+                        <Lock className="w-4 h-4 text-emerald-400" />
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-1.5 pt-0.5 text-[11px] text-white/80">
+                      <span className="text-emerald-400 font-bold">✓ Relasi:</span>
+                      <span>
+                        {newEmployeeForm.level === "Staff"
+                          ? `Staf ini otomatis melapor ke ${selectedSuperior.name} dan masuk dalam pengawasan langsung beliau.`
+                          : `Supervisor ini bertanggung jawab dan melapor langsung ke ${selectedSuperior.name}.`}
+                      </span>
+                    </div>
+                  </div>
+                );
+              })()}
 
               {/* Status Kerja: Tetap, Kontrak, Magang, DW */}
               <div className="bg-[#010703] p-3.5 rounded-2xl border border-emerald-900/60 space-y-3">
