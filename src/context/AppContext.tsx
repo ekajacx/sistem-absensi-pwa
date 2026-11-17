@@ -1,6 +1,6 @@
 "use client";
 
-import React, { createContext, useContext, useState, useEffect, useRef } from "react";
+import React, { createContext, useContext, useState, useEffect, useRef, useCallback } from "react";
 import {
   DepartmentType,
   HierarchyLevel,
@@ -14,8 +14,6 @@ import {
   LeaveRequest,
   WorkJournal,
   SystemUser,
-  PermissionItem,
-  LivenessChallengeType,
 } from "@/types";
 import {
   standardDepartments,
@@ -181,12 +179,17 @@ function useAppProviderValue() {
   // POV Karyawan Staff (Tetap, DW, Magang, Kontrak)
   const isStaff = activePerspective !== "admin" && currentActiveEmployee.level === "Staff";
 
-  const hasPermission = (permId: string): boolean => {
-    const rolePerms = rolePermissions[currentRoleName] || [];
-    return rolePerms.includes(permId);
-  };
+  const hasPermission = useCallback(
+    (permId: string): boolean => {
+      if (activePerspective === "admin") return true;
+      const rolePerms = rolePermissions[currentRoleName] || [];
+      return rolePerms.includes(permId);
+    },
+    [activePerspective, rolePermissions, currentRoleName]
+  );
 
   // Otomatis alihkan jika menu dibatasi untuk Staff atau tidak memiliki izin akses
+  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     if (isStaff && ["departemen", "jabatan", "kontrak", "rekap-absensi", "user-management", "izin-akses", "pengaturan", "log-aktivitas"].includes(activeMenu)) {
       setActiveMenu("karyawan");
@@ -203,7 +206,8 @@ function useAppProviderValue() {
     if (activeMenu === "log-aktivitas" && !hasPermission("log_view")) {
       setActiveMenu("dashboard");
     }
-  }, [activePerspective, rolePermissions, activeMenu, isStaff]);
+  }, [hasPermission, activeMenu, isStaff]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   // Hierarchy Helpers
   const getDirectSuperior = (emp: Employee): Employee | null => {
@@ -398,11 +402,11 @@ function useAppProviderValue() {
           stream.getTracks().forEach((track) => {
             try {
               track.stop();
-            } catch (e) {
+            } catch {
               // ignore
             }
           });
-        } catch (e) {
+        } catch {
           // ignore
         }
         videoRef.current.srcObject = null;
@@ -635,7 +639,7 @@ function useAppProviderValue() {
               name: editingEmployee.name,
               email: editingEmployee.email,
               dept: editingEmployee.dept,
-              role: (editingEmployee.role as any) || u.role,
+              role: (editingEmployee.role as SystemUser["role"]) || u.role,
             }
           : u
       )
@@ -870,6 +874,7 @@ function useAppProviderValue() {
   // Jika POV Staff, kunci target jadwal ke diri sendiri dan kunci tab ke roster
   useEffect(() => {
     if (isStaff) {
+      /* eslint-disable-next-line react-hooks/set-state-in-effect */
       setSelectedScheduleEmpId(currentActiveEmployee.id);
       setShiftActiveTab("roster");
     }
@@ -880,6 +885,7 @@ function useAppProviderValue() {
 
   // Set tanggal awal minggu ini saat komponen mount
   useEffect(() => {
+    /* eslint-disable-next-line react-hooks/set-state-in-effect */
     setRosterWeekStart(formatDateISO(getMondayOfWeek(new Date())));
   }, []);
 
@@ -1351,7 +1357,7 @@ function useAppProviderValue() {
         ? "IT Staff"
         : newEmployeeForm.level === "Supervisor"
         ? "Supervisor"
-        : "Staff") as any,
+        : "Staff") as SystemUser["role"],
       dept: finalDept,
       lastLogin: "Belum Pernah Login",
       status: "AKTIF",

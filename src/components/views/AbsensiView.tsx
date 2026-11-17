@@ -2,7 +2,7 @@
 
 import React, { useEffect } from "react";
 import { useApp } from "@/context/AppContext";
-import { MapPin, Camera, CheckCircle2, AlertTriangle, Smartphone, RefreshCw, Sparkles, Lock, Server, Video, VideoOff, ShieldAlert, ScanFace } from "lucide-react";
+import { MapPin, CheckCircle2, AlertTriangle, Smartphone, RefreshCw, Sparkles, Video, VideoOff, ShieldAlert, ScanFace } from "lucide-react";
 import { ServerClock } from "@/hooks/useClock";
 
 export default function AbsensiView() {
@@ -13,7 +13,6 @@ export default function AbsensiView() {
     challengeStepStatus,
     currentActiveEmployee,
     currentChallengeIndex,
-    currentTime,
     employees,
     getDirectSuperior,
     handleCheckIn,

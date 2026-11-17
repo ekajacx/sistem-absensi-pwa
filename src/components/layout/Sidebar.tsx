@@ -63,6 +63,7 @@ export default function Sidebar() {
                 className="relative w-11 h-11 rounded-2xl bg-gradient-to-tr from-teal-400 via-emerald-400 to-emerald-600 flex items-center justify-center font-black text-black text-sm shadow-lg shadow-black cursor-pointer overflow-hidden flex-shrink-0 group/logo ring-1 ring-emerald-300/40 hover:brightness-110 transition-all"
               >
                 {companyLogoUrl ? (
+                  /* eslint-disable-next-line @next/next/no-img-element */
                   <img src={companyLogoUrl} alt="Company Logo" className="w-full h-full object-cover" />
                 ) : (
                   <span>{companyName.substring(0, 2).toUpperCase()}</span>

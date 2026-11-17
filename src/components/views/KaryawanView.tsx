@@ -2,7 +2,7 @@
 
 import React from "react";
 import { useApp } from "@/context/AppContext";
-import { ShieldCheck, Users, CheckCircle2, Smartphone, Search, Filter, UserPlus, Lock, Phone, Copy } from "lucide-react";
+import { ShieldCheck, Users, CheckCircle2, Smartphone, Search, UserPlus, Phone, Copy } from "lucide-react";
 
 export default function KaryawanView() {
   const {

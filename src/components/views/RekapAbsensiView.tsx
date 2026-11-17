@@ -2,7 +2,7 @@
 
 import React from "react";
 import { useApp } from "@/context/AppContext";
-import { FileText, Search, Filter, Download, Pencil, Check } from "lucide-react";
+import { FileText, Search, Download, Pencil } from "lucide-react";
 
 export default function RekapAbsensiView() {
   const {

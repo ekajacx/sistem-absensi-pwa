@@ -2,7 +2,7 @@
 
 import React from "react";
 import { useApp } from "@/context/AppContext";
-import { ShieldCheck, Search, Filter, UserPlus } from "lucide-react";
+import { ShieldCheck, Search, UserPlus } from "lucide-react";
 
 export default function UserManagementView() {
   const {

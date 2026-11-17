@@ -1,7 +1,5 @@
 import {
   DepartmentType,
-  HierarchyLevel,
-  ContractType,
   DayOfWeek,
   ShiftSlotType,
   Employee,
