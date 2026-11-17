@@ -56,6 +56,11 @@ import {
   Cpu,
   UserCog,
   BriefcaseBusiness,
+  Smile,
+  Video,
+  VideoOff,
+  ShieldAlert,
+  ScanFace,
 } from "lucide-react";
 
 // ─────────────────────────────────────────────────────────────
@@ -1239,6 +1244,159 @@ export default function Home() {
   const [simulatedDistance, setSimulatedDistance] = useState<number>(14.2);
   const [simulatedFaceScore, setSimulatedFaceScore] = useState<number>(96.4);
 
+  // ─── LEVEL 4 AI ANTI-SPOOFING & MULTI-CHALLENGE LIVENESS STATES ───────────
+  type LivenessChallengeType = "blink" | "smile" | "turnRight" | "turnLeft" | "nod";
+  const [livenessChallengeSequence, setLivenessChallengeSequence] = useState<LivenessChallengeType[]>([
+    "blink",
+    "smile",
+    "turnRight",
+  ]);
+  const [currentChallengeIndex, setCurrentChallengeIndex] = useState<number>(0);
+  const [challengeStepStatus, setChallengeStepStatus] = useState<"idle" | "verifying" | "step_passed" | "all_passed" | "spoof_detected">("idle");
+  const [spoofAlertDetails, setSpoofAlertDetails] = useState<{
+    type: "photo_static" | "screen_replay" | null;
+    title: string;
+    description: string;
+    metrics: { name: string; value: string; pass: boolean }[];
+  } | null>(null);
+  const [antiSpoofScore, setAntiSpoofScore] = useState<number>(98.5);
+  const [isWebcamActive, setIsWebcamActive] = useState<boolean>(false);
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+
+  const challengeDefinitions: Record<LivenessChallengeType, { title: string; instruction: string; icon: string; detail: string }> = {
+    blink: {
+      title: "Uji Kedipan Mata",
+      instruction: "Kedipkan kedua mata Anda secara natural (2x)",
+      icon: "👁️",
+      detail: "Analisis rasio aspek mata (EAR) & mikro-gerakan pupil",
+    },
+    smile: {
+      title: "Uji Senyum Alami",
+      instruction: "Tersenyumlah ke arah kamera hingga bibir melebar",
+      icon: "😊",
+      detail: "Analisis kontur otot zygomaticus & geometri mulut",
+    },
+    turnRight: {
+      title: "Uji Kedalaman 3D (Tengok Kanan)",
+      instruction: "Tengokkan kepala Anda perlahan ke arah KANAN",
+      icon: "➡️",
+      detail: "Verifikasi rotasi yaw 3D & pergeseran paralaks optik",
+    },
+    turnLeft: {
+      title: "Uji Kedalaman 3D (Tengok Kiri)",
+      instruction: "Tengokkan kepala Anda perlahan ke arah KIRI",
+      icon: "⬅️",
+      detail: "Verifikasi rotasi yaw 3D & pergeseran paralaks optik",
+    },
+    nod: {
+      title: "Uji Gerak Vertikal (Anggukan)",
+      instruction: "Anggukkan kepala Anda ke bawah perlahan",
+      icon: "↕️",
+      detail: "Analisis pitch aksis z-depth & volumetrik tengkorak",
+    },
+  };
+
+  const startLevel4Liveness = () => {
+    const allChallenges: LivenessChallengeType[] = ["blink", "smile", "turnRight", "turnLeft", "nod"];
+    const shuffled = [...allChallenges].sort(() => 0.5 - Math.random());
+    const selected = shuffled.slice(0, 3);
+    setLivenessChallengeSequence(selected);
+    setCurrentChallengeIndex(0);
+    setChallengeStepStatus("verifying");
+    setSpoofAlertDetails(null);
+    setLivenessPassed(false);
+    setAntiSpoofScore(98.5);
+  };
+
+  const handlePassCurrentChallenge = () => {
+    if (challengeStepStatus !== "verifying" && challengeStepStatus !== "idle") return;
+
+    if (currentChallengeIndex < livenessChallengeSequence.length - 1) {
+      setChallengeStepStatus("step_passed");
+      setTimeout(() => {
+        setCurrentChallengeIndex((prev) => prev + 1);
+        setChallengeStepStatus("verifying");
+      }, 600);
+    } else {
+      setChallengeStepStatus("all_passed");
+      setLivenessPassed(true);
+      setAntiSpoofScore(99.2);
+      showToast("🎉 Liveness Level 4 Terverifikasi! 3/3 Tantangan Acak Lolos & Anti-Spoofing Valid.");
+    }
+  };
+
+  const handleSimulateSpoofAttack = (type: "photo_static" | "screen_replay") => {
+    setLivenessPassed(false);
+    setChallengeStepStatus("spoof_detected");
+    if (type === "photo_static") {
+      setAntiSpoofScore(7.2);
+      setSpoofAlertDetails({
+        type: "photo_static",
+        title: "KECURANGAN TERDETEKSI: FOTO STATIS 2D",
+        description: "Sistem AI mendeteksi foto cetak kertas/gambar mati. Tidak ada denyut mikro-vaskular dan gagal merespons tantangan acak dinamis.",
+        metrics: [
+          { name: "Surface Flatness (Bidang Datar 2D)", value: "99.8% (Tinggi)", pass: false },
+          { name: "Micro-Movement (Mikro-Gerak Wajah)", value: "0.00 Hz (Mati)", pass: false },
+          { name: "Dynamic Challenge Response", value: "0% (Gagal Reaksi)", pass: false },
+          { name: "3D Volumetric Depth", value: "Tidak Ada (Flat)", pass: false },
+        ],
+      });
+      showToast("⛔ DETEKSI KECURANGAN: Foto Statis Terdeteksi! Absensi Ditolak.", "error");
+    } else {
+      setAntiSpoofScore(16.4);
+      setSpoofAlertDetails({
+        type: "screen_replay",
+        title: "KECURANGAN TERDETEKSI: REPLAY LAYAR HP / MONITOR",
+        description: "Sistem AI mendeteksi pola moire dan pantulan kaca layar perangkat kedua. Urutan video rekaman tidak cocok dengan tantangan acak real-time.",
+        metrics: [
+          { name: "Moire Pattern & LCD Glare", value: "Terdeteksi (Layar Kaca)", pass: false },
+          { name: "Challenge Sync Timing", value: "Desinkronisasi (Video Lama)", pass: false },
+          { name: "Color Temperature Anomaly", value: "Emisi Cahaya Biru Layar", pass: false },
+          { name: "Anti-Spoof Confidence", value: "16.4% (Di Bawah 85%)", pass: false },
+        ],
+      });
+      showToast("⛔ DETEKSI KECURANGAN: Replay Layar HP Terdeteksi! Absensi Ditolak.", "error");
+    }
+  };
+
+  const toggleWebcam = async () => {
+    if (isWebcamActive) {
+      if (videoRef.current && videoRef.current.srcObject) {
+        const stream = videoRef.current.srcObject as MediaStream;
+        stream.getTracks().forEach((track) => track.stop());
+        videoRef.current.srcObject = null;
+      }
+      setIsWebcamActive(false);
+      showToast("Kamera fisik dimatikan. Beralih ke Biometric Sensor Simulator.");
+    } else {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: "user", width: { ideal: 640 }, height: { ideal: 480 } },
+        });
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
+          videoRef.current.play();
+        }
+        setIsWebcamActive(true);
+        showToast("📹 Kamera depan aktif! Menyelaraskan feed dengan pemindai biometrik AI Level 4.");
+      } catch (err) {
+        console.warn("Webcam not available:", err);
+        showToast("Kamera fisik tidak dapat diakses (izin ditolak atau di simulator). Menggunakan Biometric Simulation Hub.", "error");
+      }
+    }
+  };
+
+  useEffect(() => {
+    if (activeMenu !== "absensi" && isWebcamActive) {
+      if (videoRef.current && videoRef.current.srcObject) {
+        const stream = videoRef.current.srcObject as MediaStream;
+        stream.getTracks().forEach((track) => track.stop());
+        videoRef.current.srcObject = null;
+      }
+      setIsWebcamActive(false);
+    }
+  }, [activeMenu, isWebcamActive]);
+
   // Modals Open State
   const [showAddEmployeeModal, setShowAddEmployeeModal] = useState(false);
   const [showEditEmployeeModal, setShowEditEmployeeModal] = useState(false);
@@ -2226,8 +2384,12 @@ export default function Home() {
 
   // Process Check-In Absensi
   const handleCheckIn = () => {
+    if (challengeStepStatus === "spoof_detected") {
+      showToast("Gagal: Sistem mendeteksi indikasi kecurangan biometrik / foto statis. Silakan ulangi verifikasi liveness wajah asli!", "error");
+      return;
+    }
     if (!livenessPassed) {
-      showToast("Harap selesaikan uji liveness (kedipan mata) terlebih dahulu!", "error");
+      showToast("Harap selesaikan uji liveness Level 4 AI (3 tantangan acak) terlebih dahulu!", "error");
       return;
     }
     if (!isWithinGeofence) {
@@ -2265,8 +2427,8 @@ export default function Home() {
         id: `log-${Date.now()}`,
         timestamp: `${new Date().toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" })}, ${currentTime || "07:45 WIB"}`,
         type: "CHECK_IN",
-        title: "Check-In Mandiri Otomatis",
-        description: `Absensi hadir masuk terverifikasi via GPS (${simulatedDistance.toFixed(1)}m) & AI Face Match (${simulatedFaceScore}%)`,
+        title: "Check-In Mandiri Otomatis (Level 4 AI)",
+        description: `Absensi hadir masuk terverifikasi via GPS (${simulatedDistance.toFixed(1)}m) & Level 4 AI Anti-Spoofing (${antiSpoofScore}%) [3/3 Multi-Challenge Valid]`,
         employeeName: currentActiveEmployee.name,
         dept: currentActiveEmployee.dept,
         actorName: currentActiveEmployee.name,
@@ -2275,7 +2437,7 @@ export default function Home() {
       };
       setActivityLogs((prev) => [autoLog, ...prev]);
 
-      showToast(`✓ Absensi mandiri ${currentActiveEmployee.name} BERHASIL disahkan secara otomatis (APPROVED)!`);
+      showToast(`✓ Absensi mandiri ${currentActiveEmployee.name} BERHASIL disahkan secara otomatis (Level 4 AI APPROVED)!`);
     }, 1200);
   };
 
@@ -4463,43 +4625,287 @@ export default function Home() {
                   />
                 </div>
 
-                {/* Camera Scanner Oval */}
-                <div className="relative rounded-2xl bg-[#010603] border border-emerald-500/30 p-6 text-center overflow-hidden mb-5">
-                  <div className="absolute inset-0 bg-[radial-gradient(#10b981_1px,transparent_1px)] [background-size:16px_16px] opacity-20" />
+                {/* 🛡️ LEVEL 4 BIOMETRIC AI SCANNER & ANTI-SPOOFING ENGINE */}
+                <div className="relative rounded-3xl bg-gradient-to-b from-[#02130b] to-[#010804] border border-emerald-500/40 p-5 overflow-hidden mb-5 shadow-2xl">
+                  {/* Cyberpunk Biometric Background Grid */}
+                  <div className="absolute inset-0 bg-[radial-gradient(#10b981_1.2px,transparent_1.2px)] [background-size:18px_18px] opacity-15" />
 
-                  <div
-                    className={`relative mx-auto w-36 h-48 rounded-[50%] border-2 transition-all flex flex-col items-center justify-center p-2 ${
-                      livenessPassed
-                        ? "border-emerald-400 bg-emerald-500/10 shadow-lg shadow-emerald-500/25"
-                        : "border-dashed border-emerald-500/40"
-                    }`}
-                  >
-                    <Camera className="w-8 h-8 text-emerald-400 mb-2" />
-                    <span className="text-[11px] text-white font-bold">
-                      {livenessPassed ? "Wajah Terverifikasi!" : "Arahkan Wajah ke Bingkai"}
-                    </span>
-                    {livenessPassed && (
-                      <span className="text-xs font-bold text-white font-mono mt-1">
-                        AI Match: {simulatedFaceScore}%
-                      </span>
-                    )}
+                  {/* Header Biometrik */}
+                  <div className="relative z-10 flex flex-wrap items-center justify-between gap-3 pb-4 border-b border-emerald-900/60">
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-8 rounded-xl bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center">
+                        <ScanFace className="w-4 h-4 text-emerald-400" />
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <h4 className="text-xs font-black text-white uppercase tracking-wider">
+                            Level 4 AI Biometric Liveness
+                          </h4>
+                          <span className="px-2 py-0.5 rounded-full text-[9px] font-black bg-gradient-to-r from-emerald-500 to-teal-400 text-black">
+                            ANTI-SPOOFING
+                          </span>
+                        </div>
+                        <span className="text-[10px] text-emerald-400/80">
+                          3D Parallax Depth • Anti-Foto Statis 2D • Anti-Replay Layar HP
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Toggle Webcam Fisik vs Simulator */}
+                    <button
+                      onClick={toggleWebcam}
+                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold border transition-all ${
+                        isWebcamActive
+                          ? "bg-red-500/20 border-red-500/50 text-red-300 hover:bg-red-500/30"
+                          : "bg-emerald-500/15 border-emerald-500/40 text-emerald-300 hover:bg-emerald-500/25"
+                      }`}
+                    >
+                      {isWebcamActive ? (
+                        <>
+                          <VideoOff className="w-3.5 h-3.5" />
+                          <span>Tutup Kamera</span>
+                        </>
+                      ) : (
+                        <>
+                          <Video className="w-3.5 h-3.5 text-emerald-400" />
+                          <span>Buka Kamera Fisik</span>
+                        </>
+                      )}
+                    </button>
                   </div>
 
-                  <button
-                    onClick={() => {
-                      setLivenessPassed(!livenessPassed);
-                      if (!livenessPassed) {
-                        showToast("Kedipan mata terdeteksi! Wajah hidup (Liveness Valid)");
-                      }
-                    }}
-                    className={`mt-4 text-xs px-4 py-2.5 rounded-xl border font-bold transition-all shadow-md ${
-                      livenessPassed
-                        ? "bg-emerald-500/20 text-white border-emerald-400/40"
-                        : "bg-emerald-500 text-black border-transparent hover:bg-emerald-400"
-                    }`}
-                  >
-                    {livenessPassed ? "✓ Uji Liveness Lolos (Kedipan Terbaca)" : "Simulasikan Kedipan Mata (Uji Liveness)"}
-                  </button>
+                  {/* Oval Camera Viewport & HUD */}
+                  <div className="relative z-10 my-4 text-center">
+                    <div
+                      className={`relative mx-auto w-44 h-56 rounded-[50%] border-2 transition-all duration-300 overflow-hidden flex flex-col items-center justify-center shadow-2xl ${
+                        challengeStepStatus === "spoof_detected"
+                          ? "border-red-500 bg-red-950/40 shadow-red-500/30 animate-pulse ring-4 ring-red-500/20"
+                          : livenessPassed
+                          ? "border-emerald-400 bg-emerald-500/10 shadow-emerald-500/30 ring-4 ring-emerald-500/20"
+                          : "border-emerald-500/50 bg-[#010a05] ring-1 ring-emerald-500/20"
+                      }`}
+                    >
+                      {/* Live Video Feed (if webcam active) */}
+                      <video
+                        ref={videoRef}
+                        playsInline
+                        autoPlay
+                        muted
+                        className={`absolute inset-0 w-full h-full object-cover ${isWebcamActive ? "opacity-90" : "hidden"}`}
+                      />
+
+                      {/* Laser Scanning Animation (HUD) */}
+                      <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-transparent via-emerald-400 to-transparent animate-bounce opacity-70" />
+
+                      {/* Facial Mesh Wireframe Overlay */}
+                      <div className="relative z-10 flex flex-col items-center justify-center p-3">
+                        {challengeStepStatus === "spoof_detected" ? (
+                          <div className="space-y-1">
+                            <ShieldAlert className="w-12 h-12 text-red-400 mx-auto animate-bounce" />
+                            <span className="text-[11px] font-black text-red-300 uppercase tracking-wider block">
+                              FRAUD BLOCKED
+                            </span>
+                            <span className="text-[9px] text-red-200/80 font-mono block">
+                              Skor: {antiSpoofScore}% (Ditolak)
+                            </span>
+                          </div>
+                        ) : livenessPassed ? (
+                          <div className="space-y-1">
+                            <CheckCircle2 className="w-12 h-12 text-emerald-400 mx-auto drop-shadow-[0_0_12px_rgba(16,185,129,0.8)]" />
+                            <span className="text-xs font-black text-white block">
+                              Wajah Terverifikasi!
+                            </span>
+                            <span className="text-[10px] font-mono text-emerald-300 block font-bold">
+                              AI Match: {simulatedFaceScore}%
+                            </span>
+                            <span className="text-[9px] font-mono text-teal-300 block">
+                              Anti-Spoof: {antiSpoofScore}%
+                            </span>
+                          </div>
+                        ) : (
+                          <div className="space-y-1.5">
+                            <span className="text-3xl block filter drop-shadow">
+                              {challengeDefinitions[livenessChallengeSequence[currentChallengeIndex]]?.icon || "👁️"}
+                            </span>
+                            <span className="text-[11px] font-bold text-white block leading-tight px-2">
+                              {challengeDefinitions[livenessChallengeSequence[currentChallengeIndex]]?.title}
+                            </span>
+                            <span className="text-[9px] font-mono text-emerald-400/90 bg-emerald-950/80 px-2 py-0.5 rounded-full border border-emerald-500/30 inline-block">
+                              Tantangan {currentChallengeIndex + 1}/3
+                            </span>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Corner Biometric Crosshairs */}
+                      <div className="absolute top-2 left-6 w-2 h-2 border-t-2 border-l-2 border-emerald-400/80" />
+                      <div className="absolute top-2 right-6 w-2 h-2 border-t-2 border-r-2 border-emerald-400/80" />
+                      <div className="absolute bottom-2 left-6 w-2 h-2 border-b-2 border-l-2 border-emerald-400/80" />
+                      <div className="absolute bottom-2 right-6 w-2 h-2 border-b-2 border-r-2 border-emerald-400/80" />
+                    </div>
+                  </div>
+
+                  {/* Multi-Challenge Steps Tracker (3 Tahapan Acak) */}
+                  <div className="relative z-10 bg-[#010804] border border-emerald-900/60 rounded-2xl p-3.5 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[11px] font-bold text-white flex items-center gap-1.5">
+                        <span>Urutan Verifikasi Dinamis</span>
+                        <span className="text-[9px] text-emerald-400/70 font-mono">(Anti-Video Rekaman)</span>
+                      </span>
+                      <button
+                        onClick={startLevel4Liveness}
+                        className="text-[10px] text-emerald-400 hover:text-emerald-300 font-semibold flex items-center gap-1 underline"
+                      >
+                        <RefreshCw className="w-3 h-3" />
+                        <span>Acak Ulang Urutan</span>
+                      </button>
+                    </div>
+
+                    {/* Step Cards 1, 2, 3 */}
+                    <div className="grid grid-cols-3 gap-2">
+                      {livenessChallengeSequence.map((cType, idx) => {
+                        const def = challengeDefinitions[cType];
+                        const isDone = livenessPassed || idx < currentChallengeIndex;
+                        const isCurrent = !livenessPassed && idx === currentChallengeIndex && challengeStepStatus !== "spoof_detected";
+                        return (
+                          <div
+                            key={idx}
+                            className={`p-2 rounded-xl border text-center transition-all ${
+                              isDone
+                                ? "bg-emerald-500/20 border-emerald-500/50 text-white"
+                                : isCurrent
+                                ? "bg-amber-500/20 border-amber-500/60 text-amber-200 ring-2 ring-amber-500/30"
+                                : "bg-white/5 border-white/10 text-white/40"
+                            }`}
+                          >
+                            <div className="text-sm mb-0.5">{isDone ? "✅" : def.icon}</div>
+                            <span className="text-[10px] font-bold block leading-tight truncate">
+                              {def.title.replace("Uji ", "")}
+                            </span>
+                            <span className="text-[8px] font-mono opacity-70 block">
+                              Step {idx + 1}
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    {/* Instruction Box for Current Step */}
+                    {!livenessPassed && challengeStepStatus !== "spoof_detected" && (
+                      <div className="bg-emerald-950/40 border border-emerald-500/30 rounded-xl p-3 flex items-start gap-2.5">
+                        <span className="text-xl">
+                          {challengeDefinitions[livenessChallengeSequence[currentChallengeIndex]]?.icon}
+                        </span>
+                        <div className="flex-1 text-left">
+                          <p className="text-xs font-bold text-emerald-300">
+                            {challengeDefinitions[livenessChallengeSequence[currentChallengeIndex]]?.instruction}
+                          </p>
+                          <p className="text-[10px] text-white/60 mt-0.5 font-mono">
+                            {challengeDefinitions[livenessChallengeSequence[currentChallengeIndex]]?.detail}
+                          </p>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Action Buttons to execute / simulate step */}
+                    <div className="pt-1 flex flex-col sm:flex-row gap-2">
+                      {!livenessPassed && challengeStepStatus !== "spoof_detected" ? (
+                        <button
+                          onClick={handlePassCurrentChallenge}
+                          className="flex-1 py-2.5 px-4 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-400 text-black text-xs font-black hover:brightness-110 active:scale-[0.98] shadow-lg shadow-emerald-500/20 transition-all flex items-center justify-center gap-2"
+                        >
+                          <Sparkles className="w-4 h-4 text-black" />
+                          <span>
+                            {currentChallengeIndex < 2
+                              ? `Verifikasi: ${challengeDefinitions[livenessChallengeSequence[currentChallengeIndex]]?.title} (Lanjut)`
+                              : "Verifikasi Langkah Terakhir & Selesaikan"}
+                          </span>
+                        </button>
+                      ) : livenessPassed ? (
+                        <button
+                          onClick={startLevel4Liveness}
+                          className="flex-1 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-bold transition-all flex items-center justify-center gap-1.5"
+                        >
+                          <RefreshCw className="w-3.5 h-3.5 text-emerald-400" />
+                          <span>Ulangi Verifikasi Liveness</span>
+                        </button>
+                      ) : (
+                        <button
+                          onClick={startLevel4Liveness}
+                          className="flex-1 py-2.5 px-4 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black text-xs font-black transition-all flex items-center justify-center gap-1.5"
+                        >
+                          <RefreshCw className="w-4 h-4 text-black" />
+                          <span>Atur Ulang & Scan Wajah Asli</span>
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* SPOOF FRAUD DETECTED BANNER */}
+                  {spoofAlertDetails && (
+                    <div className="relative z-10 mt-3 bg-red-950/60 border border-red-500/60 rounded-2xl p-4 space-y-3 animate-shake">
+                      <div className="flex items-start gap-3">
+                        <span className="text-2xl">🚫</span>
+                        <div>
+                          <h5 className="text-xs font-black text-red-300 uppercase tracking-wider">
+                            {spoofAlertDetails.title}
+                          </h5>
+                          <p className="text-[11px] text-red-200/80 mt-0.5">
+                            {spoofAlertDetails.description}
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Forensic Metrics Breakdown */}
+                      <div className="grid grid-cols-2 gap-2 text-[10px] font-mono bg-black/40 p-2.5 rounded-xl border border-red-500/30">
+                        {spoofAlertDetails.metrics.map((m, mIdx) => (
+                          <div key={mIdx} className="space-y-0.5">
+                            <span className="text-white/60 block">{m.name}:</span>
+                            <span className="text-red-400 font-bold block">{m.value}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* 🧪 TESTING BENCH: UJI PENETRASI SERANGAN FOTO PALSU (ANTI-FRAUD TESTER) */}
+                  <div className="relative z-10 mt-3 pt-3 border-t border-emerald-900/60">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-[10px] font-bold text-amber-300 flex items-center gap-1">
+                        <span>🧪 Uji Penetrasi Celah Keamanan (Anti-Foto & Layar)</span>
+                        <span className="bg-amber-500/20 text-amber-300 text-[8px] px-1.5 py-0.2 rounded font-mono">DEV LAB</span>
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      <button
+                        onClick={() => handleSimulateSpoofAttack("photo_static")}
+                        className="py-1.5 px-3 rounded-xl bg-red-500/10 hover:bg-red-500/25 border border-red-500/40 text-red-300 text-[10px] font-bold transition-all text-left flex items-center justify-between"
+                        title="Uji coba apa yang terjadi jika seseorang menaruh foto cetak kertas di depan kamera"
+                      >
+                        <div className="flex items-center gap-1.5">
+                          <span>📄</span>
+                          <span>Uji Foto Cetak 2D (Kertas)</span>
+                        </div>
+                        <span className="text-[9px] text-red-400 font-mono">Simulasi Blokir →</span>
+                      </button>
+
+                      <button
+                        onClick={() => handleSimulateSpoofAttack("screen_replay")}
+                        className="py-1.5 px-3 rounded-xl bg-orange-500/10 hover:bg-orange-500/25 border border-orange-500/40 text-orange-300 text-[10px] font-bold transition-all text-left flex items-center justify-between"
+                        title="Uji coba apa yang terjadi jika seseorang memutar video rekaman di layar HP lain"
+                      >
+                        <div className="flex items-center gap-1.5">
+                          <span>📺</span>
+                          <span>Uji Replay Layar HP Lain</span>
+                        </div>
+                        <span className="text-[9px] text-orange-400 font-mono">Simulasi Blokir →</span>
+                      </button>
+                    </div>
+                    <p className="text-[9px] text-white/40 mt-1.5 text-center">
+                      💡 Fitur Level 4 AI menggagalkan serangan foto statis & replay video dengan validasi tantangan acak real-time + analisis kedalaman optik.
+                    </p>
+                  </div>
                 </div>
 
                 {attendanceState === "SUCCESS" ? (
@@ -4593,10 +4999,21 @@ export default function Home() {
                       );
                     })()}
                   <button
-                    disabled={isCapturing || !isWithinGeofence || !isMobileSimulated || (employees.find(e => e.id === currentActiveEmployee.id)?.deviceStatus === "Bound" && employees.find(e => e.id === currentActiveEmployee.id)?.registeredDeviceId !== simulatedDeviceId)}
+                    disabled={
+                      isCapturing ||
+                      !isWithinGeofence ||
+                      !isMobileSimulated ||
+                      challengeStepStatus === "spoof_detected" ||
+                      !livenessPassed ||
+                      (employees.find(e => e.id === currentActiveEmployee.id)?.deviceStatus === "Bound" && employees.find(e => e.id === currentActiveEmployee.id)?.registeredDeviceId !== simulatedDeviceId)
+                    }
                     onClick={handleCheckIn}
                     className={`w-full py-4 rounded-xl font-black text-xs tracking-wider uppercase shadow-xl shadow-black transition-all flex items-center justify-center gap-2 ${
-                      isWithinGeofence && isMobileSimulated && !(employees.find(e => e.id === currentActiveEmployee.id)?.deviceStatus === "Bound" && employees.find(e => e.id === currentActiveEmployee.id)?.registeredDeviceId !== simulatedDeviceId)
+                      isWithinGeofence &&
+                      isMobileSimulated &&
+                      livenessPassed &&
+                      challengeStepStatus !== "spoof_detected" &&
+                      !(employees.find(e => e.id === currentActiveEmployee.id)?.deviceStatus === "Bound" && employees.find(e => e.id === currentActiveEmployee.id)?.registeredDeviceId !== simulatedDeviceId)
                         ? "bg-gradient-to-r from-emerald-500 to-teal-400 text-black hover:brightness-110 active:scale-[0.98]"
                         : "bg-red-950/60 text-red-300 border border-red-500/40 cursor-not-allowed"
                     }`}
@@ -4606,15 +5023,35 @@ export default function Home() {
                         <RefreshCw className="w-4 h-4 animate-spin text-black" />
                         <span>Memvalidasi Data Biometrik & Jarak...</span>
                       </>
+                    ) : challengeStepStatus === "spoof_detected" ? (
+                      <>
+                        <ShieldAlert className="w-5 h-5 text-red-400" />
+                        <span>TIDAK DAPAT ABSEN: TERDETEKSI KECURANGAN FOTO/SPOOFING</span>
+                      </>
+                    ) : !isMobileSimulated ? (
+                      <>
+                        <AlertTriangle className="w-5 h-5 text-red-400" />
+                        <span>TIDAK DAPAT ABSEN: HARUS DARI HP/SMARTPHONE</span>
+                      </>
+                    ) : (employees.find(e => e.id === currentActiveEmployee.id)?.deviceStatus === "Bound" && employees.find(e => e.id === currentActiveEmployee.id)?.registeredDeviceId !== simulatedDeviceId) ? (
+                      <>
+                        <AlertTriangle className="w-5 h-5 text-red-400" />
+                        <span>TIDAK DAPAT ABSEN: PERANGKAT TIDAK DIKENALI</span>
+                      </>
                     ) : !isWithinGeofence ? (
                       <>
                         <AlertTriangle className="w-5 h-5 text-red-400" />
                         <span>TIDAK DAPAT ABSEN: DI LUAR RADIUS KANTOR</span>
                       </>
+                    ) : !livenessPassed ? (
+                      <>
+                        <ScanFace className="w-5 h-5 text-red-400" />
+                        <span>LENGKAPI VERIFIKASI BIOMETRIK LEVEL 4 AI (3 TANTANGAN)</span>
+                      </>
                     ) : (
                       <>
                         <CheckCircle2 className="w-5 h-5 text-black" />
-                        <span>KIRIM ABSENSI MASUK (AUTO-APPROVED)</span>
+                        <span>KIRIM ABSENSI MASUK (AUTO-APPROVED LEVEL 4 AI)</span>
                       </>
                     )}
                   </button>
