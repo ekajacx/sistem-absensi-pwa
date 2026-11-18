@@ -16,7 +16,13 @@ import {
   SystemUser,
   CompanyProfile,
 } from "@/types";
-import { exportToExcel } from "@/utils/excelExport";
+import type { ExportToExcelOptions } from "@/utils/excelExport";
+
+// exceljs (~1 MB) dimuat on-demand hanya saat tombol Ekspor ditekan agar tidak membebani bundle awal
+async function runExcelExport<T>(options: ExportToExcelOptions<T>): Promise<boolean> {
+  const { exportToExcel } = await import("@/utils/excelExport");
+  return exportToExcel<T>(options);
+}
 import {
   standardDepartments,
   initialEmployees,
@@ -171,10 +177,13 @@ export function useAppProviderValue() {
   const [toastMessage, setToastMessage] = useState<{ text: string; type: "success" | "error" | "info" } | null>(null);
   const showToast = (text: string, type: "success" | "error" | "info" = "success") => {
     setToastMessage({ text, type });
-    setTimeout(() => {
-      setToastMessage(null);
-    }, 3500);
   };
+  // Timer auto-hide terikat ke objek toast aktif: toast baru otomatis membatalkan timer toast lama (cleanup effect)
+  useEffect(() => {
+    if (!toastMessage) return;
+    const timerId = setTimeout(() => setToastMessage(null), 3500);
+    return () => clearTimeout(timerId);
+  }, [toastMessage]);
 
   // Helper Generator Password Acak Sementara (8 Karakter)
   const generateRandomPassword = () => {
@@ -310,6 +319,20 @@ export function useAppProviderValue() {
     },
     [activePerspective, rolePermissions, currentRoleName]
   );
+
+  // Hak Akses Rekap Absensi: Global (att_all) vs Tim Bawahan (att_team)
+  const canViewAllAttendances = hasPermission("att_all");
+  const canViewTeamAttendances = hasPermission("att_team");
+
+  // 1. Dataset absensi dasar yang diizinkan untuk diakses sesuai wewenang RBAC
+  const visibleAttendances = attendances.filter((att) => {
+    if (canViewAllAttendances) return true;
+    if (canViewTeamAttendances) {
+      return att.dept === currentActiveEmployee.dept;
+    }
+    // Jika tidak memiliki att_all maupun att_team (misal Staff), hanya boleh melihat diri sendiri
+    return att.employeeId === currentActiveEmployee.id;
+  });
 
   // Otomatis alihkan jika menu dibatasi untuk Staff atau tidak memiliki izin akses
   /* eslint-disable react-hooks/set-state-in-effect */
@@ -614,6 +637,14 @@ export function useAppProviderValue() {
   const handleSaveEditAttendance = (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingAttendance) return;
+
+    // Guard otorisasi di level handler (bukan hanya menyembunyikan tombol di UI)
+    const inEditScope = hasPermission("att_all") || editingAttendance.dept === currentActiveEmployee.dept;
+    if (!hasPermission("att_edit_rekap") || !inEditScope) {
+      showToast("Anda tidak memiliki wewenang untuk mengoreksi absensi ini!", "error");
+      setShowEditAttendanceModal(false);
+      return;
+    }
 
     if (!editAttendanceForm.reason.trim()) {
       showToast("Keterangan atau alasan melakukan edit absensi wajib diisi!", "error");
@@ -1660,20 +1691,6 @@ export function useAppProviderValue() {
     return matchDept && matchShift && matchSearch;
   });
 
-  // Hak Akses Rekap Absensi: Global (att_all) vs Tim Bawahan (att_team)
-  const canViewAllAttendances = hasPermission("att_all");
-  const canViewTeamAttendances = hasPermission("att_team");
-
-  // 1. Dataset absensi dasar yang diizinkan untuk diakses sesuai wewenang RBAC
-  const visibleAttendances = attendances.filter((att) => {
-    if (canViewAllAttendances) return true;
-    if (canViewTeamAttendances) {
-      return att.dept === currentActiveEmployee.dept;
-    }
-    // Jika tidak memiliki att_all maupun att_team (misal Staff), hanya boleh melihat diri sendiri
-    return att.employeeId === currentActiveEmployee.id;
-  });
-
   // 2. Filter Data Rekap Absensi (Departemen, Status, Search)
   const filteredAttendances = visibleAttendances.filter((att) => {
     const matchDept =
@@ -1765,7 +1782,7 @@ export function useAppProviderValue() {
         ? `Departemen: ${currentActiveEmployee.dept} (Tim Bawahan) • Status: ${rekapStatusFilter}`
         : `Departemen: ${deptTag} • Status: ${rekapStatusFilter}`;
 
-      await exportToExcel<AttendanceRecord>({
+      await runExcelExport<AttendanceRecord>({
         fileName,
         sheetName: "Rekap Kehadiran",
         kopSurat: getCompanyKopSurat("Laporan Rekapitulasi Kehadiran Karyawan", periodDesc),
@@ -1782,7 +1799,7 @@ export function useAppProviderValue() {
           { header: "Nomor KTP (NIK)", key: "nik", width: 20, align: "center", format: "@", getter: (r) => r.nik },
           { header: "Departemen", key: "dept", width: 16, align: "left", getter: (r) => r.dept },
           { header: "Shift Kerja", key: "shift", width: 14, align: "center", getter: (r) => r.shift },
-          { header: "Tanggal", key: "date", width: 14, align: "center", getter: (r) => r.date },
+          { header: "Tanggal", key: "date", type: "date", width: 14, align: "center", getter: (r) => r.date },
           { header: "Jam Masuk", key: "in", width: 14, align: "center", getter: (r) => (r.in ? `${r.in} WITA` : "-") },
           { header: "Jam Pulang", key: "out", width: 14, align: "center", getter: (r) => (r.out ? `${r.out} WITA` : "-") },
           { header: "Jarak GPS (m)", key: "dist", width: 14, align: "right", format: "#,##0.0", getter: (r) => r.dist },
@@ -1803,7 +1820,7 @@ export function useAppProviderValue() {
   // Alias handleExportCSV untuk kompatibilitas penuh tombol lama
   const handleExportCSV = handleExportExcel;
 
-  // 2. Ekspor Direktori Karyawan
+  // 2. Ekspor Direktori Karyawan (Biodata, Jabatan, Relasi Atasan & Kontrak)
   const handleExportEmployeesExcel = async () => {
     if (filteredEmployees.length === 0) {
       showToast("Tidak ada data karyawan untuk diekspor!", "error");
@@ -1811,7 +1828,15 @@ export function useAppProviderValue() {
     }
 
     try {
-      const deptTag = filterDept === "ALL" ? "Semua_Dept" : filterDept;
+      const deptTag =
+        currentActiveEmployee.level === "Supervisor" &&
+        activePerspective !== "admin" &&
+        currentRoleName !== "Super Admin" &&
+        currentRoleName !== "HR Supervisor"
+          ? currentActiveEmployee.dept
+          : filterDept === "ALL"
+          ? "Semua_Dept"
+          : filterDept;
       const todayStr = new Date()
         .toLocaleDateString("id-ID", {
           year: "numeric",
@@ -1820,7 +1845,7 @@ export function useAppProviderValue() {
           timeZone: "Asia/Makassar",
         })
         .replace(/\//g, "-");
-      const fileName = `Laporan_Data_Karyawan_${deptTag}_${todayStr}.xlsx`;
+      const fileName = `Data_Karyawan_${deptTag}_${todayStr}.xlsx`;
 
       const tetapCount = filteredEmployees.filter((e) => e.contractType === "Tetap").length;
       const kontrakCount = filteredEmployees.filter((e) => e.contractType === "Kontrak").length;
@@ -1828,31 +1853,62 @@ export function useAppProviderValue() {
         (e) => e.contractType === "Magang" || e.contractType === "DW"
       ).length;
 
-      await exportToExcel<Employee>({
+      await runExcelExport<Employee>({
         fileName,
-        sheetName: "Direktori Karyawan",
+        sheetName: "Data Karyawan",
         kopSurat: getCompanyKopSurat(
-          "Laporan Direktori Karyawan & Status Kepegawaian",
-          `Departemen: ${deptTag} • Shift: ${filterShift}`
+          "Laporan Master Data Karyawan, Jabatan & Status Kontrak",
+          `Cakupan Departemen: ${deptTag === "Semua_Dept" ? "Seluruh Departemen" : deptTag}${searchEmployeeQuery ? ` • Pencarian: "${searchEmployeeQuery}"` : ""}`
         ),
         summaryMetrics: [
-          { label: "Total Karyawan", value: `${filteredEmployees.length} Orang` },
+          { label: "Total Data Karyawan", value: `${filteredEmployees.length} Orang` },
           { label: "Karyawan Tetap (PKWTT)", value: `${tetapCount} Orang` },
           { label: "Karyawan Kontrak (PKWT)", value: `${kontrakCount} Orang` },
-          { label: "Magang & DW", value: `${magangDwCount} Orang` },
+          { label: "Magang & Daily Worker", value: `${magangDwCount} Orang` },
         ],
         columns: [
           { header: "No", key: "no", width: 6, align: "center", getter: (_, idx) => idx + 1 },
           { header: "ID Karyawan", key: "id", width: 14, align: "center", getter: (e) => e.id },
           { header: "Nomor KTP (NIK)", key: "nik", width: 20, align: "center", format: "@", getter: (e) => e.nik },
           { header: "Nama Lengkap", key: "name", width: 24, align: "left", getter: (e) => e.name },
-          { header: "Email", key: "email", width: 24, align: "left", getter: (e) => e.email },
-          { header: "No. Telepon", key: "phone", width: 16, align: "center", format: "@", getter: (e) => e.phone },
           { header: "Departemen", key: "dept", width: 15, align: "left", getter: (e) => e.dept },
-          { header: "Jabatan / Role", key: "role", width: 22, align: "left", getter: (e) => e.role },
+          { header: "Jabatan / Posisi", key: "role", width: 22, align: "left", getter: (e) => e.role },
           { header: "Level Hirarki", key: "level", width: 16, align: "center", getter: (e) => e.level },
-          { header: "Tipe Kontrak", key: "contractType", width: 16, align: "center", getter: (e) => e.contractType },
-          { header: "Tanggal Bergabung", key: "joinDate", width: 16, align: "center", getter: (e) => e.joinDate },
+          {
+            header: "Atasan Langsung (N+1)",
+            key: "superior",
+            width: 24,
+            align: "left",
+            getter: (e) => getDirectSuperior(e)?.name || "Direktur Utama",
+          },
+          { header: "Tipe Kontrak", key: "contractType", width: 15, align: "center", getter: (e) => e.contractType },
+          {
+            header: "Tgl Mulai Kerja",
+            key: "startDate",
+            type: "date",
+            width: 16,
+            align: "center",
+            getter: (e) => e.startDate || e.joinDate,
+          },
+          {
+            header: "Akhir Kontrak",
+            key: "endDate",
+            width: 18,
+            align: "center",
+            getter: (e) => e.endDate || "Permanen (PKWTT)",
+          },
+          { header: "Masa Kerja", key: "tenure", width: 15, align: "center", getter: (e) => e.tenure },
+          { header: "Email Perusahaan", key: "email", width: 24, align: "left", getter: (e) => e.email },
+          { header: "No. Telepon / WA", key: "phone", width: 16, align: "center", format: "@", getter: (e) => e.phone },
+          { header: "Tanggal Lahir", key: "birthDate", type: "date", width: 15, align: "center", getter: (e) => e.birthDate },
+          { header: "Alamat Domisili", key: "address", width: 32, align: "left", wrapText: true, getter: (e) => e.address },
+          {
+            header: "Status Perangkat HP",
+            key: "device",
+            width: 22,
+            align: "center",
+            getter: (e) => (e.deviceStatus === "Bound" ? `Terdaftar (${e.deviceModel || "Bound"})` : "Belum Terdaftar"),
+          },
           { header: "Status Kepegawaian", key: "status", width: 16, align: "center", getter: (e) => e.status },
         ],
         data: filteredEmployees,
@@ -1889,7 +1945,7 @@ export function useAppProviderValue() {
       const pendingCount = targetLeaves.filter((l) => l.status === "MENUNGGU").length;
       const ditolakCount = targetLeaves.filter((l) => l.status === "DITOLAK").length;
 
-      await exportToExcel<LeaveRequest>({
+      await runExcelExport<LeaveRequest>({
         fileName,
         sheetName: "Data Cuti",
         kopSurat: getCompanyKopSurat(
@@ -1908,13 +1964,13 @@ export function useAppProviderValue() {
           { header: "Nama Karyawan", key: "name", width: 24, align: "left", getter: (l) => l.name },
           { header: "Departemen", key: "dept", width: 16, align: "left", getter: (l) => l.dept },
           { header: "Tipe Cuti", key: "type", width: 14, align: "center", getter: (l) => l.type },
-          { header: "Tgl Mulai", key: "start", width: 14, align: "center", getter: (l) => l.start },
-          { header: "Tgl Selesai", key: "end", width: 14, align: "center", getter: (l) => l.end },
+          { header: "Tgl Mulai", key: "start", type: "date", width: 14, align: "center", getter: (l) => l.start },
+          { header: "Tgl Selesai", key: "end", type: "date", width: 14, align: "center", getter: (l) => l.end },
           { header: "Durasi (Hari)", key: "days", width: 13, align: "right", format: "#,##0", getter: (l) => l.days },
           { header: "Alasan Cuti", key: "reason", width: 30, align: "left", wrapText: true, getter: (l) => l.reason },
           { header: "Status", key: "status", width: 16, align: "center", getter: (l) => l.status },
           { header: "Atasan Penyetuju (N+1)", key: "approver", width: 22, align: "left", getter: (l) => l.approverName || "-" },
-          { header: "Tgl Disetujui", key: "approvedAt", width: 16, align: "center", getter: (l) => l.approvedAt || "-" },
+          { header: "Tgl Disetujui", key: "approvedAt", type: "date", width: 16, align: "center", getter: (l) => l.approvedAt || "-" },
         ],
         data: targetLeaves,
         orientation: "landscape",
@@ -1948,7 +2004,7 @@ export function useAppProviderValue() {
       const manualCount = filteredActivityLogs.filter((l) => l.isEdited).length;
       const autoCount = filteredActivityLogs.filter((l) => !l.isEdited).length;
 
-      await exportToExcel<ActivityLog>({
+      await runExcelExport<ActivityLog>({
         fileName,
         sheetName: "Audit Log",
         kopSurat: getCompanyKopSurat(
@@ -1963,7 +2019,7 @@ export function useAppProviderValue() {
         columns: [
           { header: "No", key: "no", width: 6, align: "center", getter: (_, idx) => idx + 1 },
           { header: "ID Log", key: "id", width: 14, align: "center", getter: (l) => l.id },
-          { header: "Waktu Aktivitas (WITA)", key: "timestamp", width: 22, align: "center", getter: (l) => l.timestamp },
+          { header: "Waktu Aktivitas (WITA)", key: "timestamp", type: "datetime", width: 22, align: "center", getter: (l) => l.timestamp },
           { header: "Tipe Log", key: "type", width: 16, align: "center", getter: (l) => l.type },
           { header: "Judul Aktivitas", key: "title", width: 28, align: "left", getter: (l) => l.title },
           { header: "Karyawan Terkait", key: "employeeName", width: 24, align: "left", getter: (l) => l.employeeName },
@@ -2005,7 +2061,7 @@ export function useAppProviderValue() {
 
       const days: DayOfWeek[] = ["Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu", "Minggu"];
 
-      await exportToExcel<Employee>({
+      await runExcelExport<Employee>({
         fileName,
         sheetName: "Roster Shift",
         kopSurat: getCompanyKopSurat(
@@ -2107,7 +2163,7 @@ export function useAppProviderValue() {
             ).toFixed(1) + "%"
           : "0%";
 
-      await exportToExcel<WorkJournal>({
+      await runExcelExport<WorkJournal>({
         fileName,
         sheetName: "Jurnal Kerja",
         kopSurat: getCompanyKopSurat(
@@ -2121,7 +2177,7 @@ export function useAppProviderValue() {
         columns: [
           { header: "No", key: "no", width: 6, align: "center", getter: (_, idx) => idx + 1 },
           { header: "ID Jurnal", key: "id", width: 14, align: "center", getter: (j) => j.id },
-          { header: "Tanggal", key: "date", width: 14, align: "center", getter: (j) => j.date },
+          { header: "Tanggal", key: "date", type: "date", width: 14, align: "center", getter: (j) => j.date },
           { header: "Nama Karyawan", key: "name", width: 24, align: "left", getter: (j) => j.name },
           { header: "Departemen", key: "dept", width: 16, align: "left", getter: (j) => j.dept },
           { header: "Durasi Jam Kerja", key: "hours", width: 16, align: "center", getter: (j) => j.hours },

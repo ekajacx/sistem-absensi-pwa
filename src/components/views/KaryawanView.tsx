@@ -365,32 +365,34 @@ export default function KaryawanView() {
                     </p>
                   </div>
 
-                {hasPermission("emp_manage_hr") && (
                   <div className="flex flex-wrap items-center gap-2">
-                    <button
-                      onClick={() => openAddEmployeeModal("staff")}
-                      className="px-4 py-2.5 rounded-xl bg-emerald-500 text-black font-extrabold text-xs hover:bg-emerald-400 transition-all flex items-center gap-2 shadow-lg shadow-black"
-                    >
-                      <UserPlus className="w-4 h-4 text-black" />
-                      <span>+ Tambah Staff (Karyawan)</span>
-                    </button>
-                    <button
-                      onClick={() => openAddEmployeeModal("atasan")}
-                      className="px-4 py-2.5 rounded-xl bg-[#031d11] border border-amber-400/50 text-amber-300 font-extrabold text-xs hover:bg-emerald-950 transition-all flex items-center gap-2 shadow-lg shadow-black"
-                    >
-                      <ShieldCheck className="w-4 h-4 text-amber-300" />
-                      <span>+ Tambah Atasan (Pimpinan)</span>
-                    </button>
+                    {hasPermission("emp_manage_hr") && (
+                      <>
+                        <button
+                          onClick={() => openAddEmployeeModal("staff")}
+                          className="px-4 py-2.5 rounded-xl bg-emerald-500 text-black font-extrabold text-xs hover:bg-emerald-400 transition-all flex items-center gap-2 shadow-lg shadow-black"
+                        >
+                          <UserPlus className="w-4 h-4 text-black" />
+                          <span>+ Tambah Staff (Karyawan)</span>
+                        </button>
+                        <button
+                          onClick={() => openAddEmployeeModal("atasan")}
+                          className="px-4 py-2.5 rounded-xl bg-[#031d11] border border-amber-400/50 text-amber-300 font-extrabold text-xs hover:bg-emerald-950 transition-all flex items-center gap-2 shadow-lg shadow-black"
+                        >
+                          <ShieldCheck className="w-4 h-4 text-amber-300" />
+                          <span>+ Tambah Atasan (Pimpinan)</span>
+                        </button>
+                      </>
+                    )}
                     <button
                       onClick={handleExportEmployeesExcel}
                       className="px-3.5 py-2.5 rounded-xl bg-[#021008] border border-emerald-500/50 text-emerald-300 font-extrabold text-xs hover:bg-emerald-950 transition-all flex items-center gap-1.5 shadow-lg shadow-black cursor-pointer"
-                      title="Unduh seluruh data direktori karyawan ke format Excel (.xlsx)"
+                      title="Unduh data biodata, jabatan, kontrak & direktori karyawan ke format Excel (.xlsx)"
                     >
                       <Download className="w-4 h-4 text-emerald-400" />
-                      <span>Ekspor Excel ({filteredEmployees.length})</span>
+                      <span>Ekspor Data Karyawan ({filteredEmployees.length})</span>
                     </button>
                   </div>
-                )}
               </div>
 
               {/* BANNER ATASAN LANGSUNG (UNTUK STAFF & SUPERVISOR) */}

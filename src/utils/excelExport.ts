@@ -9,6 +9,8 @@ export interface ExcelColumn<T> {
   align?: CellAlignment;
   format?: string;
   wrapText?: boolean;
+  /** "date" / "datetime": string tanggal sumber dikonversi menjadi nilai tanggal Excel asli */
+  type?: "date" | "datetime";
   getter: (item: T, index: number) => string | number | boolean | Date | null | undefined;
 }
 
@@ -36,6 +38,52 @@ export interface ExportToExcelOptions<T> {
   columns: ExcelColumn<T>[];
   data: T[];
   orientation?: "portrait" | "landscape";
+}
+
+const MONTH_INDEX: Record<string, number> = {
+  jan: 0, feb: 1, mar: 2, apr: 3, mei: 4, may: 4, jun: 5, jul: 6, agu: 7, aug: 7, agt: 7,
+  sep: 8, okt: 9, oct: 9, nov: 10, des: 11, dec: 11,
+};
+
+/**
+ * Mengonversi string tanggal sumber ("17 Nov 2026", "2026-11-18", "17 Nov 2026, 07:15 WITA",
+ * "08 Nov 2026 (Disetujui)") menjadi Date (UTC, tanpa pergeseran zona waktu) agar menjadi tanggal Excel asli.
+ * Mengembalikan null bila format tidak dikenali (nilai asli dipertahankan sebagai teks).
+ */
+function parseSourceDate(raw: string, withTime: boolean): Date | null {
+  const text = raw.trim();
+  let y: number;
+  let m: number;
+  let d: number;
+  let rest = "";
+  const iso = text.match(/^(\d{4})-(\d{2})-(\d{2})(.*)$/);
+  const indo = text.match(/^(\d{1,2})\s+([A-Za-z]{3,})\.?\s+(\d{4})(.*)$/);
+  if (iso) {
+    y = Number(iso[1]);
+    m = Number(iso[2]) - 1;
+    d = Number(iso[3]);
+    rest = iso[4];
+  } else if (indo) {
+    const mi = MONTH_INDEX[indo[2].slice(0, 3).toLowerCase()];
+    if (mi === undefined) return null;
+    y = Number(indo[3]);
+    m = mi;
+    d = Number(indo[1]);
+    rest = indo[4];
+  } else {
+    return null;
+  }
+  let hh = 0;
+  let mm = 0;
+  if (withTime) {
+    const t = rest.match(/(\d{1,2}):(\d{2})/);
+    if (t) {
+      hh = Number(t[1]);
+      mm = Number(t[2]);
+    }
+  }
+  const date = new Date(Date.UTC(y, m, d, hh, mm));
+  return Number.isNaN(date.getTime()) ? null : date;
 }
 
 /**
@@ -283,8 +331,11 @@ export async function exportToExcel<T>(options: ExportToExcelOptions<T>): Promis
       const rawVal = col.getter(item, itemIdx);
 
       // Null/undefined defense
+      let parsedDate: Date | null = null;
       if (rawVal === null || rawVal === undefined || rawVal === "") {
         cell.value = "-";
+      } else if (col.type && typeof rawVal === "string" && (parsedDate = parseSourceDate(rawVal, col.type === "datetime"))) {
+        cell.value = parsedDate;
       } else {
         cell.value = rawVal;
       }
@@ -321,6 +372,10 @@ export async function exportToExcel<T>(options: ExportToExcelOptions<T>): Promis
       // Number / Text formatting
       if (col.format) {
         cell.numFmt = col.format;
+      }
+
+      if (parsedDate) {
+        cell.numFmt = col.type === "datetime" ? "dd mmm yyyy hh:mm" : "dd mmm yyyy";
       }
 
       // Khusus NIK / ID: pastikan selalu teks terformat agar leading zeros (0...) tidak hilang
@@ -441,8 +496,12 @@ export async function exportToExcel<T>(options: ExportToExcelOptions<T>): Promis
   // ─────────────────────────────────────────────────────────────
   // 7. PENGATURAN CETAK A4 PROFESIONAL (PRINT SETUP)
   // ─────────────────────────────────────────────────────────────
+  const lastColLetter = worksheet.getColumn(Math.max(columns.length, 1)).letter;
+  const lastRowIdx = currentRowIdx;
+
   worksheet.pageSetup = {
     paperSize: 9, // A4
+    printArea: `A1:${lastColLetter}${lastRowIdx}`, // Area cetak = seluruh laporan (kop surat s.d. pengesahan)
     orientation: orientation,
     fitToPage: true,
     fitToWidth: 1, // Fit 1 page wide (tidak terpotong secara horizontal)
