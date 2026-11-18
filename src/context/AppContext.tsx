@@ -609,6 +609,7 @@ export function useAppProviderValue() {
   } | null>(null);
   const [antiSpoofScore, setAntiSpoofScore] = useState<number>(98.5);
   const [isWebcamActive, setIsWebcamActive] = useState<boolean>(false);
+  const [pendingAttendanceAction, setPendingAttendanceAction] = useState<"CHECK_IN" | "CHECK_OUT" | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const mediaStreamRef = useRef<MediaStream | null>(null);
 
@@ -745,6 +746,7 @@ export function useAppProviderValue() {
     }
 
     setIsWebcamActive(false);
+    setPendingAttendanceAction(null);
   };
 
   const toggleWebcam = async () => {
@@ -767,11 +769,12 @@ export function useAppProviderValue() {
         }
         mediaStreamRef.current = stream;
         setIsWebcamActive(true);
+        setChallengeStepStatus("verifying");
         if (videoRef.current) {
           videoRef.current.srcObject = stream;
           videoRef.current.play().catch((err) => console.warn("Video play error:", err));
         }
-        showToast("📹 Kamera depan aktif! Silakan lakukan 3 tantangan verifikasi wajah.");
+        showToast("📹 Kamera aktif! Ikuti 3 instruksi gerakan wajah di layar (otomatis terdeteksi).");
       } catch (err) {
         console.warn("Webcam not available:", err);
         showToast("Kamera fisik tidak dapat diakses. Pastikan izin kamera (Camera Permission) di browser sudah diizinkan!", "error");
@@ -2035,63 +2038,61 @@ export function useAppProviderValue() {
     showToast("Anda telah keluar dari sesi kerja. Silakan login kembali.", "info");
   };
 
-  // Process Check-In Absensi
-  const handleCheckIn = () => {
-    if (challengeStepStatus === "spoof_detected") {
-      showToast("Gagal: Sistem mendeteksi indikasi kecurangan biometrik / foto statis. Silakan ulangi verifikasi liveness wajah asli!", "error");
-      return;
-    }
-    if (!livenessPassed) {
-      showToast("Harap selesaikan uji liveness Level 4 AI (3 tantangan acak) terlebih dahulu!", "error");
-      return;
-    }
-    if (isSuspiciousFakeGps) {
-      showToast(
-        `⛔ DITOLAK (ANTI-FAKE GPS): Jarak Anda (${simulatedDistance.toFixed(1)}m) terlalu dekat/identik dengan titik pusat kantor (≤ ${minSafeDistance}m). Sistem mendeteksi indikasi Fake GPS / Mock Location!`,
-        "error"
-      );
-      return;
-    }
-    if (isOutOfGeofenceRadius || !isWithinGeofence) {
-      showToast(
-        `⛔ DITOLAK (DI LUAR GEOFENCE): Jarak Anda (${simulatedDistance.toFixed(1)}m) melewati batas radius kantor (${settings.geofenceRadius}m)!`,
-        "error"
-      );
-      return;
-    }
-    if (!isFaceScoreValid) {
-      showToast(`Gagal: Skor kecocokan wajah (${simulatedFaceScore}%) di bawah batas (${settings.aiFaceThreshold}%)!`, "error");
-      return;
-    }
+  // Helper Tanggal Hari Ini (Format: "18 Nov 2026")
+  const getTodayDateString = (): string => {
+    const now = new Date();
+    const months = ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agu", "Sep", "Okt", "Nov", "Des"];
+    return `${now.getDate()} ${months[now.getMonth()]} ${now.getFullYear()}`;
+  };
 
-    setIsCapturing(true);
-    setTimeout(() => {
-      setIsCapturing(false);
-      setAttendanceState("SUCCESS");
+  const [todayDateStr, setTodayDateStr] = useState<string>("");
 
+  useEffect(() => {
+    setTodayDateStr(getTodayDateString());
+  }, []);
+
+  const todayAttendanceRecord: AttendanceRecord | null =
+    todayDateStr
+      ? attendances.find(
+          (a) => a.employeeId === currentActiveEmployee.id && a.date === todayDateStr
+        ) || null
+      : null;
+  const hasCheckedInToday = Boolean(todayAttendanceRecord);
+  const hasCheckedOutToday = Boolean(
+    todayAttendanceRecord && todayAttendanceRecord.out !== "--:--"
+  );
+
+  // Eksekusi Otomatis Check-In atau Check-Out Begitu Verifikasi Wajah 3 Langkah Selesai
+  const executeAttendanceCommit = (actionType: "CHECK_IN" | "CHECK_OUT") => {
+    const nowTime = getFormattedServerTime();
+    const nowDateLabel = getTodayDateString();
+
+    if (actionType === "CHECK_IN") {
       const newRecord: AttendanceRecord = {
         id: `att-${Date.now()}`,
         employeeId: currentActiveEmployee.id,
         name: currentActiveEmployee.name,
         nik: currentActiveEmployee.nik,
         dept: currentActiveEmployee.dept,
-        shift: shifts.find((s) => s.id === currentActiveEmployee.shiftId)?.name || "Shift Pagi (Utama)",
-        in: getFormattedServerTime(),
+        shift:
+          shifts.find((s) => s.id === currentActiveEmployee.shiftId)?.name ||
+          "Shift Pagi (Utama)",
+        in: nowTime,
         out: "--:--",
         dist: simulatedDistance,
         score: simulatedFaceScore,
         status: "APPROVED",
-        date: "17 Nov 2026",
+        date: nowDateLabel,
       };
 
       setAttendances((prev) => [newRecord, ...prev]);
 
       const autoLog: ActivityLog = {
         id: `log-${Date.now()}`,
-        timestamp: `${new Date().toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" })}, ${getFormattedServerTime()}`,
+        timestamp: `${nowDateLabel}, ${nowTime}`,
         type: "CHECK_IN",
         title: "Check-In Mandiri Otomatis (Level 4 AI)",
-        description: `Absensi hadir masuk terverifikasi via GPS (${simulatedDistance.toFixed(1)}m) & Level 4 AI Anti-Spoofing (${antiSpoofScore}%) [3/3 Multi-Challenge Valid]`,
+        description: `Absensi hadir masuk (${nowTime}) terverifikasi otomatis via GPS (${simulatedDistance.toFixed(1)}m) & Biometrik Wajah (${antiSpoofScore}%)`,
         employeeName: currentActiveEmployee.name,
         dept: currentActiveEmployee.dept,
         actorName: currentActiveEmployee.name,
@@ -2099,9 +2100,138 @@ export function useAppProviderValue() {
         isEdited: false,
       };
       setActivityLogs((prev) => [autoLog, ...prev]);
+      showToast(
+        `✓ CHECK-IN BERHASIL (${nowTime})! Kehadiran masuk ${currentActiveEmployee.name} telah tercatat otomatis.`,
+        "success"
+      );
+    } else {
+      // CHECK_OUT: Update jam pulang pada record hari ini
+      setAttendances((prev) =>
+        prev.map((item) =>
+          item.employeeId === currentActiveEmployee.id && item.date === nowDateLabel
+            ? { ...item, out: nowTime }
+            : item
+        )
+      );
 
-      showToast(`✓ Absensi mandiri ${currentActiveEmployee.name} BERHASIL disahkan secara otomatis (Level 4 AI APPROVED)!`);
-    }, 1200);
+      const autoLog: ActivityLog = {
+        id: `log-${Date.now()}`,
+        timestamp: `${nowDateLabel}, ${nowTime}`,
+        type: "CHECK_OUT",
+        title: "Check-Out Pulang Otomatis (Level 4 AI)",
+        description: `Absensi pulang (${nowTime}) terverifikasi otomatis via GPS (${simulatedDistance.toFixed(1)}m) & Biometrik Wajah (${antiSpoofScore}%)`,
+        employeeName: currentActiveEmployee.name,
+        dept: currentActiveEmployee.dept,
+        actorName: currentActiveEmployee.name,
+        actorRole: currentActiveEmployee.role,
+        isEdited: false,
+      };
+      setActivityLogs((prev) => [autoLog, ...prev]);
+      showToast(
+        `✓ CHECK-OUT BERHASIL (${nowTime})! Absensi kerja ${currentActiveEmployee.name} hari ini telah selesai.`,
+        "success"
+      );
+    }
+
+    stopWebcam();
+    setAttendanceState("IDLE");
+    setLivenessPassed(false);
+    setPendingAttendanceAction(null);
+  };
+
+  // Otomatis simpan Check-In / Check-Out begitu 3 tantangan wajah lolos (livenessPassed === true)
+  useEffect(() => {
+    if (!livenessPassed || !isWebcamActive) return;
+    const actionToRun: "CHECK_IN" | "CHECK_OUT" =
+      pendingAttendanceAction || (hasCheckedInToday ? "CHECK_OUT" : "CHECK_IN");
+    const timer = window.setTimeout(() => {
+      executeAttendanceCommit(actionToRun);
+    }, 750);
+    return () => window.clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [livenessPassed, isWebcamActive]);
+
+  // Mulai Alur Check-In / Check-Out: Buka Kamera Otomatis -> Verifikasi Wajah Otomatis -> Simpan Otomatis
+  const handleStartAttendanceFlow = async (actionType: "CHECK_IN" | "CHECK_OUT") => {
+    if (actionType === "CHECK_IN" && hasCheckedInToday) {
+      showToast("Anda sudah melakukan Check-In hari ini!", "info");
+      return;
+    }
+    if (actionType === "CHECK_OUT" && !hasCheckedInToday) {
+      showToast("Anda belum melakukan Check-In hari ini!", "error");
+      return;
+    }
+    if (actionType === "CHECK_OUT" && hasCheckedOutToday) {
+      showToast("Anda sudah menyelesaikan Check-Out hari ini!", "info");
+      return;
+    }
+
+    const empData = employees.find((e) => e.id === currentActiveEmployee.id);
+    if (
+      empData?.deviceStatus !== "Bound" ||
+      empData?.registeredDeviceId !== simulatedDeviceId
+    ) {
+      showToast(
+        "Harap daftarkan/tautkan perangkat resmi Anda terlebih dahulu sebelum melakukan absensi!",
+        "error"
+      );
+      return;
+    }
+
+    if (isSuspiciousFakeGps) {
+      showToast(
+        `⛔ DITOLAK (ANTI-FAKE GPS): Jarak Anda (${simulatedDistance.toFixed(1)}m ≤ ${minSafeDistance}m) terindikasi manipulasi lokasi!`,
+        "error"
+      );
+      return;
+    }
+
+    if (isOutOfGeofenceRadius || !isWithinGeofence) {
+      showToast(
+        `⛔ DITOLAK (DI LUAR GEOFENCE): Jarak Anda (${simulatedDistance.toFixed(1)}m) melewati batas radius kantor (${settings.geofenceRadius}m)!`,
+        "error"
+      );
+      return;
+    }
+
+    try {
+      let stream: MediaStream;
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: "user", width: { ideal: 640 }, height: { ideal: 480 } },
+          audio: false,
+        });
+      } catch {
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: true,
+          audio: false,
+        });
+      }
+      mediaStreamRef.current = stream;
+      setPendingAttendanceAction(actionType);
+      startLevel4Liveness();
+      setIsWebcamActive(true);
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        videoRef.current.play().catch((err) => console.warn("Video play error:", err));
+      }
+      showToast(
+        `📹 Kamera aktif untuk ${
+          actionType === "CHECK_IN" ? "CHECK-IN MASUK" : "CHECK-OUT PULANG"
+        }! Ikuti 3 instruksi wajah (otomatis tersimpan setelah selesai).`
+      );
+    } catch (err) {
+      console.warn("Webcam not available:", err);
+      showToast(
+        "Kamera tidak dapat diakses. Pastikan izin kamera (Camera Permission) di browser sudah diaktifkan!",
+        "error"
+      );
+    }
+  };
+
+  // Process Check-In Absensi (Legacy/Manual Fallback)
+  const handleCheckIn = () => {
+    handleStartAttendanceFlow("CHECK_IN");
   };
 
   const copyCredentialsToClipboard = () => {
@@ -2785,7 +2915,10 @@ export function useAppProviderValue() {
     handleSaveWeeklySchedule,
     handleSelectScheduleEmployee,
     handleSimulateSpoofAttack,
+    handleStartAttendanceFlow,
     handleUpdateCompanyLogo,
+    hasCheckedInToday,
+    hasCheckedOutToday,
     hasPermission,
     isAuthenticated,
     isCapturing,
@@ -2818,8 +2951,10 @@ export function useAppProviderValue() {
     newlyCreatedCredentials,
     openAddEmployeeModal,
     openSections,
+    pendingAttendanceAction,
     pendingSubordinateCount,
     pengaturanTab,
+    todayAttendanceRecord,
     rekapDeptFilter,
     rekapLogTypeFilter,
     rekapSearchQuery,
