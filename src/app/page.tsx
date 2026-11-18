@@ -24,7 +24,7 @@ import AllModals from "@/components/modals/AllModals";
 import ToastNotification from "@/components/modals/ToastNotification";
 
 function MainApp() {
-  const { activeMenu, hasPermission, isAuthenticated } = useApp();
+  const { activeMenu, hasPermission, isAuthenticated, isWebcamActive } = useApp();
 
   if (!isAuthenticated) {
     return (
@@ -38,14 +38,14 @@ function MainApp() {
   return (
     <div className="flex h-screen overflow-hidden bg-[#010804] text-white font-sans selection:bg-emerald-500 selection:text-black">
       {/* Sidebar Panel Kiri */}
-      <Sidebar />
+      {!isWebcamActive && <Sidebar />}
 
       {/* Panel Utama Kanan */}
       <div className="flex-1 flex flex-col h-screen overflow-y-auto bg-gradient-to-br from-[#051f14] via-[#020d08] to-[#010604] relative">
         <div className="absolute top-0 right-1/4 w-[600px] h-[350px] bg-emerald-500/5 blur-[140px] pointer-events-none -z-0" />
 
         {/* Topbar Header */}
-        <Topbar />
+        {!isWebcamActive && <Topbar />}
 
         {/* View Konten Sesuai Menu Aktif */}
         <div className="px-4 md:px-8 py-4 md:py-6 space-y-6 relative z-10">
