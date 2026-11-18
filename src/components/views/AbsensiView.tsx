@@ -58,6 +58,7 @@ export default function AbsensiView() {
   const [autoStepProgress, setAutoStepProgress] = useState<number>(0);
   type FaceDistanceStatus = "NO_FACE" | "TOO_FAR" | "TOO_CLOSE" | "OPTIMAL";
   const [faceDistanceStatus, setFaceDistanceStatus] = useState<FaceDistanceStatus>("NO_FACE");
+  const [isPhoneShaking, setIsPhoneShaking] = useState<boolean>(false);
 
   const passChallengeRef = useRef(handlePassCurrentChallenge);
   useEffect(() => {
@@ -69,6 +70,7 @@ export default function AbsensiView() {
     const timer = setTimeout(() => {
       setAutoStepProgress(0);
       setFaceDistanceStatus("NO_FACE");
+      setIsPhoneShaking(false);
     }, 0);
     return () => clearTimeout(timer);
   }, [currentChallengeIndex, isWebcamActive, livenessPassed]);
@@ -91,14 +93,76 @@ export default function AbsensiView() {
     canvas.height = height;
     const ctx = canvas.getContext("2d", { willReadFrequently: true });
     let accumulated = 0;
+    let prevLum: Uint8Array | null = null;
 
     const intervalId = window.setInterval(async () => {
       const video = videoRef.current;
       if (!video || video.readyState < 2 || !ctx) return;
 
       try {
+        // Menggambar mirrored canvas agar koordinat (X, Y) identik dengan tampilan layar pengguna
+        ctx.save();
+        ctx.translate(width, 0);
+        ctx.scale(-1, 1);
         ctx.drawImage(video, 0, 0, width, height);
+        ctx.restore();
+
         const frameData = ctx.getImageData(0, 0, width, height).data;
+        const currentLum = new Uint8Array(width * height);
+
+        for (let i = 0; i < width * height; i++) {
+          const p = i * 4;
+          currentLum[i] = Math.round(
+            (frameData[p] * 299 + frameData[p + 1] * 587 + frameData[p + 2] * 114) / 1000
+          );
+        }
+
+        // 🛡️ ANTI-PHONE SHAKE: Evaluasi stabilitas 4 sudut latar belakang (background corners)
+        // Jika HP digoyangkan/diayunkan, seluruh latar belakang bergerak serentak (diff tinggi)
+        // Jika kepala ditengokkan secara wajar, latar belakang tetap diam / stabil (diff rendah)
+        let bgDiffSum = 0;
+        let bgPixelCount = 0;
+
+        if (prevLum) {
+          // Sudut Kiri-Atas (x: 2..8, y: 2..8) dan Kanan-Atas (x: 39..45, y: 2..8)
+          for (let y = 2; y <= 8; y++) {
+            for (let x = 2; x <= 8; x++) {
+              const idx = y * width + x;
+              bgDiffSum += Math.abs(currentLum[idx] - prevLum[idx]);
+              bgPixelCount++;
+            }
+            for (let x = 39; x <= 45; x++) {
+              const idx = y * width + x;
+              bgDiffSum += Math.abs(currentLum[idx] - prevLum[idx]);
+              bgPixelCount++;
+            }
+          }
+          // Sudut Kiri-Bawah (x: 2..8, y: 39..45) dan Kanan-Bawah (x: 39..45, y: 39..45)
+          for (let y = 39; y <= 45; y++) {
+            for (let x = 2; x <= 8; x++) {
+              const idx = y * width + x;
+              bgDiffSum += Math.abs(currentLum[idx] - prevLum[idx]);
+              bgPixelCount++;
+            }
+            for (let x = 39; x <= 45; x++) {
+              const idx = y * width + x;
+              bgDiffSum += Math.abs(currentLum[idx] - prevLum[idx]);
+              bgPixelCount++;
+            }
+          }
+        }
+
+        const avgBgDiff = bgPixelCount > 0 ? bgDiffSum / bgPixelCount : 0;
+        const isShaking = avgBgDiff >= 8.5;
+        setIsPhoneShaking(isShaking);
+
+        if (isShaking) {
+          // Goyangan HP terdeteksi: Reset/turunkan progres dengan cepat, tolak verifikasi otomatis!
+          accumulated = Math.max(0, accumulated - 20);
+          setAutoStepProgress(accumulated);
+          prevLum = currentLum;
+          return;
+        }
 
         // Analisis Area Tengah (Zona Oval Wajah: x:13..34, y:9..38)
         let centerPixels = 0;
@@ -110,6 +174,8 @@ export default function AbsensiView() {
         let skinYSum = 0;
         let leftSkinPixels = 0;
         let rightSkinPixels = 0;
+        let topSkinPixels = 0;
+        let bottomSkinPixels = 0;
 
         for (let y = 9; y <= 38; y++) {
           for (let x = 13; x <= 34; x++) {
@@ -119,7 +185,7 @@ export default function AbsensiView() {
             const b = frameData[idx + 2];
             centerPixels++;
 
-            const lum = 0.299 * r + 0.587 * g + 0.114 * b;
+            const lum = currentLum[y * width + x];
             lumSum += lum;
             lumSqSum += lum * lum;
 
@@ -132,46 +198,49 @@ export default function AbsensiView() {
               b > 15 &&
               r > g &&
               r > b &&
-              r - g >= 6 &&
+              r - g >= 5 &&
               maxVal - minVal >= 10;
 
             if (isSkin) {
               skinPixels++;
               skinXSum += x;
               skinYSum += y;
-              if (x <= 23) leftSkinPixels++;
-              else rightSkinPixels++;
+              if (x < 24) leftSkinPixels++;
+              else if (x > 24) rightSkinPixels++;
+
+              if (y < 24) topSkinPixels++;
+              else if (y > 24) bottomSkinPixels++;
             }
           }
         }
 
-        const avgLum = lumSum / centerPixels;
-        const variance = lumSqSum / centerPixels - avgLum * avgLum;
-        const skinRatio = skinPixels / centerPixels;
+        const avgLum = centerPixels > 0 ? lumSum / centerPixels : 0;
+        const variance = centerPixels > 0 ? lumSqSum / centerPixels - avgLum * avgLum : 0;
+        const skinRatio = centerPixels > 0 ? skinPixels / centerPixels : 0;
 
         const skinCentroidX = skinPixels > 0 ? skinXSum / skinPixels : 23.5;
         const skinCentroidY = skinPixels > 0 ? skinYSum / skinPixels : 23.5;
 
         // Evaluasi Jarak Wajah:
         // - NO_FACE: tidak ada kulit / gelap / tidak ada kontras
-        // - TOO_FAR: wajah terlalu jauh (skinRatio < 0.30)
+        // - TOO_FAR: wajah terlalu jauh (skinRatio < 0.28)
         // - TOO_CLOSE: wajah terlalu dekat/terpotong (skinRatio > 0.88 atau silau)
-        // - OPTIMAL: wajah pas di dalam bingkai oval (skinRatio 0.30 - 0.88)
+        // - OPTIMAL: wajah pas di dalam bingkai oval (skinRatio 0.28 - 0.88)
         let detectedStatus: FaceDistanceStatus = "NO_FACE";
         const hasBasicFace =
-          skinRatio >= 0.16 && avgLum >= 25 && avgLum <= 235 && variance >= 50;
+          skinRatio >= 0.16 && avgLum >= 22 && avgLum <= 236 && variance >= 42;
 
         if (!hasBasicFace) {
           detectedStatus = "NO_FACE";
-        } else if (skinRatio < 0.30) {
+        } else if (skinRatio < 0.28) {
           detectedStatus = "TOO_FAR";
-        } else if (skinRatio > 0.88 || avgLum > 235) {
+        } else if (skinRatio > 0.88 || avgLum > 236) {
           detectedStatus = "TOO_CLOSE";
         } else {
           detectedStatus = "OPTIMAL";
         }
 
-        // Validasi native FaceDetector jika tersedia di browser
+        // Validasi native FaceDetector jika tersedia di browser Chrome Android
         if (typeof window !== "undefined" && "FaceDetector" in window) {
           try {
             // @ts-expect-error Native Shape Detection API
@@ -181,14 +250,14 @@ export default function AbsensiView() {
               const faceBox = faces[0].boundingBox;
               const vidWidth = video.videoWidth || 640;
               const coverage = faceBox.width / vidWidth;
-              if (coverage < 0.25) {
+              if (coverage < 0.24) {
                 detectedStatus = "TOO_FAR";
-              } else if (coverage > 0.75) {
+              } else if (coverage > 0.78) {
                 detectedStatus = "TOO_CLOSE";
               } else {
                 detectedStatus = "OPTIMAL";
               }
-            } else if (skinRatio < 0.20) {
+            } else if (skinRatio < 0.18) {
               detectedStatus = "NO_FACE";
             }
           } catch {
@@ -203,52 +272,103 @@ export default function AbsensiView() {
         if (detectedStatus !== "OPTIMAL") {
           accumulated = Math.max(0, accumulated - 14);
           setAutoStepProgress(accumulated);
+          prevLum = currentLum;
           return;
         }
 
-        // Jarak sudah OPTIMAL! Evaluasi arah gerakan aktif (1 Verifikasi Acak: Kiri, Kanan, Atas, Bawah):
+        // 🎯 COMPUTATIONAL MOTION FLOW (Optical Flow Block-Matching pada Fitur Wajah Tengah)
+        // Mencari vektor pergeseran (flowDx, flowDy) dari fitur wajah di tengah frame
+        let bestSad = 999999;
+        let flowDx = 0;
+        let flowDy = 0;
+        let centerSad0 = 0;
+
+        if (prevLum) {
+          for (let dx = -3; dx <= 3; dx++) {
+            for (let dy = -3; dy <= 3; dy++) {
+              let sad = 0;
+              for (let v = 16; v <= 32; v++) {
+                for (let u = 18; u <= 30; u++) {
+                  const curIdx = v * width + u;
+                  const prevX = u - dx;
+                  const prevY = v - dy;
+                  const prevIdx = prevY * width + prevX;
+                  sad += Math.abs(currentLum[curIdx] - prevLum[prevIdx]);
+                }
+              }
+              if (dx === 0 && dy === 0) {
+                centerSad0 = sad;
+              }
+              if (sad < bestSad) {
+                bestSad = sad;
+                flowDx = dx;
+                flowDy = dy;
+              }
+            }
+          }
+        }
+
+        // Jarak sudah OPTIMAL & HP Tenang! Evaluasi arah gerakan aktif:
         const activeChallenge = livenessChallengeSequence[0] || "turnRight";
         let actionDetected = false;
 
         if (activeChallenge === "turnLeft") {
-          // Tengok Kiri: Wajah memutar ke kiri
-          if (skinCentroidX < 22.2 || leftSkinPixels / (rightSkinPixels + 1) >= 1.18) {
+          // Tengok Kiri: Pada mirrored screen, wajah memutar / bergerak ke sisi KIRI layar (flowDx < 0)
+          const isMovingLeft = flowDx <= -1 && bestSad < centerSad0 * 0.96;
+          const isPosedLeft =
+            skinCentroidX < 22.8 ||
+            leftSkinPixels / (rightSkinPixels + 1) >= 1.2 ||
+            (rightSkinPixels / (leftSkinPixels + 1) >= 1.2 && skinCentroidX < 23.5);
+          if (isMovingLeft || isPosedLeft) {
             actionDetected = true;
           }
         } else if (activeChallenge === "turnRight") {
-          // Tengok Kanan: Wajah memutar ke kanan
-          if (skinCentroidX > 24.8 || rightSkinPixels / (leftSkinPixels + 1) >= 1.18) {
+          // Tengok Kanan: Pada mirrored screen, wajah memutar / bergerak ke sisi KANAN layar (flowDx > 0)
+          const isMovingRight = flowDx >= 1 && bestSad < centerSad0 * 0.96;
+          const isPosedRight =
+            skinCentroidX > 24.2 ||
+            rightSkinPixels / (leftSkinPixels + 1) >= 1.2 ||
+            (leftSkinPixels / (rightSkinPixels + 1) >= 1.2 && skinCentroidX > 23.5);
+          if (isMovingRight || isPosedRight) {
             actionDetected = true;
           }
         } else if (activeChallenge === "lookUp") {
-          // Tengok Atas / Dongak: Kepala mendongak ke atas
-          if (skinCentroidY < 22.4) {
+          // Tengok Atas / Dongak: Wajah memutar / bergerak ke ATAS layar (flowDy < 0)
+          const isMovingUp = flowDy <= -1 && bestSad < centerSad0 * 0.96;
+          const isPosedUp = skinCentroidY < 22.6 || topSkinPixels / (bottomSkinPixels + 1) >= 1.2;
+          if (isMovingUp || isPosedUp) {
             actionDetected = true;
           }
         } else if (activeChallenge === "lookDown") {
-          // Tengok Bawah / Tunduk: Kepala menunduk ke bawah
-          if (skinCentroidY > 24.6) {
+          // Tengok Bawah / Tunduk: Wajah memutar / bergerak ke BAWAH layar (flowDy > 0)
+          const isMovingDown = flowDy >= 1 && bestSad < centerSad0 * 0.96;
+          const isPosedDown = skinCentroidY > 24.8 || bottomSkinPixels / (topSkinPixels + 1) >= 1.2;
+          if (isMovingDown || isPosedDown) {
             actionDetected = true;
           }
         }
 
         if (actionDetected) {
-          accumulated = Math.min(100, accumulated + 40);
+          accumulated = Math.min(100, accumulated + 35);
         } else {
           // Bengong / tidak melakukan gerakan yang diminta: turunkan progres perlahan
-          accumulated = Math.max(0, accumulated - 8);
+          accumulated = Math.max(0, accumulated - 7);
         }
 
         setAutoStepProgress(accumulated);
+        prevLum = currentLum;
 
         if (accumulated >= 100) {
           window.clearInterval(intervalId);
+          if (typeof navigator !== "undefined" && navigator.vibrate) {
+            navigator.vibrate([70, 40, 70]);
+          }
           passChallengeRef.current();
         }
       } catch {
         // Fallback jika frame canvas belum siap
       }
-    }, 220);
+    }, 120);
 
     return () => {
       window.clearInterval(intervalId);
@@ -778,27 +898,29 @@ export default function AbsensiView() {
                         </div>
                       </div>
 
-                      {/* Status Panduan Jarak & Kesiapan Wajah (DI LUAR LINGKARAN, SANGAT JELAS TERBACA) */}
+                      {/* Status Panduan Jarak, Stabilitas & Kesiapan Wajah (DI LUAR LINGKARAN, SANGAT JELAS TERBACA) */}
                       <div className="text-center py-0.5">
-                        {faceDistanceStatus === "OPTIMAL" && (
+                        {isPhoneShaking ? (
+                          <span className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full text-xs font-black bg-amber-100 text-amber-900 border border-amber-300 shadow-sm animate-pulse">
+                            <AlertTriangle className="w-3.5 h-3.5 text-amber-600" />
+                            ⚠️ Goyangan HP Terdeteksi — Tahan HP Tetap Tenang
+                          </span>
+                        ) : faceDistanceStatus === "OPTIMAL" ? (
                           <span className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full text-xs font-black bg-emerald-100 text-emerald-800 border border-emerald-300 shadow-sm">
                             <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
                             Wajah Siap — Silakan Lakukan Gerakan Sekarang!
                           </span>
-                        )}
-                        {faceDistanceStatus === "TOO_FAR" && (
+                        ) : faceDistanceStatus === "TOO_FAR" ? (
                           <span className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full text-xs font-black bg-amber-100 text-amber-800 border border-amber-300 shadow-sm animate-bounce">
                             <ScanFace className="w-3.5 h-3.5 text-amber-600" />
                             Dekatkan Wajah ke Kamera (Terlalu Jauh)
                           </span>
-                        )}
-                        {faceDistanceStatus === "TOO_CLOSE" && (
+                        ) : faceDistanceStatus === "TOO_CLOSE" ? (
                           <span className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full text-xs font-black bg-orange-100 text-orange-800 border border-orange-300 shadow-sm">
                             <AlertTriangle className="w-3.5 h-3.5 text-orange-600" />
                             Mundurkan Sedikit Wajah Anda
                           </span>
-                        )}
-                        {faceDistanceStatus === "NO_FACE" && (
+                        ) : (
                           <span className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full text-xs font-black bg-gray-100 text-gray-700 border border-gray-300 shadow-sm animate-pulse">
                             <AlertTriangle className="w-3.5 h-3.5 text-gray-500" />
                             Posisikan Wajah Anda di Lingkaran
@@ -810,10 +932,14 @@ export default function AbsensiView() {
                       <div className="relative text-center py-1">
                         <div
                           className={`relative mx-auto w-56 h-72 sm:w-64 sm:h-80 rounded-[50%] border-4 transition-all duration-300 overflow-hidden shadow-lg bg-gray-950 ${
-                            challengeStepStatus === "spoof_detected"
+                            isPhoneShaking
+                              ? "border-amber-500 ring-4 ring-amber-400/40 animate-pulse"
+                              : challengeStepStatus === "spoof_detected"
                               ? "border-red-500 ring-4 ring-red-400/30 animate-pulse"
                               : livenessPassed
                               ? "border-emerald-500 ring-4 ring-emerald-400/40"
+                              : autoStepProgress >= 50
+                              ? "border-emerald-400 ring-4 ring-emerald-400/40"
                               : faceDistanceStatus === "OPTIMAL"
                               ? "border-emerald-500 ring-4 ring-emerald-400/30"
                               : faceDistanceStatus === "TOO_FAR"
@@ -847,6 +973,8 @@ export default function AbsensiView() {
                             <Sparkles className="w-3.5 h-3.5 text-emerald-600 animate-spin" />
                             {livenessPassed
                               ? "✓ Gerakan Berhasil Tervalidasi!"
+                              : isPhoneShaking
+                              ? "HP bergoyang, mohon pegang HP stabil..."
                               : faceDistanceStatus === "OPTIMAL"
                               ? `Mendeteksi respon ${challengeDefinitions[livenessChallengeSequence[0]]?.title}...`
                               : faceDistanceStatus === "TOO_FAR"
