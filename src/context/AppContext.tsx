@@ -658,6 +658,10 @@ export function useAppProviderValue() {
   };
 
   const handlePassCurrentChallenge = () => {
+    if (!isWebcamActive) {
+      showToast("Harap nyalakan Kamera Fisik terlebih dahulu sebelum melakukan verifikasi wajah!", "error");
+      return;
+    }
     if (challengeStepStatus !== "verifying" && challengeStepStatus !== "idle") return;
 
     if (currentChallengeIndex < livenessChallengeSequence.length - 1) {
@@ -1201,10 +1205,40 @@ export function useAppProviderValue() {
   const [selectedScheduleEmpId, setSelectedScheduleEmpId] = useState<string>("emp-ops-spv");
   const [pengaturanTab, setPengaturanTab] = useState<"perusahaan" | "lokasi" | "shift">("perusahaan");
 
-  // ─── Device Lock / Anti-Titip Absen States ───────────────────────────────
-  const [simulatedDeviceId, setSimulatedDeviceId] = useState<string>("DEV-IT-601");
+  // ─── Device Lock / Anti-Titip Absen States (Real Device Fingerprint) ──────
+  const [simulatedDeviceId, setSimulatedDeviceId] = useState<string>("DEV-PWA-DEFAULT");
+  const [detectedDeviceModel, setDetectedDeviceModel] = useState<string>("Perangkat Mobile PWA");
   const [isMobileSimulated, setIsMobileSimulated] = useState<boolean>(true);
   const [showDeviceSimulator, setShowDeviceSimulator] = useState<boolean>(false);
+
+  // Deteksi Fingerprint Perangkat Asli dari Browser/HP saat mount
+  useEffect(() => {
+    try {
+      const storageKey = "absensi.deviceFingerprint.v1";
+      let deviceToken = window.localStorage.getItem(storageKey);
+      if (!deviceToken) {
+        const rand = Math.random().toString(36).substring(2, 8).toUpperCase();
+        deviceToken = `DEV-HW-${rand}`;
+        window.localStorage.setItem(storageKey, deviceToken);
+      }
+      const ua = navigator.userAgent || "";
+      let model = "Perangkat Web PWA";
+      if (/iPhone/i.test(ua)) model = "Apple iPhone (iOS PWA)";
+      else if (/iPad/i.test(ua)) model = "Apple iPad (iPadOS PWA)";
+      else if (/Android/i.test(ua)) {
+        const match = ua.match(/Android\s+[\d.]+;\s*([^;)]+)/i);
+        model = match && match[1] ? `Android (${match[1].trim()})` : "Smartphone Android (PWA)";
+      } else if (/Windows/i.test(ua)) model = "Perangkat Windows (Browser PWA)";
+      else if (/Macintosh|Mac OS X/i.test(ua)) model = "Perangkat Mac (Browser PWA)";
+
+      /* eslint-disable react-hooks/set-state-in-effect */
+      setSimulatedDeviceId(deviceToken);
+      setDetectedDeviceModel(model);
+      /* eslint-enable react-hooks/set-state-in-effect */
+    } catch {
+      // Abaikan jika localStorage diblokir
+    }
+  }, []);
 
   // Tanggal Senin dari minggu yang sedang dijadwalkan
   const [rosterWeekStart, setRosterWeekStart] = useState<string>("2026-11-16");
@@ -2669,6 +2703,7 @@ export function useAppProviderValue() {
     getFormattedServerTime,
     cutiOverrideConfirm,
     deleteShiftConfirm,
+    detectedDeviceModel,
     directSubordinates,
     directSuperior,
     draftSchedule,

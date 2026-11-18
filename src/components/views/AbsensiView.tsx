@@ -6,7 +6,6 @@ import {
   MapPin,
   CheckCircle2,
   AlertTriangle,
-  Smartphone,
   RefreshCw,
   Sparkles,
   Video,
@@ -26,11 +25,11 @@ export default function AbsensiView() {
     challengeStepStatus,
     currentActiveEmployee,
     currentChallengeIndex,
+    detectedDeviceModel,
     employees,
     getDirectSuperior,
     handleCheckIn,
     handlePassCurrentChallenge,
-    handleSimulateSpoofAttack,
     isCapturing,
     isMobileSimulated,
     isOutOfGeofenceRadius,
@@ -42,13 +41,9 @@ export default function AbsensiView() {
     setActiveMenu,
     setAttendanceState,
     setEmployees,
-    setIsMobileSimulated,
     setLivenessPassed,
-    setShowDeviceSimulator,
-    setSimulatedDeviceId,
     setSimulatedDistance,
     settings,
-    showDeviceSimulator,
     showToast,
     simulatedDeviceId,
     simulatedDistance,
@@ -111,13 +106,39 @@ export default function AbsensiView() {
         setIsDetectingUserGps(false);
         console.warn("Employee GPS error:", err);
         showToast(
-          "Gagal membaca GPS perangkat (pastikan izin lokasi aktif, atau gunakan slider simulasi).",
+          "Gagal membaca GPS perangkat. Pastikan izin lokasi (Location Permission) di browser Anda sudah diaktifkan.",
           "error"
         );
       },
       { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
     );
   };
+
+  // Otomatis deteksi GPS perangkat asli saat halaman Absensi dibuka
+  useEffect(() => {
+    if (typeof navigator !== "undefined" && navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          const lat = Number(pos.coords.latitude.toFixed(6));
+          const lng = Number(pos.coords.longitude.toFixed(6));
+          const acc = Math.round(pos.coords.accuracy || 0);
+          const dist = calculateHaversineDistance(
+            lat,
+            lng,
+            settings.latitude,
+            settings.longitude
+          );
+          setEmployeeCoords({ lat, lng, accuracy: acc });
+          setSimulatedDistance(dist);
+        },
+        () => {
+          // Pengguna dapat menekan tombol "📍 Cek GPS Saya" secara manual
+        },
+        { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+      );
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [settings.latitude, settings.longitude]);
 
   // Lifecycle Cleanup: Menjamin seluruh MediaStream tracks kamera fisik dihentikan saat AbsensiView unmount
   useEffect(() => {
@@ -194,72 +215,6 @@ export default function AbsensiView() {
                   </span>
                 </div>
 
-                {/* 🧪 DEVICE LOCK SIMULATOR PANEL */}
-                <div className="bg-yellow-500/10 border border-yellow-500/40 rounded-2xl p-4 mb-4">
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="flex items-center gap-2">
-                      <Smartphone className="w-4 h-4 text-yellow-400" />
-                      <span className="text-yellow-400 font-semibold text-sm">Simulator Perangkat</span>
-                      <span className="text-xs text-yellow-500/70 bg-yellow-500/20 px-2 py-0.5 rounded-full">DEV MODE</span>
-                    </div>
-                    <button
-                      onClick={() => setShowDeviceSimulator(!showDeviceSimulator)}
-                      className="text-yellow-400/70 hover:text-yellow-400 text-xs underline transition-colors"
-                    >
-                      {showDeviceSimulator ? "Sembunyikan" : "Tampilkan"}
-                    </button>
-                  </div>
-                  {showDeviceSimulator && (
-                    <div className="space-y-3 mt-3">
-                      {/* Toggle Mobile/Desktop */}
-                      <div className="flex items-center justify-between">
-                        <span className="text-yellow-300/80 text-xs font-medium">Jenis Perangkat:</span>
-                        <div className="flex gap-2">
-                          <button
-                            onClick={() => setIsMobileSimulated(true)}
-                            className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all ${isMobileSimulated ? "bg-emerald-500 text-white" : "bg-white/10 text-white/50 hover:bg-white/20"}`}
-                          >
-                            📱 HP/Smartphone
-                          </button>
-                          <button
-                            onClick={() => setIsMobileSimulated(false)}
-                            className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all ${!isMobileSimulated ? "bg-red-500 text-white" : "bg-white/10 text-white/50 hover:bg-white/20"}`}
-                          >
-                            💻 Laptop/PC
-                          </button>
-                        </div>
-                      </div>
-                      {/* Device Switcher */}
-                      <div>
-                        <span className="text-yellow-300/80 text-xs font-medium block mb-2">Pilih HP yang Digunakan:</span>
-                        <div className="flex flex-wrap gap-1.5">
-                          {[
-                            { id: "DEV-CEO-001", label: "Samsung S24 Ultra", owner: "CEO" },
-                            { id: "DEV-GM-010", label: "iPhone 15 Pro Max", owner: "GM" },
-                            { id: "DEV-HR-101", label: "Samsung A54", owner: "HR-SPV" },
-                            { id: "DEV-FIN-201", label: "Xiaomi 14 Pro", owner: "Fin-SPV" },
-                            { id: "DEV-MKT-301", label: "OPPO Find X7", owner: "Mkt-SPV" },
-                            { id: "DEV-SLS-401", label: "Samsung S23", owner: "Sls-SPV" },
-                            { id: "DEV-OPS-501", label: "Redmi Note 13", owner: "Ops-SPV" },
-                            { id: "DEV-IT-601", label: "Samsung S23 FE", owner: "IT-SPV" },
-                          ].map((dev) => (
-                            <button
-                              key={dev.id}
-                              onClick={() => setSimulatedDeviceId(dev.id)}
-                              className={`px-2 py-1 rounded-lg text-xs transition-all border ${simulatedDeviceId === dev.id ? "bg-yellow-500 border-yellow-400 text-black font-bold" : "bg-white/5 border-white/10 text-white/50 hover:bg-white/10"}`}
-                            >
-                              {dev.label} <span className="opacity-60">({dev.owner})</span>
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                      <p className="text-yellow-500/60 text-xs pt-1">
-                        💡 Gunakan simulator ini untuk menguji Device Lock tanpa perlu banyak HP fisik. Aktif hanya di development.
-                      </p>
-                    </div>
-                  )}
-                </div>
-
                 {/* Panel Validasi Titik Koordinat Kantor, Geofence & Pengaman Anti-Fake GPS */}
                 <div className="bg-[#010804] rounded-2xl p-4 border border-emerald-900/60 mb-4 space-y-3">
                   <div className="flex flex-wrap justify-between items-center gap-2 text-xs">
@@ -294,10 +249,10 @@ export default function AbsensiView() {
                         disabled={isDetectingUserGps}
                         onClick={handleDetectEmployeeGps}
                         className="px-3 py-1.5 rounded-xl bg-emerald-500/20 hover:bg-emerald-500 hover:text-black text-emerald-300 border border-emerald-500/40 text-[11px] font-extrabold flex items-center gap-1.5 transition-all cursor-pointer disabled:opacity-60"
-                        title="Hitung jarak GPS Anda saat ini ke titik koordinat kantor"
+                        title="Perbarui posisi GPS perangkat Anda saat ini"
                       >
                         <LocateFixed className={`w-3.5 h-3.5 ${isDetectingUserGps ? "animate-spin" : ""}`} />
-                        <span>{isDetectingUserGps ? "Mendeteksi..." : "📍 Cek GPS Saya"}</span>
+                        <span>{isDetectingUserGps ? "Mendeteksi..." : "📍 Perbarui GPS"}</span>
                       </button>
 
                       <button
@@ -334,57 +289,6 @@ export default function AbsensiView() {
                       />
                     </div>
                   )}
-
-                  {/* Slider Uji Jarak (0m s/d 120m) & Tombol Skenario Cepat */}
-                  <div className="space-y-2 pt-1">
-                    <input
-                      type="range"
-                      min="0"
-                      max="120"
-                      step="0.5"
-                      value={simulatedDistance}
-                      onChange={(e) => setSimulatedDistance(parseFloat(e.target.value))}
-                      className="w-full accent-emerald-400 cursor-pointer"
-                    />
-                    <div className="flex flex-wrap items-center justify-between gap-1.5 text-[10px]">
-                      <span className="text-white/50">Simulasi Uji Jarak:</span>
-                      <div className="flex flex-wrap gap-1.5">
-                        <button
-                          type="button"
-                          onClick={() => setSimulatedDistance(1.0)}
-                          className={`px-2 py-0.5 rounded-md font-bold border transition-all cursor-pointer ${
-                            isSuspiciousFakeGps
-                              ? "bg-amber-400 text-black border-amber-300"
-                              : "bg-amber-500/10 text-amber-300 border-amber-500/30 hover:bg-amber-500/20"
-                          }`}
-                        >
-                          🚨 Uji Fake GPS (1.0m)
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setSimulatedDistance(14.5)}
-                          className={`px-2 py-0.5 rounded-md font-bold border transition-all cursor-pointer ${
-                            isWithinGeofence
-                              ? "bg-emerald-500 text-black border-emerald-400"
-                              : "bg-emerald-500/10 text-emerald-300 border-emerald-500/30 hover:bg-emerald-500/20"
-                          }`}
-                        >
-                          ✓ Uji Normal (14.5m)
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setSimulatedDistance(settings.geofenceRadius + 25)}
-                          className={`px-2 py-0.5 rounded-md font-bold border transition-all cursor-pointer ${
-                            isOutOfGeofenceRadius
-                              ? "bg-red-500 text-white border-red-400"
-                              : "bg-red-500/10 text-red-300 border-red-500/30 hover:bg-red-500/20"
-                          }`}
-                        >
-                          ❌ Uji Luar Radius ({settings.geofenceRadius + 25}m)
-                        </button>
-                      </div>
-                    </div>
-                  </div>
 
                   {/* Peringatan Anti-Fake GPS atau Luar Radius */}
                   {isSuspiciousFakeGps && (
@@ -658,45 +562,6 @@ export default function AbsensiView() {
                       </div>
                     </div>
                   )}
-
-                  {/* 🧪 TESTING BENCH: UJI PENETRASI SERANGAN FOTO PALSU (ANTI-FRAUD TESTER) */}
-                  <div className="relative z-10 mt-3 pt-3 border-t border-emerald-900/60">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-[10px] font-bold text-amber-300 flex items-center gap-1">
-                        <span>🧪 Uji Penetrasi Celah Keamanan (Anti-Foto & Layar)</span>
-                        <span className="bg-amber-500/20 text-amber-300 text-[8px] px-1.5 py-0.2 rounded font-mono">DEV LAB</span>
-                      </span>
-                    </div>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                      <button
-                        onClick={() => handleSimulateSpoofAttack("photo_static")}
-                        className="py-1.5 px-3 rounded-xl bg-red-500/10 hover:bg-red-500/25 border border-red-500/40 text-red-300 text-[10px] font-bold transition-all text-left flex items-center justify-between"
-                        title="Uji coba apa yang terjadi jika seseorang menaruh foto cetak kertas di depan kamera"
-                      >
-                        <div className="flex items-center gap-1.5">
-                          <span>📄</span>
-                          <span>Uji Foto Cetak 2D (Kertas)</span>
-                        </div>
-                        <span className="text-[9px] text-red-400 font-mono">Simulasi Blokir →</span>
-                      </button>
-
-                      <button
-                        onClick={() => handleSimulateSpoofAttack("screen_replay")}
-                        className="py-1.5 px-3 rounded-xl bg-orange-500/10 hover:bg-orange-500/25 border border-orange-500/40 text-orange-300 text-[10px] font-bold transition-all text-left flex items-center justify-between"
-                        title="Uji coba apa yang terjadi jika seseorang memutar video rekaman di layar HP lain"
-                      >
-                        <div className="flex items-center gap-1.5">
-                          <span>📺</span>
-                          <span>Uji Replay Layar HP Lain</span>
-                        </div>
-                        <span className="text-[9px] text-orange-400 font-mono">Simulasi Blokir →</span>
-                      </button>
-                    </div>
-                    <p className="text-[9px] text-white/40 mt-1.5 text-center">
-                      💡 Fitur Level 4 AI menggagalkan serangan foto statis & replay video dengan validasi tantangan acak real-time + analisis kedalaman optik.
-                    </p>
-                  </div>
                 </div>
 
                 {attendanceState === "SUCCESS" ? (
@@ -728,13 +593,26 @@ export default function AbsensiView() {
                   </div>
                 ) : (
                   <>
-                    {/* ─── DEVICE LOCK VALIDATION ─── */}
+                    {/* ─── DEVICE LOCK VALIDATION (REAL DEVICE FINGERPRINT) ─── */}
                     {(() => {
                       const empData = employees.find(e => e.id === currentActiveEmployee.id);
+                      const isLegacySeedDevice = Boolean(
+                        empData?.registeredDeviceId &&
+                        !empData.registeredDeviceId.startsWith("DEV-HW-")
+                      );
                       const isLaptop = !isMobileSimulated;
-                      const isWrongDevice = isMobileSimulated && empData?.deviceStatus === "Bound" && empData?.registeredDeviceId !== simulatedDeviceId;
-                      const isUnbound = isMobileSimulated && empData?.deviceStatus === "Unbound";
-                      const deviceOk = isMobileSimulated && empData?.deviceStatus === "Bound" && empData?.registeredDeviceId === simulatedDeviceId;
+                      const isUnbound =
+                        isMobileSimulated &&
+                        (empData?.deviceStatus === "Unbound" || isLegacySeedDevice);
+                      const isWrongDevice =
+                        isMobileSimulated &&
+                        !isLegacySeedDevice &&
+                        empData?.deviceStatus === "Bound" &&
+                        empData?.registeredDeviceId !== simulatedDeviceId;
+                      const deviceOk =
+                        isMobileSimulated &&
+                        empData?.deviceStatus === "Bound" &&
+                        empData?.registeredDeviceId === simulatedDeviceId;
                       return (
                         <div className="mb-3 space-y-2">
                           {isLaptop && (
@@ -751,8 +629,8 @@ export default function AbsensiView() {
                               <span className="text-2xl">⚠️</span>
                               <div>
                                 <p className="text-red-400 font-bold text-sm">Peringatan: Perangkat Tidak Dikenali!</p>
-                                <p className="text-red-300/80 text-xs mt-1">HP ini bukan perangkat resmi Anda. Percobaan absensi dari perangkat lain terdeteksi dan tercatat sebagai pelanggaran.</p>
-                                <p className="text-red-300/60 text-xs mt-1">HP Terdaftar: <span className="font-semibold text-red-300">{empData?.deviceModel ?? "-"}</span></p>
+                                <p className="text-red-300/80 text-xs mt-1">Perangkat ini bukan perangkat resmi yang terdaftar pada akun Anda. Hubungi HRD jika Anda berganti perangkat.</p>
+                                <p className="text-red-300/60 text-xs mt-1">Perangkat Terdaftar: <span className="font-semibold text-red-300">{empData?.deviceModel ?? "-"}</span></p>
                               </div>
                             </div>
                           )}
@@ -760,19 +638,27 @@ export default function AbsensiView() {
                             <div className="bg-orange-500/20 border border-orange-500/60 rounded-xl p-4 flex items-start gap-3">
                               <span className="text-2xl">📱</span>
                               <div className="flex-1">
-                                <p className="text-orange-400 font-bold text-sm">HP Belum Terdaftar di Sistem</p>
-                                <p className="text-orange-300/80 text-xs mt-1">Perangkat Anda belum terdaftar. Daftarkan sekarang atau hubungi HRD.</p>
+                                <p className="text-orange-400 font-bold text-sm">Perangkat Anda Belum Ditautkan</p>
+                                <p className="text-orange-300/80 text-xs mt-1">
+                                  Tautkan perangkat ini (<strong className="text-white">{detectedDeviceModel}</strong>) sebagai perangkat resmi absensi Anda.
+                                </p>
                                 <button
                                   onClick={() => {
                                     setEmployees(prev => prev.map(emp =>
                                       emp.id === currentActiveEmployee.id
-                                        ? { ...emp, registeredDeviceId: simulatedDeviceId, deviceModel: "HP Baru (Terdaftar via Sistem)", deviceStatus: "Bound" as const }
+                                        ? {
+                                            ...emp,
+                                            registeredDeviceId: simulatedDeviceId,
+                                            deviceModel: detectedDeviceModel,
+                                            deviceStatus: "Bound" as const,
+                                          }
                                         : emp
                                     ));
+                                    showToast(`✓ Perangkat "${detectedDeviceModel}" berhasil dikunci sebagai perangkat resmi Anda!`, "success");
                                   }}
-                                  className="mt-2 bg-orange-500 hover:bg-orange-600 text-white text-xs font-bold px-4 py-1.5 rounded-lg transition-all"
+                                  className="mt-2 bg-orange-500 hover:bg-orange-600 text-white text-xs font-bold px-4 py-1.5 rounded-lg transition-all cursor-pointer"
                                 >
-                                  🔗 Daftarkan Perangkat Ini sebagai HP Resmi
+                                  🔗 Daftarkan Perangkat Ini sebagai Perangkat Resmi
                                 </button>
                               </div>
                             </div>
@@ -782,7 +668,7 @@ export default function AbsensiView() {
                               <CheckCircle2 className="w-5 h-5 text-emerald-400 flex-shrink-0" />
                               <div>
                                 <p className="text-emerald-400 font-semibold text-sm">Perangkat Terverifikasi</p>
-                                <p className="text-emerald-300/70 text-xs">{empData?.deviceModel} — HP Resmi Terdaftar ✓</p>
+                                <p className="text-emerald-300/70 text-xs">{empData?.deviceModel} — Perangkat Resmi Terdaftar ✓</p>
                               </div>
                             </div>
                           )}
@@ -824,10 +710,15 @@ export default function AbsensiView() {
                         <AlertTriangle className="w-5 h-5 text-red-400" />
                         <span>TIDAK DAPAT ABSEN: HARUS DARI HP/SMARTPHONE</span>
                       </>
-                    ) : (employees.find(e => e.id === currentActiveEmployee.id)?.deviceStatus === "Bound" && employees.find(e => e.id === currentActiveEmployee.id)?.registeredDeviceId !== simulatedDeviceId) ? (
+                    ) : (employees.find(e => e.id === currentActiveEmployee.id)?.deviceStatus !== "Bound" || employees.find(e => e.id === currentActiveEmployee.id)?.registeredDeviceId !== simulatedDeviceId) ? (
                       <>
                         <AlertTriangle className="w-5 h-5 text-red-400" />
-                        <span>TIDAK DAPAT ABSEN: PERANGKAT TIDAK DIKENALI</span>
+                        <span>
+                          {employees.find(e => e.id === currentActiveEmployee.id)?.deviceStatus === "Unbound" ||
+                          !employees.find(e => e.id === currentActiveEmployee.id)?.registeredDeviceId?.startsWith("DEV-HW-")
+                            ? "TAUTKAN PERANGKAT RESMI ANDA TERLEBIH DAHULU"
+                            : "TIDAK DAPAT ABSEN: PERANGKAT TIDAK DIKENALI"}
+                        </span>
                       </>
                     ) : isSuspiciousFakeGps ? (
                       <>

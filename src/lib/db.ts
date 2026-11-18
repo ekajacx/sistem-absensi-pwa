@@ -35,10 +35,14 @@ export function getDbPool(): Pool {
     const connectionString =
       process.env.DATABASE_URL ||
       "postgresql://postgres:jacx123@localhost:5432/sistem_absensi_pwa";
+    const isLocalhost =
+      connectionString.includes("localhost") ||
+      connectionString.includes("127.0.0.1");
     globalForPg.pgPool = new Pool({
       connectionString,
       max: 10,
       idleTimeoutMillis: 30000,
+      ssl: isLocalhost ? false : { rejectUnauthorized: false },
     });
   }
   return globalForPg.pgPool;

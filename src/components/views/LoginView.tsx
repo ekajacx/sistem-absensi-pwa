@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import { useApp } from "@/context/AppContext";
-import { ShieldCheck, Lock, Mail, Eye, EyeOff, LogIn, Sparkles } from "lucide-react";
+import { ShieldCheck, Lock, Mail, Eye, EyeOff, LogIn } from "lucide-react";
 import { ServerClock } from "@/hooks/useClock";
 
 export default function LoginView() {
@@ -11,7 +11,6 @@ export default function LoginView() {
     companyLogoUrl,
     companyProfile,
     handleLogin,
-    handleQuickDemoLogin,
   } = useApp();
 
   const [email, setEmail] = useState<string>("");
@@ -22,45 +21,6 @@ export default function LoginView() {
     e.preventDefault();
     handleLogin(email, password);
   };
-
-  const quickDemoAccounts = [
-    {
-      perspective: "admin",
-      label: "👑 Super Admin / CEO",
-      sub: "Ir. Hendra Gunawan (Semua Akses)",
-      email: "hendra@perusahaan.id",
-    },
-    {
-      perspective: "emp-gm",
-      label: "🏢 General Manager",
-      sub: "Dr. Kartika Sari (6 Departemen)",
-      email: "kartika.gm@perusahaan.id",
-    },
-    {
-      perspective: "emp-hr-spv",
-      label: "👩‍💼 HR Supervisor",
-      sub: "Siti Rahmawati (Manajemen SDM)",
-      email: "siti.hr@perusahaan.id",
-    },
-    {
-      perspective: "emp-it-spv",
-      label: "💻 IT Supervisor",
-      sub: "Budi Pratama (Geofence & Server)",
-      email: "budi.it@perusahaan.id",
-    },
-    {
-      perspective: "emp-mkt-spv",
-      label: "📈 Marketing SPV",
-      sub: "Dewi Lestari (Tim Marketing)",
-      email: "dewi.mkt@perusahaan.id",
-    },
-    {
-      perspective: "emp-it-stf",
-      label: "👤 IT Staff",
-      sub: "Dimas Wicaksono (Karyawan)",
-      email: "dimas.it@perusahaan.id",
-    },
-  ];
 
   return (
     <div className="min-h-screen w-full bg-gradient-to-br from-[#051f14] via-[#020d08] to-[#010604] text-white flex flex-col justify-center items-center p-4 md:p-8 relative overflow-y-auto selection:bg-emerald-500 selection:text-black">
@@ -73,7 +33,7 @@ export default function LoginView() {
         <div className="flex items-center justify-between text-[11px]">
           <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-950/90 border border-emerald-500/40 text-emerald-300 font-bold">
             <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
-            PostgreSQL 17 Connected
+            Sistem Keamanan Terenkripsi
           </span>
           <div className="px-2.5 py-1 rounded-lg bg-[#010804] border border-emerald-900/60 text-emerald-300 font-mono font-bold">
             <ServerClock />
@@ -107,7 +67,7 @@ export default function LoginView() {
         <form onSubmit={onSubmit} className="space-y-4 text-xs">
           <div>
             <label className="block text-white/90 font-bold mb-1.5">
-              Email Karyawan / Nomor KTP (NIK)
+              Email Karyawan / Nomor KTP (16 Digit NIK)
             </label>
             <div className="relative">
               <Mail className="w-4 h-4 text-emerald-400/80 absolute left-3.5 top-1/2 -translate-y-1/2" />
@@ -116,19 +76,16 @@ export default function LoginView() {
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="Contoh: hendra@perusahaan.id"
+                placeholder="Masukkan email perusahaan atau NIK Anda..."
                 className="w-full bg-[#010804] border border-emerald-800/80 rounded-xl pl-10 pr-3.5 py-3 text-white placeholder-white/30 focus:outline-none focus:border-emerald-400 transition-colors"
               />
             </div>
           </div>
 
           <div>
-            <div className="flex items-center justify-between mb-1.5">
-              <label className="text-white/90 font-bold">Kata Sandi (Password)</label>
-              <span className="text-[10px] text-amber-300/90 font-mono">
-                Default Demo: 123456
-              </span>
-            </div>
+            <label className="block text-white/90 font-bold mb-1.5">
+              Kata Sandi (Password)
+            </label>
             <div className="relative">
               <Lock className="w-4 h-4 text-emerald-400/80 absolute left-3.5 top-1/2 -translate-y-1/2" />
               <input
@@ -136,7 +93,7 @@ export default function LoginView() {
                 required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="Masukkan password akun atau password sementara HRD..."
+                placeholder="Masukkan kata sandi akun Anda..."
                 className="w-full bg-[#010804] border border-emerald-800/80 rounded-xl pl-10 pr-10 py-3 text-white placeholder-white/30 focus:outline-none focus:border-emerald-400 transition-colors"
               />
               <button
@@ -159,30 +116,9 @@ export default function LoginView() {
           </button>
         </form>
 
-        {/* Panel Akses Cepat 1-Klik (Untuk Kemudahan Pengujian & Demo) */}
-        <div className="pt-4 border-t border-emerald-900/60 space-y-2.5">
-          <div className="flex items-center justify-between">
-            <span className="text-[10px] font-extrabold uppercase tracking-wider text-amber-300 flex items-center gap-1.5">
-              <Sparkles className="w-3.5 h-3.5" /> Akses Cepat Akun Pengujian (1-Klik)
-            </span>
-            <span className="text-[10px] text-white/40">Tanpa ketik manual</span>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-            {quickDemoAccounts.map((acc) => (
-              <button
-                key={acc.perspective}
-                type="button"
-                onClick={() => handleQuickDemoLogin(acc.perspective)}
-                className="text-left p-2.5 rounded-xl bg-[#041910]/90 hover:bg-emerald-950 border border-emerald-900/70 hover:border-emerald-400/60 transition-all group cursor-pointer"
-              >
-                <div className="text-[11px] font-extrabold text-white group-hover:text-emerald-300 truncate">
-                  {acc.label}
-                </div>
-                <div className="text-[10px] text-white/60 truncate">{acc.sub}</div>
-              </button>
-            ))}
-          </div>
+        {/* Catatan Keamanan Akun */}
+        <div className="pt-3 border-t border-emerald-900/60 text-[11px] text-white/60 leading-relaxed text-center">
+          Gunakan email resmi perusahaan atau 16 digit NIK beserta kata sandi Anda. Bagi karyawan baru, masukkan <strong className="text-emerald-300">Password Sementara</strong> dari HRD.
         </div>
       </div>
     </div>
