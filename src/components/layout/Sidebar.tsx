@@ -360,8 +360,17 @@ export default function Sidebar() {
         <div className="p-3 bg-[#010704] rounded-xl border border-emerald-950 flex flex-col gap-2">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2.5 overflow-hidden">
-              <div className="w-8 h-8 rounded-full bg-emerald-900 flex items-center justify-center font-bold text-xs text-white ring-1 ring-emerald-500/40 flex-shrink-0">
-                {currentActiveEmployee.avatar}
+              <div className="w-8 h-8 rounded-full bg-emerald-900 flex items-center justify-center font-bold text-xs text-white ring-1 ring-emerald-500/40 flex-shrink-0 overflow-hidden">
+                {currentActiveEmployee.photoUrl ? (
+                  /* eslint-disable-next-line @next/next/no-img-element */
+                  <img
+                    src={currentActiveEmployee.photoUrl}
+                    alt={currentActiveEmployee.name}
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  currentActiveEmployee.avatar
+                )}
               </div>
               <div className="overflow-hidden">
                 <span className="text-xs font-bold text-white block truncate">{currentActiveEmployee.name}</span>

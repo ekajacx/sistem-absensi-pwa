@@ -161,8 +161,17 @@ export default function JadwalShiftView() {
                         {/* Card Info Karyawan & Pemilih Minggu */}
                         <div className="bg-[#010804] p-4 rounded-2xl border border-emerald-900/60 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                           <div className="flex items-center gap-3.5">
-                            <div className="w-12 h-12 rounded-2xl bg-emerald-950 flex items-center justify-center font-black text-white text-base ring-1 ring-emerald-500/40 flex-shrink-0">
-                              {currentActiveEmployee.avatar}
+                            <div className="w-12 h-12 rounded-2xl bg-emerald-950 flex items-center justify-center font-black text-white text-base ring-1 ring-emerald-500/40 flex-shrink-0 overflow-hidden">
+                              {currentActiveEmployee.photoUrl ? (
+                                /* eslint-disable-next-line @next/next/no-img-element */
+                                <img
+                                  src={currentActiveEmployee.photoUrl}
+                                  alt={currentActiveEmployee.name}
+                                  className="w-full h-full object-cover"
+                                />
+                              ) : (
+                                currentActiveEmployee.avatar
+                              )}
                             </div>
                             <div>
                               <div className="flex items-center gap-2">
@@ -496,8 +505,17 @@ export default function JadwalShiftView() {
                       {/* Card Info Karyawan Terpilih + Pemilih Minggu */}
                       <div className="bg-[#010804] p-4 rounded-2xl border border-emerald-900/60 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                         <div className="flex items-center gap-3.5">
-                          <div className="w-12 h-12 rounded-2xl bg-emerald-950 flex items-center justify-center font-black text-white text-base ring-1 ring-emerald-500/40 flex-shrink-0">
-                            {currentSchedTarget.avatar}
+                          <div className="w-12 h-12 rounded-2xl bg-emerald-950 flex items-center justify-center font-black text-white text-base ring-1 ring-emerald-500/40 flex-shrink-0 overflow-hidden">
+                            {currentSchedTarget.photoUrl ? (
+                              /* eslint-disable-next-line @next/next/no-img-element */
+                              <img
+                                src={currentSchedTarget.photoUrl}
+                                alt={currentSchedTarget.name}
+                                className="w-full h-full object-cover"
+                              />
+                            ) : (
+                              currentSchedTarget.avatar
+                            )}
                           </div>
                           <div>
                             <div className="flex items-center gap-2">
@@ -862,8 +880,17 @@ export default function JadwalShiftView() {
                                 >
                                   <td className="py-3 pl-3">
                                     <div className="flex items-center gap-2.5">
-                                      <div className="w-8 h-8 rounded-full bg-emerald-950 flex items-center justify-center font-bold text-white text-xs ring-1 ring-emerald-500/30 flex-shrink-0">
-                                        {emp.avatar}
+                                      <div className="w-8 h-8 rounded-full bg-emerald-950 flex items-center justify-center font-bold text-white text-xs ring-1 ring-emerald-500/30 flex-shrink-0 overflow-hidden">
+                                        {emp.photoUrl ? (
+                                          /* eslint-disable-next-line @next/next/no-img-element */
+                                          <img
+                                            src={emp.photoUrl}
+                                            alt={emp.name}
+                                            className="w-full h-full object-cover"
+                                          />
+                                        ) : (
+                                          emp.avatar
+                                        )}
                                       </div>
                                       <div>
                                         <span className="font-bold text-white block leading-tight">{emp.name}</span>

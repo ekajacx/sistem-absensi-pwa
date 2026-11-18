@@ -6,16 +6,32 @@ import { ShieldCheck, UserPlus } from "lucide-react";
 
 export default function KontrakView() {
   const {
-    employees,
+    activePerspective,
+    currentActiveEmployee,
+    currentRoleName,
     hasPermission,
     openAddEmployeeModal,
+    visibleEmployees,
   } = useApp();
+
+  const isGlobalView =
+    activePerspective === "admin" ||
+    currentRoleName === "Super Admin" ||
+    currentRoleName === "General Manager" ||
+    currentRoleName === "HR Supervisor";
 
   return (
     <div className="space-y-5">
-              <div className="flex justify-between items-center">
+              <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
                 <div>
-                  <h3 className="font-bold text-white text-base">Status Kerja & Lifecycle Karyawan</h3>
+                  <div className="flex items-center gap-2">
+                    <h3 className="font-bold text-white text-base">Status Kerja & Lifecycle Karyawan</h3>
+                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                      {isGlobalView
+                        ? `Seluruh Perusahaan (${visibleEmployees.length})`
+                        : `Tim Dept. ${currentActiveEmployee.dept} (${visibleEmployees.length})`}
+                    </span>
+                  </div>
                   <p className="text-xs text-white/70">
                     Karyawan Tetap (hanya tanggal masuk) vs Kontrak, Magang, DW (dilengkapi tanggal berakhir)
                   </p>
@@ -51,7 +67,7 @@ export default function KontrakView() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-emerald-900/30">
-                    {employees.map((k) => (
+                    {visibleEmployees.map((k) => (
                       <tr key={k.id} className="hover:bg-emerald-950/20 transition-colors">
                         <td className="py-3 font-bold text-white">{k.name}</td>
                         <td className="py-3 font-bold text-white/90">{k.dept}</td>

@@ -82,8 +82,17 @@ export default function AbsensiView() {
               <div className="rounded-3xl bg-gradient-to-b from-[#072a1b] via-[#03150d] to-[#010a06] p-6 border border-emerald-500/30 shadow-2xl relative">
                 <div className="bg-[#020e08] rounded-2xl p-4 border border-emerald-900/60 mb-4 flex items-center justify-between">
                   <div className="flex items-center gap-3">
-                    <div className="w-12 h-12 rounded-full ring-2 ring-emerald-400 bg-emerald-950 flex items-center justify-center font-black text-white text-base">
-                      {currentActiveEmployee.avatar}
+                    <div className="w-12 h-12 rounded-full ring-2 ring-emerald-400 bg-emerald-950 flex items-center justify-center font-black text-white text-base overflow-hidden shrink-0">
+                      {currentActiveEmployee.photoUrl ? (
+                        /* eslint-disable-next-line @next/next/no-img-element */
+                        <img
+                          src={currentActiveEmployee.photoUrl}
+                          alt={currentActiveEmployee.name}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        currentActiveEmployee.avatar
+                      )}
                     </div>
                     <div>
                       <h3 className="font-bold text-white text-base leading-tight">{currentActiveEmployee.name}</h3>

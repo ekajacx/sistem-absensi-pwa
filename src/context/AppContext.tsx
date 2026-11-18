@@ -1098,6 +1098,16 @@ export function useAppProviderValue() {
       setShiftActiveTab("roster");
     }
     setFilterDept("ALL");
+    setFilterShift("ALL");
+    setSearchEmployeeQuery("");
+    setRekapDeptFilter("ALL");
+    setRekapStatusFilter("ALL");
+    setRekapSearchQuery("");
+    setLogDeptFilter("ALL");
+    setLogTypeFilter("ALL");
+    setLogSearchQuery("");
+    setUserDeptFilter("ALL");
+    setUserSearchQuery("");
     /* eslint-enable react-hooks/set-state-in-effect */
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activePerspective, isStaff, currentActiveEmployee.id]);
@@ -1782,10 +1792,14 @@ export function useAppProviderValue() {
     logoUrl: companyProfile.logoUrl,
   });
 
-  // 1. Ekspor Rekap Kehadiran
-  const handleExportExcel = async () => {
-    if (filteredAttendances.length === 0) {
-      showToast("Tidak ada data absensi untuk diekspor!", "error");
+  // 1. Ekspor Rekap Kehadiran (Mendukung periode Mingguan / Bulanan & filter aktif)
+  const handleExportExcel = async (
+    customAttendances?: AttendanceRecord[],
+    customPeriodText?: string
+  ) => {
+    const targetList = Array.isArray(customAttendances) ? customAttendances : filteredAttendances;
+    if (targetList.length === 0) {
+      showToast("Tidak ada data absensi pada periode ini untuk diekspor!", "error");
       return;
     }
 
@@ -1805,26 +1819,27 @@ export function useAppProviderValue() {
         .replace(/\//g, "-");
       const fileName = `Laporan_Rekap_Absensi_${deptTag}_${todayStr}.xlsx`;
 
-      const approvedCount = filteredAttendances.filter((a) => a.status === "APPROVED").length;
-      const lateCount = filteredAttendances.filter((a) => a.status === "TERLAMBAT").length;
+      const approvedCount = targetList.filter((a) => a.status === "APPROVED").length;
+      const lateCount = targetList.filter((a) => a.status === "TERLAMBAT").length;
       const avgScore =
-        filteredAttendances.length > 0
+        targetList.length > 0
           ? (
-              filteredAttendances.reduce((acc, c) => acc + c.score, 0) /
-              filteredAttendances.length
+              targetList.reduce((acc, c) => acc + c.score, 0) /
+              targetList.length
             ).toFixed(1) + "%"
           : "0%";
 
-      const periodDesc = !canViewAllAttendances
+      const basePeriod = !canViewAllAttendances
         ? `Departemen: ${currentActiveEmployee.dept} (Tim Bawahan) • Status: ${rekapStatusFilter}`
         : `Departemen: ${deptTag} • Status: ${rekapStatusFilter}`;
+      const periodDesc = customPeriodText ? `${customPeriodText} • ${basePeriod}` : basePeriod;
 
       await runExcelExport<AttendanceRecord>({
         fileName,
         sheetName: "Rekap Kehadiran",
         kopSurat: getCompanyKopSurat("Laporan Rekapitulasi Kehadiran Karyawan", periodDesc),
         summaryMetrics: [
-          { label: "Total Log Kehadiran", value: `${filteredAttendances.length} Log` },
+          { label: "Total Log Kehadiran", value: `${targetList.length} Log` },
           { label: "Hadir Tepat Waktu", value: `${approvedCount} Log` },
           { label: "Keterlambatan", value: `${lateCount} Log` },
           { label: "Rata-rata Skor AI", value: avgScore },
@@ -1843,11 +1858,11 @@ export function useAppProviderValue() {
           { header: "Skor AI (%)", key: "score", width: 13, align: "right", format: '0.0"%"', getter: (r) => r.score },
           { header: "Status Kehadiran", key: "status", width: 16, align: "center", getter: (r) => r.status },
         ],
-        data: filteredAttendances,
+        data: targetList,
         orientation: "landscape",
       });
 
-      showToast(`✓ Berhasil mengunduh ${filteredAttendances.length} data absensi ke format Excel (.xlsx)!`, "success");
+      showToast(`✓ Berhasil mengunduh ${targetList.length} data absensi ke format Excel (.xlsx)!`, "success");
     } catch (err) {
       console.error("Export Excel Error:", err);
       showToast("Gagal mengekspor data absensi ke Excel!", "error");
@@ -2253,22 +2268,20 @@ export function useAppProviderValue() {
     }
   };
 
-  // Filter Data Audit Log Aktivitas (Menu SISTEM -> Audit Log)
+  // Filter Data Audit Log Aktivitas (Menu SISTEM -> Audit Log, terisolasi dari filter Rekap Absensi)
   const filteredActivityLogs = activityLogs.filter((log) => {
-    const activeDept = logDeptFilter !== "ALL" ? logDeptFilter : rekapDeptFilter;
-    const matchDept = activeDept === "ALL" || log.dept === activeDept;
-    const activeType = logTypeFilter !== "ALL" ? logTypeFilter : rekapLogTypeFilter;
+    const matchDept = logDeptFilter === "ALL" || log.dept === logDeptFilter;
     const matchType =
-      activeType === "ALL" ||
-      (activeType === "MANUAL_EDIT" && log.isEdited) ||
-      (activeType === "AUTO" && !log.isEdited);
-    const activeSearch = logSearchQuery !== "" ? logSearchQuery : rekapSearchQuery;
+      logTypeFilter === "ALL" ||
+      (logTypeFilter === "MANUAL_EDIT" && log.isEdited) ||
+      (logTypeFilter === "AUTO" && !log.isEdited);
+    const q = logSearchQuery.trim().toLowerCase();
     const matchSearch =
-      activeSearch === "" ||
-      log.employeeName.toLowerCase().includes(activeSearch.toLowerCase()) ||
-      log.actorName.toLowerCase().includes(activeSearch.toLowerCase()) ||
-      log.description.toLowerCase().includes(activeSearch.toLowerCase()) ||
-      (log.editReason && log.editReason.toLowerCase().includes(activeSearch.toLowerCase()));
+      q === "" ||
+      log.employeeName.toLowerCase().includes(q) ||
+      log.actorName.toLowerCase().includes(q) ||
+      log.description.toLowerCase().includes(q) ||
+      Boolean(log.editReason && log.editReason.toLowerCase().includes(q));
     return matchDept && matchType && matchSearch;
   });
 

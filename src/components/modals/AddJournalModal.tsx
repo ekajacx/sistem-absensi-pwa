@@ -43,8 +43,17 @@ export default function AddJournalModal() {
         {/* Profile Info Pelapor */}
         <div className="bg-[#010804] p-3.5 rounded-2xl border border-emerald-900/60 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-full bg-emerald-950 flex items-center justify-center font-black text-white text-xs ring-1 ring-emerald-500/40">
-              {currentActiveEmployee.avatar}
+            <div className="w-9 h-9 rounded-full bg-emerald-950 flex items-center justify-center font-black text-white text-xs ring-1 ring-emerald-500/40 overflow-hidden shrink-0">
+              {currentActiveEmployee.photoUrl ? (
+                /* eslint-disable-next-line @next/next/no-img-element */
+                <img
+                  src={currentActiveEmployee.photoUrl}
+                  alt={currentActiveEmployee.name}
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                currentActiveEmployee.avatar
+              )}
             </div>
             <div>
               <span className="font-extrabold text-white text-xs block">{currentActiveEmployee.name}</span>

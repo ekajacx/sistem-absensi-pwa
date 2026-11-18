@@ -1,8 +1,8 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import { useApp } from "@/context/AppContext";
-import { Search, Download } from "lucide-react";
+import { Search, Download, ChevronLeft, ChevronRight } from "lucide-react";
 
 export default function AuditLogView() {
   const {
@@ -16,6 +16,14 @@ export default function AuditLogView() {
     setLogSearchQuery,
     setLogTypeFilter,
   } = useApp();
+
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const [pageSize, setPageSize] = useState<number>(5);
+
+  const totalPages = Math.max(1, Math.ceil(filteredActivityLogs.length / pageSize));
+  const safePage = Math.min(currentPage, totalPages);
+  const startIdx = (safePage - 1) * pageSize;
+  const paginatedLogs = filteredActivityLogs.slice(startIdx, startIdx + pageSize);
 
   return (
     <div className="space-y-5">
@@ -95,16 +103,40 @@ export default function AuditLogView() {
           </div>
         </div>
 
-        {/* Counter & Status */}
-        <div className="flex items-center justify-between text-xs text-white/50 px-1">
-          <span>Menampilkan <strong className="text-emerald-400">{filteredActivityLogs.length}</strong> aktivitas</span>
-          <span className="text-[10px] font-mono">Real-Time Audit Trail Auto-Logged</span>
+        {/* Counter & Ukuran Halaman */}
+        <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-white/50 px-1">
+          <span>
+            Menampilkan{" "}
+            <strong className="text-white">
+              {filteredActivityLogs.length > 0 ? startIdx + 1 : 0}–
+              {Math.min(startIdx + pageSize, filteredActivityLogs.length)}
+            </strong>{" "}
+            dari <strong className="text-emerald-400">{filteredActivityLogs.length}</strong> aktivitas
+          </span>
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-1.5 text-[11px] text-white/60">
+              <span>Per halaman:</span>
+              <select
+                value={pageSize}
+                onChange={(e) => {
+                  setPageSize(Number(e.target.value));
+                  setCurrentPage(1);
+                }}
+                className="bg-[#021008] border border-emerald-900/60 rounded-lg px-2 py-1 text-white font-bold text-[11px] focus:outline-none"
+              >
+                <option value={5}>5</option>
+                <option value={10}>10</option>
+                <option value={20}>20</option>
+              </select>
+            </div>
+            <span className="text-[10px] font-mono hidden sm:inline">Real-Time Audit Trail Auto-Logged</span>
+          </div>
         </div>
 
         {/* Daftar Card Log Sesuai Desain Gambar User */}
-        <div className="space-y-3 max-h-[600px] overflow-y-auto pr-1">
-          {filteredActivityLogs.length > 0 ? (
-            filteredActivityLogs.map((log) => (
+        <div className="space-y-3">
+          {paginatedLogs.length > 0 ? (
+            paginatedLogs.map((log) => (
               <div
                 key={log.id}
                 className={`p-4 rounded-2xl border transition-all ${
@@ -177,6 +209,53 @@ export default function AuditLogView() {
             </div>
           )}
         </div>
+
+        {/* Bar Navigasi Pagination Audit Log */}
+        {filteredActivityLogs.length > 0 && (
+          <div className="bg-[#021008] rounded-2xl p-3.5 border border-emerald-900/60 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+            <span className="text-white/60 text-[11px]">
+              Halaman <strong className="text-white">{safePage}</strong> dari{" "}
+              <strong className="text-emerald-400">{totalPages}</strong> ({filteredActivityLogs.length} log)
+            </span>
+
+            <div className="flex items-center gap-1.5">
+              <button
+                type="button"
+                disabled={safePage <= 1}
+                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                className="px-2.5 py-1.5 rounded-lg bg-[#010804] border border-emerald-900/60 text-white/80 hover:text-white disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1 font-bold text-[11px] cursor-pointer"
+              >
+                <ChevronLeft className="w-3.5 h-3.5" />
+                <span>Sebelumnya</span>
+              </button>
+
+              {Array.from({ length: totalPages }, (_, idx) => idx + 1).map((pageNum) => (
+                <button
+                  key={pageNum}
+                  type="button"
+                  onClick={() => setCurrentPage(pageNum)}
+                  className={`w-7 h-7 rounded-lg font-extrabold text-[11px] transition-all cursor-pointer ${
+                    pageNum === safePage
+                      ? "bg-emerald-500 text-black shadow"
+                      : "bg-[#010804] text-white/70 hover:text-white border border-emerald-900/60"
+                  }`}
+                >
+                  {pageNum}
+                </button>
+              ))}
+
+              <button
+                type="button"
+                disabled={safePage >= totalPages}
+                onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                className="px-2.5 py-1.5 rounded-lg bg-[#010804] border border-emerald-900/60 text-white/80 hover:text-white disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1 font-bold text-[11px] cursor-pointer"
+              >
+                <span>Selanjutnya</span>
+                <ChevronRight className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

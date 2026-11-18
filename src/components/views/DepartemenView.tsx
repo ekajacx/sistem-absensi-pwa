@@ -6,11 +6,20 @@ import { useApp } from "@/context/AppContext";
 
 export default function DepartemenView() {
   const {
+    activePerspective,
+    currentActiveEmployee,
+    currentRoleName,
     employees,
     setActiveMenu,
     setFilterDept,
     standardDepartments,
   } = useApp();
+
+  const canFilterAllDepts =
+    activePerspective === "admin" ||
+    currentRoleName === "Super Admin" ||
+    currentRoleName === "General Manager" ||
+    currentRoleName === "HR Supervisor";
 
   return (
     <div className="space-y-5">
@@ -64,15 +73,21 @@ export default function DepartemenView() {
                         </div>
                       </div>
 
-                      <button
-                        onClick={() => {
-                          setFilterDept(d.id);
-                          setActiveMenu("karyawan");
-                        }}
-                        className="w-full py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-semibold transition-all text-center"
-                      >
-                        Lihat Karyawan {d.name} ({staffCount}) →
-                      </button>
+                      {canFilterAllDepts || d.id === currentActiveEmployee.dept ? (
+                        <button
+                          onClick={() => {
+                            setFilterDept(canFilterAllDepts ? d.id : "ALL");
+                            setActiveMenu("karyawan");
+                          }}
+                          className="w-full py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-semibold transition-all text-center cursor-pointer"
+                        >
+                          Lihat Karyawan {d.name} ({staffCount}) →
+                        </button>
+                      ) : (
+                        <div className="w-full py-2 rounded-xl bg-[#010804] border border-emerald-950 text-white/40 text-[11px] font-semibold text-center select-none">
+                          🔒 Otoritas Departemen {d.name}
+                        </div>
+                      )}
                     </div>
                   );
                 })}

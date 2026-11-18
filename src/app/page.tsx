@@ -22,13 +22,10 @@ import AuditLogView from "@/components/views/AuditLogView";
 import AllModals from "@/components/modals/AllModals";
 
 function MainApp() {
-  const { activeMenu, hasPermission, fileInputRef, handleLogoUpload } = useApp();
+  const { activeMenu, hasPermission } = useApp();
 
   return (
     <div className="flex h-screen overflow-hidden bg-[#010804] text-white font-sans selection:bg-emerald-500 selection:text-black">
-      {/* Hidden File Input for Logo Upload */}
-      <input type="file" ref={fileInputRef} onChange={handleLogoUpload} accept="image/*" className="hidden" />
-
       {/* Sidebar Panel Kiri */}
       <Sidebar />
 
