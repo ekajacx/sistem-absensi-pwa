@@ -128,23 +128,34 @@ export default function AbsensiView() {
           );
         }
 
-        // 🛡️ ANTI-PHONE SHAKE: Evaluasi stabilitas 4 sudut latar belakang (background corners)
-        // Jika HP digoyangkan/diayunkan, seluruh latar belakang bergerak serentak (diff tinggi)
-        // Jika kepala ditengokkan secara wajar, latar belakang tetap diam / stabil (diff rendah)
+        // 🛡️ ANTI-PHONE SHAKE: Evaluasi stabilitas sudut latar belakang (ternormalisasi exposure)
+        // Menghilangkan efek perubahan otomatis pencahayaan kamera (auto-exposure) saat kepala menengok
         let bgDiffSum = 0;
         let bgPixelCount = 0;
+        let totalCurLum = 0;
+        let totalPrevLum = 0;
+
+        for (let i = 0; i < width * height; i += 8) {
+          totalCurLum += currentLum[i];
+          if (prevLum) totalPrevLum += prevLum[i];
+        }
+        const avgCurLum = totalCurLum / (width * height / 8);
+        const avgPrevLum = prevLum ? totalPrevLum / (width * height / 8) : avgCurLum;
+        const globalLumShift = avgCurLum - avgPrevLum;
 
         if (prevLum) {
           // Sudut Kiri-Atas (x: 2..8, y: 2..8) dan Kanan-Atas (x: 39..45, y: 2..8)
           for (let y = 2; y <= 8; y++) {
             for (let x = 2; x <= 8; x++) {
               const idx = y * width + x;
-              bgDiffSum += Math.abs(currentLum[idx] - prevLum[idx]);
+              const normalizedDiff = Math.abs((currentLum[idx] - prevLum[idx]) - globalLumShift);
+              bgDiffSum += normalizedDiff;
               bgPixelCount++;
             }
             for (let x = 39; x <= 45; x++) {
               const idx = y * width + x;
-              bgDiffSum += Math.abs(currentLum[idx] - prevLum[idx]);
+              const normalizedDiff = Math.abs((currentLum[idx] - prevLum[idx]) - globalLumShift);
+              bgDiffSum += normalizedDiff;
               bgPixelCount++;
             }
           }
@@ -152,33 +163,27 @@ export default function AbsensiView() {
           for (let y = 39; y <= 45; y++) {
             for (let x = 2; x <= 8; x++) {
               const idx = y * width + x;
-              bgDiffSum += Math.abs(currentLum[idx] - prevLum[idx]);
+              const normalizedDiff = Math.abs((currentLum[idx] - prevLum[idx]) - globalLumShift);
+              bgDiffSum += normalizedDiff;
               bgPixelCount++;
             }
             for (let x = 39; x <= 45; x++) {
               const idx = y * width + x;
-              bgDiffSum += Math.abs(currentLum[idx] - prevLum[idx]);
+              const normalizedDiff = Math.abs((currentLum[idx] - prevLum[idx]) - globalLumShift);
+              bgDiffSum += normalizedDiff;
               bgPixelCount++;
             }
           }
         }
 
         const avgBgDiff = bgPixelCount > 0 ? bgDiffSum / bgPixelCount : 0;
-        const isShaking = avgBgDiff >= 8.5;
+        const isShaking = avgBgDiff >= 13.0;
         setIsPhoneShaking(isShaking);
 
         if (isShaking) {
-          // Goyangan HP terdeteksi: Reset kalibrasi & potong progres, tolak verifikasi otomatis!
-          neutralX = null;
-          neutralY = null;
-          lastCentroidX = null;
-          lastCentroidY = null;
-          stableHoldFrames = 0;
-          sumNeutralX = 0;
-          sumNeutralY = 0;
-          setIsCalibrated(false);
-          accumulated = 0;
-          setAutoStepProgress(0);
+          // Goyangan fisik HP terdeteksi: Tahan progres, tolak verifikasi otomatis!
+          accumulated = Math.max(0, accumulated - 15);
+          setAutoStepProgress(accumulated);
           prevLum = currentLum;
           return;
         }
@@ -241,19 +246,16 @@ export default function AbsensiView() {
         const skinCentroidY = skinPixels > 0 ? skinYSum / skinPixels : 23.5;
 
         // Evaluasi Jarak Wajah:
-        // - NO_FACE: tidak ada kulit / gelap / tidak ada kontras
-        // - TOO_FAR: wajah terlalu jauh (skinRatio < 0.28)
-        // - TOO_CLOSE: wajah terlalu dekat/terpotong (skinRatio > 0.88 atau silau)
-        // - OPTIMAL: wajah pas di dalam bingkai oval (skinRatio 0.28 - 0.88)
+        // Memberi toleransi saat menengok samping (area kulit wajah tampak menyempit jadi profil samping)
         let detectedStatus: FaceDistanceStatus = "NO_FACE";
         const hasBasicFace =
-          skinRatio >= 0.16 && avgLum >= 22 && avgLum <= 236 && variance >= 42;
+          skinRatio >= 0.14 && avgLum >= 20 && avgLum <= 238 && variance >= 38;
 
         if (!hasBasicFace) {
           detectedStatus = "NO_FACE";
-        } else if (skinRatio < 0.28) {
+        } else if (skinRatio < 0.18) {
           detectedStatus = "TOO_FAR";
-        } else if (skinRatio > 0.88 || avgLum > 236) {
+        } else if (skinRatio > 0.88 || avgLum > 238) {
           detectedStatus = "TOO_CLOSE";
         } else {
           detectedStatus = "OPTIMAL";
@@ -269,14 +271,14 @@ export default function AbsensiView() {
               const faceBox = faces[0].boundingBox;
               const vidWidth = video.videoWidth || 640;
               const coverage = faceBox.width / vidWidth;
-              if (coverage < 0.24) {
+              if (coverage < 0.20) {
                 detectedStatus = "TOO_FAR";
-              } else if (coverage > 0.78) {
+              } else if (coverage > 0.80) {
                 detectedStatus = "TOO_CLOSE";
               } else {
                 detectedStatus = "OPTIMAL";
               }
-            } else if (skinRatio < 0.18) {
+            } else if (skinRatio < 0.14) {
               detectedStatus = "NO_FACE";
             }
           } catch {
@@ -286,45 +288,23 @@ export default function AbsensiView() {
 
         setFaceDistanceStatus(detectedStatus);
 
-        // Jika jarak belum optimal (terlalu jauh / belum ada wajah):
-        // Kunci progres di 0%, reset baseline, tolak verifikasi otomatis!
+        // Jika tidak ada wajah sama sekali atau terlalu jauh di luar lingkaran:
         if (detectedStatus !== "OPTIMAL") {
-          neutralX = null;
-          neutralY = null;
-          lastCentroidX = null;
-          lastCentroidY = null;
-          stableHoldFrames = 0;
-          sumNeutralX = 0;
-          sumNeutralY = 0;
-          setIsCalibrated(false);
-          accumulated = 0;
-          setAutoStepProgress(0);
+          accumulated = Math.max(0, accumulated - 10);
+          setAutoStepProgress(accumulated);
           prevLum = currentLum;
           return;
         }
 
-        // 🛡️ KUNCI 1: GERBANG STABILITAS WAJIB DI TENGAH (Zero-Movement Center Gate)
-        // Pengguna WAJIB memegang HP tenang di depan wajah minimal 8 frame berturut-turut (~0.8 detik).
-        // Selama tangan masih bergerak memposisikan HP, hitungan di-reset dan progres TERKUNCI di 0%.
+        // 🛡️ KUNCI 1: KALIBRASI POSISI NETRAL AWAL (5 FRAME AWAL SAAT WAJAH TENANG)
         if (neutralX === null || neutralY === null) {
-          if (lastCentroidX !== null && lastCentroidY !== null) {
-            const frameJitter = Math.hypot(skinCentroidX - lastCentroidX, skinCentroidY - lastCentroidY);
-            if (frameJitter < 0.65) {
-              stableHoldFrames++;
-              sumNeutralX += skinCentroidX;
-              sumNeutralY += skinCentroidY;
-            } else {
-              stableHoldFrames = 0;
-              sumNeutralX = 0;
-              sumNeutralY = 0;
-            }
-          }
-          lastCentroidX = skinCentroidX;
-          lastCentroidY = skinCentroidY;
+          sumNeutralX += skinCentroidX;
+          sumNeutralY += skinCentroidY;
+          stableHoldFrames++;
 
-          if (stableHoldFrames >= 8) {
-            neutralX = sumNeutralX / stableHoldFrames;
-            neutralY = sumNeutralY / stableHoldFrames;
+          if (stableHoldFrames >= 5) {
+            neutralX = sumNeutralX / 5;
+            neutralY = sumNeutralY / 5;
             setIsCalibrated(true);
           }
 
@@ -337,51 +317,46 @@ export default function AbsensiView() {
         const deltaX = skinCentroidX - neutralX;
         const deltaY = skinCentroidY - neutralY;
 
-        // 🛡️ KUNCI 2: DUA SYARAT MUTLAK GERAKAN KEPALA NYATA (Double-Lock Threshold)
-        // Ambang batas dinaikkan ke >= 3.6 px (hanya tercapai saat leher menengok >= 35°),
-        // ditambah verifikasi asimetri dominasi pipi (>= 1.28x) yang mustahil dipalsukan oleh getaran tangan.
+        // 🛡️ KUNCI 2: EVALUASI ARAH GERAKAN KEPALA
         const activeChallenge = livenessChallengeSequence[0] || "turnRight";
         let actionDetected = false;
 
         if (activeChallenge === "turnLeft") {
-          // Tengok Kiri: Wajah bergeser nyata ke KIRI layar (deltaX <= -3.6)
-          // ATAU pergeseran deltaX <= -2.4 dengan dominasi pipi kanan (rightSkin / leftSkin >= 1.28)
-          const isPhysicalShift = deltaX <= -3.6;
-          const isCheekTurn = deltaX <= -2.4 && rightSkinPixels / (leftSkinPixels + 1) >= 1.28;
+          // Tengok Kiri: Wajah memutar ke KIRI layar (deltaX <= -2.0 ATAU dominasi pipi kanan >= 1.18x)
+          const isPhysicalShift = deltaX <= -2.0;
+          const isCheekTurn = deltaX <= -1.2 && rightSkinPixels / (leftSkinPixels + 1) >= 1.18;
           if (isPhysicalShift || isCheekTurn) {
             actionDetected = true;
           }
         } else if (activeChallenge === "turnRight") {
-          // Tengok Kanan: Wajah bergeser nyata ke KANAN layar (deltaX >= 3.6)
-          // ATAU pergeseran deltaX >= 2.4 dengan dominasi pipi kiri (leftSkin / rightSkin >= 1.28)
-          const isPhysicalShift = deltaX >= 3.6;
-          const isCheekTurn = deltaX >= 2.4 && leftSkinPixels / (rightSkinPixels + 1) >= 1.28;
+          // Tengok Kanan: Wajah memutar ke KANAN layar (deltaX >= 2.0 ATAU dominasi pipi kiri >= 1.18x)
+          const isPhysicalShift = deltaX >= 2.0;
+          const isCheekTurn = deltaX >= 1.2 && leftSkinPixels / (rightSkinPixels + 1) >= 1.18;
           if (isPhysicalShift || isCheekTurn) {
             actionDetected = true;
           }
         } else if (activeChallenge === "lookUp") {
-          // Tengok Atas / Dongak: Wajah bergeser/mendongak ke ATAS layar (deltaY <= -3.4)
-          const isPhysicalShift = deltaY <= -3.4;
-          const isChinTilt = deltaY <= -2.2 && topSkinPixels / (bottomSkinPixels + 1) >= 1.28;
+          // Tengok Atas / Dongak: Wajah bergeser/mendongak ke ATAS layar (deltaY <= -1.8)
+          const isPhysicalShift = deltaY <= -1.8;
+          const isChinTilt = deltaY <= -1.2 && topSkinPixels / (bottomSkinPixels + 1) >= 1.18;
           if (isPhysicalShift || isChinTilt) {
             actionDetected = true;
           }
         } else if (activeChallenge === "lookDown") {
-          // Tengok Bawah / Tunduk: Wajah bergeser/menunduk ke BAWAH layar (deltaY >= 3.4)
-          const isPhysicalShift = deltaY >= 3.4;
-          const isChinTilt = deltaY >= 2.2 && bottomSkinPixels / (topSkinPixels + 1) >= 1.28;
+          // Tengok Bawah / Tunduk: Wajah bergeser/menunduk ke BAWAH layar (deltaY >= 1.8)
+          const isPhysicalShift = deltaY >= 1.8;
+          const isChinTilt = deltaY >= 1.2 && bottomSkinPixels / (topSkinPixels + 1) >= 1.18;
           if (isPhysicalShift || isChinTilt) {
             actionDetected = true;
           }
         }
 
-        // 🛡️ KUNCI 3: DURASI PENAHANAN GERAKAN (Hold Duration ~1.1 - 1.2 Detik)
-        // Penambahan progres bertahap +9% per frame (butuh 11-12 frame konsisten menengok).
-        // Jika pengguna diam / kembali lurus sebelum penuh, progres langsung dipotong kembali ke 0%.
+        // 🛡️ KUNCI 3: AKUMULASI RESPON (Responsif ~0.5 detik menengok untuk capai 100%)
         if (actionDetected) {
-          accumulated = Math.min(100, accumulated + 9);
+          accumulated = Math.min(100, accumulated + 20);
         } else {
-          accumulated = Math.max(0, accumulated - 12);
+          // Diam menatap depan: Progres turun perlahan ke 0%
+          accumulated = Math.max(0, accumulated - 8);
         }
 
         setAutoStepProgress(accumulated);
