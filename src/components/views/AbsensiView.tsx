@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useApp } from "@/context/AppContext";
 import {
   MapPin,
@@ -140,12 +140,16 @@ export default function AbsensiView() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [settings.latitude, settings.longitude]);
 
-  // Lifecycle Cleanup: Menjamin seluruh MediaStream tracks kamera fisik dihentikan saat AbsensiView unmount
+  // Lifecycle Cleanup: Menjamin seluruh MediaStream tracks kamera fisik hanya dihentikan saat AbsensiView benar-benar unmount
+  const stopWebcamRef = useRef(stopWebcam);
+  useEffect(() => {
+    stopWebcamRef.current = stopWebcam;
+  });
   useEffect(() => {
     return () => {
-      stopWebcam();
+      stopWebcamRef.current();
     };
-  }, [stopWebcam]);
+  }, []);
 
   return (
     <div className="max-w-xl mx-auto space-y-6">
@@ -386,14 +390,22 @@ export default function AbsensiView() {
                         playsInline
                         autoPlay
                         muted
-                        className={`absolute inset-0 w-full h-full object-cover ${isWebcamActive ? "opacity-90" : "hidden"}`}
+                        className={`absolute inset-0 w-full h-full object-cover scale-x-[-1] transition-opacity duration-300 ${
+                          isWebcamActive ? "opacity-100" : "opacity-0 pointer-events-none"
+                        }`}
                       />
 
                       {/* Laser Scanning Animation (HUD) */}
                       <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-transparent via-emerald-400 to-transparent animate-bounce opacity-70" />
 
                       {/* Facial Mesh Wireframe Overlay */}
-                      <div className="relative z-10 flex flex-col items-center justify-center p-3">
+                      <div
+                        className={`relative z-10 flex flex-col items-center p-3 w-full h-full ${
+                          isWebcamActive && !livenessPassed && challengeStepStatus !== "spoof_detected"
+                            ? "justify-end pb-3 bg-gradient-to-t from-black/80 via-transparent to-transparent"
+                            : "justify-center"
+                        }`}
+                      >
                         {challengeStepStatus === "spoof_detected" ? (
                           <div className="space-y-1">
                             <ShieldAlert className="w-12 h-12 text-red-400 mx-auto animate-bounce" />

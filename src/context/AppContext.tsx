@@ -750,25 +750,44 @@ export function useAppProviderValue() {
   const toggleWebcam = async () => {
     if (isWebcamActive) {
       stopWebcam();
-      showToast("Kamera fisik dimatikan. Beralih ke Biometric Sensor Simulator.");
+      showToast("Kamera fisik dimatikan.");
     } else {
       try {
-        const stream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: "user", width: { ideal: 640 }, height: { ideal: 480 } },
-        });
+        let stream: MediaStream;
+        try {
+          stream = await navigator.mediaDevices.getUserMedia({
+            video: { facingMode: "user", width: { ideal: 640 }, height: { ideal: 480 } },
+            audio: false,
+          });
+        } catch {
+          stream = await navigator.mediaDevices.getUserMedia({
+            video: true,
+            audio: false,
+          });
+        }
         mediaStreamRef.current = stream;
+        setIsWebcamActive(true);
         if (videoRef.current) {
           videoRef.current.srcObject = stream;
           videoRef.current.play().catch((err) => console.warn("Video play error:", err));
         }
-        setIsWebcamActive(true);
-        showToast("📹 Kamera depan aktif! Menyelaraskan feed dengan pemindai biometrik AI Level 4.");
+        showToast("📹 Kamera depan aktif! Silakan lakukan 3 tantangan verifikasi wajah.");
       } catch (err) {
         console.warn("Webcam not available:", err);
-        showToast("Kamera fisik tidak dapat diakses (izin ditolak atau di simulator). Menggunakan Biometric Simulation Hub.", "error");
+        showToast("Kamera fisik tidak dapat diakses. Pastikan izin kamera (Camera Permission) di browser sudah diizinkan!", "error");
       }
     }
   };
+
+  // Pastikan stream terpasang ke elemen <video> saat isWebcamActive bernilai true
+  useEffect(() => {
+    if (isWebcamActive && mediaStreamRef.current && videoRef.current) {
+      if (videoRef.current.srcObject !== mediaStreamRef.current) {
+        videoRef.current.srcObject = mediaStreamRef.current;
+      }
+      videoRef.current.play().catch((err) => console.warn("Video play sync error:", err));
+    }
+  }, [isWebcamActive]);
 
   useEffect(() => {
     if (activeMenu !== "absensi" && (isWebcamActive || mediaStreamRef.current)) {

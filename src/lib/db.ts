@@ -34,6 +34,8 @@ export function getDbPool(): Pool {
   if (!globalForPg.pgPool) {
     const connectionString =
       process.env.DATABASE_URL ||
+      process.env.POSTGRES_URL ||
+      process.env.STORAGE_URL ||
       "postgresql://postgres:jacx123@localhost:5432/sistem_absensi_pwa";
     const isLocalhost =
       connectionString.includes("localhost") ||
