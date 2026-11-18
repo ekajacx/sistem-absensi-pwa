@@ -268,7 +268,7 @@ export default function Sidebar() {
                       id: "jurnal-kerja",
                       label: "Jurnal Kerja",
                       icon: "📝",
-                      badge: visibleJournals.length,
+                      badge: visibleJournals.filter((j) => !j.isArchived).length,
                     },
                   ].map((item) => (
                     <button

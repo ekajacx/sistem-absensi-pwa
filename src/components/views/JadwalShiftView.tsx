@@ -12,7 +12,6 @@ export default function JadwalShiftView() {
     currentRoleName,
     directSuperior,
     draftSchedule,
-    employees,
     formatDateISO,
     formatDateShort,
     getLeaveOnDate,
@@ -37,8 +36,10 @@ export default function JadwalShiftView() {
   } = useApp();
 
   const schedulableEmployees = getSchedulableEmployees();
-            const currentSchedTarget =
-              employees.find((e) => e.id === selectedScheduleEmpId) || schedulableEmployees[0] || employees[0];
+  const currentSchedTarget =
+    schedulableEmployees.find((e) => e.id === selectedScheduleEmpId) ||
+    schedulableEmployees[0] ||
+    currentActiveEmployee;
             const isSupervisorRole = currentActiveEmployee.level === "Supervisor";
             const isAdminOrHR = activePerspective === "admin" || currentRoleName === "Super Admin" || currentRoleName === "HR Supervisor";
             const canOverrideCuti = currentActiveEmployee.level === "Supervisor" || currentActiveEmployee.level === "GeneralManager" || currentActiveEmployee.level === "Director" || isAdminOrHR;
@@ -479,7 +480,7 @@ export default function JadwalShiftView() {
                         <div className="flex items-center gap-2 min-w-[280px]">
                           <span className="text-xs text-white/60 font-bold whitespace-nowrap">Pilih Karyawan:</span>
                           <select
-                            value={selectedScheduleEmpId}
+                            value={currentSchedTarget.id}
                             onChange={(e) => handleSelectScheduleEmployee(e.target.value)}
                             className="w-full bg-[#010804] border border-emerald-500/50 rounded-xl px-3 py-2 text-xs text-white font-bold focus:border-emerald-400 focus:outline-none"
                           >
@@ -641,7 +642,7 @@ export default function JadwalShiftView() {
                             const isWeekend = day === "Sabtu" || day === "Minggu";
                             const dayDateStr = rosterDayDates[day];
                             const dayDate = new Date(dayDateStr + "T00:00:00");
-                            const leaveOnDay = getLeaveOnDate(selectedScheduleEmpId, dayDateStr);
+                            const leaveOnDay = getLeaveOnDate(currentSchedTarget.id, dayDateStr);
                             const isCutiLocked = !!leaveOnDay && !canOverrideCuti;
                             const hasCuti = !!leaveOnDay;
 
@@ -850,7 +851,7 @@ export default function JadwalShiftView() {
                                 Sabtu: "Libur",
                                 Minggu: "Libur",
                               };
-                              const isSelected = emp.id === selectedScheduleEmpId;
+                              const isSelected = emp.id === currentSchedTarget.id;
 
                               return (
                                 <tr

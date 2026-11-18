@@ -659,18 +659,28 @@ export default function KaryawanView() {
                 </div>
 
                 <div className="flex items-center gap-2">
-                  <select
-                    value={filterDept}
-                    onChange={(e) => setFilterDept(e.target.value)}
-                    className="bg-[#010804] border border-emerald-900/60 rounded-xl px-3 py-1.5 text-xs text-white"
-                  >
-                    <option value="ALL">Semua Departemen ({standardDepartments.length})</option>
-                    {standardDepartments.map((d) => (
-                      <option key={d.id} value={d.id}>
-                        {d.name}
-                      </option>
-                    ))}
-                  </select>
+                  {activePerspective === "admin" ||
+                  currentRoleName === "Super Admin" ||
+                  currentRoleName === "General Manager" ||
+                  currentRoleName === "HR Supervisor" ? (
+                    <select
+                      value={filterDept}
+                      onChange={(e) => setFilterDept(e.target.value)}
+                      className="bg-[#010804] border border-emerald-900/60 rounded-xl px-3 py-1.5 text-xs text-white"
+                    >
+                      <option value="ALL">Semua Departemen ({standardDepartments.length})</option>
+                      {standardDepartments.map((d) => (
+                        <option key={d.id} value={d.id}>
+                          {d.name}
+                        </option>
+                      ))}
+                    </select>
+                  ) : (
+                    <div className="bg-[#010804] border border-emerald-800/60 rounded-xl px-3 py-1.5 text-xs text-emerald-300 font-bold flex items-center gap-2">
+                      <span>Departemen: {currentActiveEmployee.dept}</span>
+                      <span className="text-[10px] text-white/50">🔒 Tim</span>
+                    </div>
+                  )}
 
                   {(filterDept !== "ALL" || searchEmployeeQuery) && (
                     <button

@@ -1032,15 +1032,6 @@ export function useAppProviderValue() {
   const [isMobileSimulated, setIsMobileSimulated] = useState<boolean>(true);
   const [showDeviceSimulator, setShowDeviceSimulator] = useState<boolean>(false);
 
-  // Jika POV Staff, kunci target jadwal ke diri sendiri dan kunci tab ke roster
-  useEffect(() => {
-    if (isStaff) {
-      /* eslint-disable-next-line react-hooks/set-state-in-effect */
-      setSelectedScheduleEmpId(currentActiveEmployee.id);
-      setShiftActiveTab("roster");
-    }
-  }, [isStaff, currentActiveEmployee.id]);
-
   // Tanggal Senin dari minggu yang sedang dijadwalkan
   const [rosterWeekStart, setRosterWeekStart] = useState<string>("2026-11-16");
 
@@ -1075,6 +1066,42 @@ export function useAppProviderValue() {
     Minggu: "Libur",
   });
 
+  // Sinkronisasi target jadwal & filter saat berganti akun/POV agar tidak ada data lintas departemen yang tertinggal
+  useEffect(() => {
+    const allowedSched = getSchedulableEmployees();
+    const isCurrentValid = allowedSched.some((e) => e.id === selectedScheduleEmpId);
+    const nextTargetId = isStaff
+      ? currentActiveEmployee.id
+      : isCurrentValid
+      ? selectedScheduleEmpId
+      : (allowedSched[0]?.id || currentActiveEmployee.id);
+
+    /* eslint-disable react-hooks/set-state-in-effect */
+    if (nextTargetId !== selectedScheduleEmpId) {
+      setSelectedScheduleEmpId(nextTargetId);
+      const existing = weeklySchedules[nextTargetId];
+      setDraftSchedule(
+        existing
+          ? { ...existing }
+          : {
+              Senin: "Pagi",
+              Selasa: "Pagi",
+              Rabu: "Pagi",
+              Kamis: "Pagi",
+              Jumat: "Pagi",
+              Sabtu: "Libur",
+              Minggu: "Libur",
+            }
+      );
+    }
+    if (isStaff) {
+      setShiftActiveTab("roster");
+    }
+    setFilterDept("ALL");
+    /* eslint-enable react-hooks/set-state-in-effect */
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activePerspective, isStaff, currentActiveEmployee.id]);
+
   const handleSelectScheduleEmployee = (empId: string) => {
     setSelectedScheduleEmpId(empId);
     const existing = weeklySchedules[empId];
@@ -1099,14 +1126,19 @@ export function useAppProviderValue() {
       showToast("Karyawan tidak memiliki wewenang untuk mengubah jadwal kerja. Pengaturan jadwal dilakukan oleh Supervisor.", "error");
       return;
     }
-    const targetEmp = employees.find((emp) => emp.id === selectedScheduleEmpId);
-    if (!targetEmp) return;
+    const allowedSched = getSchedulableEmployees();
+    const targetEmp =
+      allowedSched.find((emp) => emp.id === selectedScheduleEmpId) || allowedSched[0];
+    if (!targetEmp) {
+      showToast("Anda tidak memiliki wewenang mengatur jadwal karyawan di luar departemen Anda!", "error");
+      return;
+    }
 
     const finalSchedule = { ...draftSchedule };
 
     setWeeklySchedules((prev) => ({
       ...prev,
-      [selectedScheduleEmpId]: finalSchedule,
+      [targetEmp.id]: finalSchedule,
     }));
     showToast(`✓ Jadwal shift mingguan untuk ${targetEmp.name} berhasil disimpan!`, "success");
   };
@@ -1927,9 +1959,13 @@ export function useAppProviderValue() {
     }
   };
 
-  // 3. Ekspor Pengajuan & Riwayat Cuti
-  const handleExportLeavesExcel = async () => {
-    const targetLeaves = leaveActiveTab === "subordinate-leaves" ? subordinateLeaves : myLeaves;
+  // 3. Ekspor Pengajuan & Riwayat Cuti (Mendukung ekspor sesuai filter/tab aktif)
+  const handleExportLeavesExcel = async (
+    customLeaves?: LeaveRequest[],
+    filterLabel?: string
+  ) => {
+    const defaultLeaves = leaveActiveTab === "subordinate-leaves" ? subordinateLeaves : myLeaves;
+    const targetLeaves = Array.isArray(customLeaves) ? customLeaves : defaultLeaves;
     if (targetLeaves.length === 0) {
       showToast("Tidak ada data pengajuan cuti untuk diekspor!", "error");
       return;
@@ -1950,12 +1986,20 @@ export function useAppProviderValue() {
       const pendingCount = targetLeaves.filter((l) => l.status === "MENUNGGU").length;
       const ditolakCount = targetLeaves.filter((l) => l.status === "DITOLAK").length;
 
+      const baseCategory =
+        leaveActiveTab === "subordinate-leaves"
+          ? "Persetujuan Cuti Tim / Bawahan"
+          : "Riwayat Cuti Mandiri";
+      const periodInfo = filterLabel
+        ? `${baseCategory} • ${filterLabel}`
+        : `Kategori: ${baseCategory}`;
+
       await runExcelExport<LeaveRequest>({
         fileName,
         sheetName: "Data Cuti",
         kopSurat: getCompanyKopSurat(
           "Laporan Pengajuan & Persetujuan Cuti Karyawan",
-          `Kategori: ${leaveActiveTab === "subordinate-leaves" ? "Persetujuan Cuti Tim / Bawahan" : "Riwayat Cuti Mandiri"}`
+          periodInfo
         ),
         summaryMetrics: [
           { label: "Total Pengajuan", value: `${targetLeaves.length} Berkas` },
@@ -2141,9 +2185,12 @@ export function useAppProviderValue() {
     }
   };
 
-  // 6. Ekspor Jurnal Kerja Harian
-  const handleExportJournalsExcel = async () => {
-    const targetJournals = visibleJournals;
+  // 6. Ekspor Jurnal Kerja Harian (Mendukung ekspor sesuai filter/tab aktif)
+  const handleExportJournalsExcel = async (
+    customJournals?: WorkJournal[],
+    filterLabel?: string
+  ) => {
+    const targetJournals = Array.isArray(customJournals) ? customJournals : visibleJournals;
 
     if (targetJournals.length === 0) {
       showToast("Tidak ada data jurnal kerja untuk diekspor!", "error");
@@ -2168,12 +2215,17 @@ export function useAppProviderValue() {
             ).toFixed(1) + "%"
           : "0%";
 
+      const baseCategory = isStaff
+        ? `Jurnal Mandiri (${currentActiveEmployee.name})`
+        : "Laporan Jurnal Tim";
+      const periodInfo = filterLabel ? `${baseCategory} • ${filterLabel}` : `Kategori: ${baseCategory}`;
+
       await runExcelExport<WorkJournal>({
         fileName,
         sheetName: "Jurnal Kerja",
         kopSurat: getCompanyKopSurat(
           "Laporan Jurnal Kerja Harian Karyawan",
-          `Kategori: ${isStaff ? `Jurnal Mandiri (${currentActiveEmployee.name})` : "Laporan Jurnal Tim"}`
+          periodInfo
         ),
         summaryMetrics: [
           { label: "Total Jurnal Tercatat", value: `${targetJournals.length} Laporan` },

@@ -91,6 +91,7 @@ export interface LeaveRequest {
   approverId?: string;
   approverName?: string;
   approvedAt?: string;
+  isArchived?: boolean;
 }
 
 export interface WorkJournal {
@@ -104,6 +105,7 @@ export interface WorkJournal {
   score: number;
   tasks: string[];
   notes?: string;
+  isArchived?: boolean;
 }
 
 export interface SystemUser {
