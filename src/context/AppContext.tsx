@@ -2048,7 +2048,10 @@ export function useAppProviderValue() {
   const [todayDateStr, setTodayDateStr] = useState<string>("");
 
   useEffect(() => {
-    setTodayDateStr(getTodayDateString());
+    const timer = setTimeout(() => {
+      setTodayDateStr(getTodayDateString());
+    }, 0);
+    return () => clearTimeout(timer);
   }, []);
 
   const todayAttendanceRecord: AttendanceRecord | null =
