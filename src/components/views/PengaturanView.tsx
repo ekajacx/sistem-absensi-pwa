@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import { useApp } from "@/context/AppContext";
 import {
   MapPin,
@@ -17,6 +17,9 @@ import {
   CheckCircle2,
   Mail,
   Phone,
+  LocateFixed,
+  ShieldAlert,
+  ExternalLink,
 } from "lucide-react";
 
 export default function PengaturanView() {
@@ -28,6 +31,7 @@ export default function PengaturanView() {
     handleOpenEditShift,
     handleRemoveCompanyLogo,
     handleSaveCompanyProfile,
+    handleSaveOfficeSettings,
     handleUpdateCompanyLogo,
     pengaturanTab,
     setCompanyProfileForm,
@@ -38,6 +42,41 @@ export default function PengaturanView() {
     shifts,
     showToast,
   } = useApp();
+
+  const [isDetectingOfficeGps, setIsDetectingOfficeGps] = useState<boolean>(false);
+
+  const handleDetectCurrentOfficeLocation = () => {
+    if (typeof navigator === "undefined" || !navigator.geolocation) {
+      showToast("Browser Anda tidak mendukung fitur Geolocation GPS!", "error");
+      return;
+    }
+    setIsDetectingOfficeGps(true);
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const lat = Number(pos.coords.latitude.toFixed(6));
+        const lng = Number(pos.coords.longitude.toFixed(6));
+        setSettings((prev) => ({
+          ...prev,
+          latitude: lat,
+          longitude: lng,
+        }));
+        setIsDetectingOfficeGps(false);
+        showToast(
+          `📍 Titik lokasi berhasil diambil (${lat}, ${lng})! Klik Simpan untuk mengunci titik kantor.`,
+          "success"
+        );
+      },
+      (err) => {
+        setIsDetectingOfficeGps(false);
+        console.warn("Geolocation error:", err);
+        showToast(
+          "Gagal mengakses GPS perangkat (pastikan izin lokasi browser diizinkan).",
+          "error"
+        );
+      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+    );
+  };
 
   return (
     <div className="space-y-6">
@@ -407,60 +446,253 @@ export default function PengaturanView() {
 
       {/* TAB 2: PENGATURAN LOKASI & GEOFENCE GPS */}
       {pengaturanTab === "lokasi" && (
-        <div className="max-w-2xl bg-gradient-to-br from-[#062417] to-[#021008] rounded-2xl p-6 border border-emerald-900/60 space-y-5">
-          <div className="flex items-center justify-between border-b border-emerald-900/60 pb-3">
-            <div>
-              <h3 className="font-bold text-white text-base flex items-center gap-2">
-                <Cpu className="w-5 h-5 text-blue-400" />
-                <span>Pengaturan Titik Lokasi Kantor & Geofence GPS</span>
-              </h3>
-              <p className="text-xs text-white/70">
-                Wewenang khusus IT Supervisor & IT Staff untuk mengelola infrastruktur & keamanan sistem.
-              </p>
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+          {/* KOLOM KIRI: FORM KONFIGURASI KOORDINAT, GEOFENCE & ANTI-FAKE GPS */}
+          <div className="lg:col-span-6 bg-gradient-to-br from-[#062417] to-[#021008] rounded-3xl p-6 border border-emerald-900/60 shadow-xl space-y-5">
+            <div className="flex items-center justify-between border-b border-emerald-900/60 pb-3">
+              <div>
+                <h3 className="font-bold text-white text-base flex items-center gap-2">
+                  <Cpu className="w-5 h-5 text-blue-400" />
+                  <span>Titik Koordinat Kantor & Geofence GPS</span>
+                </h3>
+                <p className="text-xs text-white/70">
+                  Tentukan titik koordinat pusat kantor, batas radius maksimal, dan pengaman Anti-Fake GPS.
+                </p>
+              </div>
+              <span className="px-2.5 py-1 rounded-lg bg-blue-500/20 text-blue-300 border border-blue-500/30 text-[10px] font-bold shrink-0">
+                IT & ADMIN
+              </span>
             </div>
-            <span className="px-2.5 py-1 rounded-lg bg-blue-500/20 text-blue-300 border border-blue-500/30 text-[10px] font-bold">
-              IT ONLY
-            </span>
+
+            <div className="space-y-4 text-xs">
+              {/* Nama Titik Kantor */}
+              <div>
+                <label className="text-white block mb-1 font-bold">Nama Titik Lokasi Kantor</label>
+                <input
+                  type="text"
+                  value={settings.officeName}
+                  onChange={(e) => setSettings({ ...settings, officeName: e.target.value })}
+                  className="w-full bg-[#010804] border border-emerald-900/60 rounded-xl px-3.5 py-2.5 text-white focus:outline-none focus:border-emerald-400"
+                />
+              </div>
+
+              {/* Box Titik Koordinat Kantor + Tombol 1x Tekan */}
+              <div className="bg-[#010804] p-4 rounded-2xl border border-emerald-900/60 space-y-3">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                  <div>
+                    <span className="text-emerald-400 font-extrabold text-xs flex items-center gap-1.5">
+                      <MapPin className="w-3.5 h-3.5" />
+                      <span>Titik Koordinat Pusat Kantor (GPS)</span>
+                    </span>
+                    <span className="text-[11px] text-white/50 block">
+                      Tekan tombol di samping untuk mengambil posisi GPS Anda saat ini secara otomatis.
+                    </span>
+                  </div>
+
+                  <button
+                    type="button"
+                    disabled={isDetectingOfficeGps}
+                    onClick={handleDetectCurrentOfficeLocation}
+                    className="px-3.5 py-2 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-400 hover:from-emerald-400 hover:to-teal-300 text-black font-black text-xs flex items-center justify-center gap-1.5 shadow-lg shadow-emerald-500/20 transition-all cursor-pointer shrink-0 disabled:opacity-60"
+                  >
+                    <LocateFixed className={`w-3.5 h-3.5 ${isDetectingOfficeGps ? "animate-spin" : ""}`} />
+                    <span>
+                      {isDetectingOfficeGps
+                        ? "Mendeteksi GPS..."
+                        : "📍 Ambil Lokasi Saat Ini (1x Tekan)"}
+                    </span>
+                  </button>
+                </div>
+
+                {/* Input Latitude & Longitude */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                  <div>
+                    <label className="text-white/70 block mb-1 font-semibold text-[11px]">
+                      Latitude (Garis Lintang)
+                    </label>
+                    <input
+                      type="number"
+                      step="0.000001"
+                      value={settings.latitude}
+                      onChange={(e) =>
+                        setSettings({
+                          ...settings,
+                          latitude: parseFloat(e.target.value) || 0,
+                        })
+                      }
+                      className="w-full bg-[#021008] border border-emerald-900/60 rounded-xl px-3 py-2 text-white font-mono focus:outline-none focus:border-emerald-400"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-white/70 block mb-1 font-semibold text-[11px]">
+                      Longitude (Garis Bujur)
+                    </label>
+                    <input
+                      type="number"
+                      step="0.000001"
+                      value={settings.longitude}
+                      onChange={(e) =>
+                        setSettings({
+                          ...settings,
+                          longitude: parseFloat(e.target.value) || 0,
+                        })
+                      }
+                      className="w-full bg-[#021008] border border-emerald-900/60 rounded-xl px-3 py-2 text-white font-mono focus:outline-none focus:border-emerald-400"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Pengaturan Radius Maksimal & Batas Anti-Fake GPS */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div>
+                  <label className="text-white block mb-1 font-bold text-[11px]">
+                    Radius Maks. Kantor (m)
+                  </label>
+                  <input
+                    type="number"
+                    min={5}
+                    max={1000}
+                    value={settings.geofenceRadius}
+                    onChange={(e) =>
+                      setSettings({
+                        ...settings,
+                        geofenceRadius: Math.max(5, parseInt(e.target.value) || 50),
+                      })
+                    }
+                    className="w-full bg-[#010804] border border-emerald-900/60 rounded-xl px-3 py-2 text-white font-mono focus:outline-none focus:border-emerald-400"
+                  />
+                  <span className="text-[10px] text-white/50 block mt-1">
+                    Ditolak jika &gt; {settings.geofenceRadius}m
+                  </span>
+                </div>
+
+                <div>
+                  <label className="text-amber-300 block mb-1 font-bold text-[11px] flex items-center gap-1">
+                    <ShieldAlert className="w-3 h-3 text-amber-400" />
+                    <span>Batas Anti-Fake GPS (m)</span>
+                  </label>
+                  <input
+                    type="number"
+                    min={0}
+                    max={10}
+                    step="0.5"
+                    value={settings.minSafeDistance ?? 2}
+                    onChange={(e) =>
+                      setSettings({
+                        ...settings,
+                        minSafeDistance: Math.max(0, parseFloat(e.target.value) || 0),
+                      })
+                    }
+                    className="w-full bg-[#010804] border border-amber-500/40 rounded-xl px-3 py-2 text-amber-300 font-mono focus:outline-none focus:border-amber-400"
+                  />
+                  <span className="text-[10px] text-amber-300/70 block mt-1">
+                    Ditolak jika &le; {settings.minSafeDistance ?? 2}m (terlalu dekat)
+                  </span>
+                </div>
+
+                <div>
+                  <label className="text-white block mb-1 font-bold text-[11px]">
+                    Batas Skor AI Wajah (%)
+                  </label>
+                  <input
+                    type="number"
+                    min={50}
+                    max={99}
+                    value={settings.aiFaceThreshold}
+                    onChange={(e) =>
+                      setSettings({
+                        ...settings,
+                        aiFaceThreshold: parseInt(e.target.value) || 80,
+                      })
+                    }
+                    className="w-full bg-[#010804] border border-emerald-900/60 rounded-xl px-3 py-2 text-white font-mono focus:outline-none focus:border-emerald-400"
+                  />
+                  <span className="text-[10px] text-white/50 block mt-1">
+                    Wajib &ge; {settings.aiFaceThreshold}%
+                  </span>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={handleSaveOfficeSettings}
+                className="w-full mt-2 py-3 rounded-xl bg-gradient-to-r from-blue-600 to-teal-500 text-white font-extrabold text-xs hover:brightness-110 transition-all shadow-lg flex items-center justify-center gap-2 cursor-pointer"
+              >
+                <Save className="w-4 h-4" />
+                <span>Simpan Titik Koordinat & Konfigurasi Geofence</span>
+              </button>
+            </div>
           </div>
 
-          <div className="space-y-4 text-xs">
-            <div>
-              <label className="text-white block mb-1 font-bold">Nama Titik Kantor</label>
-              <input
-                type="text"
-                value={settings.officeName}
-                onChange={(e) => setSettings({ ...settings, officeName: e.target.value })}
-                className="w-full bg-[#010804] border border-emerald-900/60 rounded-xl px-3.5 py-2.5 text-white"
+          {/* KOLOM KANAN: TAMPILAN PETA TITIK KOORDINAT KANTOR (LIVE MAP) */}
+          <div className="lg:col-span-6 bg-gradient-to-br from-[#021008] to-[#010804] rounded-3xl p-6 border border-emerald-900/60 shadow-xl space-y-4">
+            <div className="flex items-center justify-between border-b border-emerald-900/60 pb-3">
+              <div>
+                <h4 className="font-bold text-white text-sm flex items-center gap-2">
+                  <MapPin className="w-4 h-4 text-emerald-400" />
+                  <span>Peta Lokasi Titik Pusat Kantor</span>
+                </h4>
+                <p className="text-[11px] text-white/60">
+                  Visualisasi peta langsung berdasarkan titik Latitude & Longitude kantor.
+                </p>
+              </div>
+              <a
+                href={`https://www.google.com/maps?q=${settings.latitude},${settings.longitude}`}
+                target="_blank"
+                rel="noreferrer"
+                className="px-3 py-1.5 rounded-xl bg-emerald-500/15 hover:bg-emerald-500 hover:text-black text-emerald-300 border border-emerald-500/30 text-[11px] font-bold flex items-center gap-1.5 transition-all shrink-0"
+              >
+                <span>Buka Google Maps</span>
+                <ExternalLink className="w-3 h-3" />
+              </a>
+            </div>
+
+            {/* Embedded Map Frame */}
+            <div className="rounded-2xl overflow-hidden border-2 border-emerald-800/70 bg-[#010804] h-64 relative shadow-inner">
+              <iframe
+                title="Peta Titik Koordinat Kantor"
+                width="100%"
+                height="100%"
+                loading="lazy"
+                referrerPolicy="no-referrer-when-downgrade"
+                src={`https://maps.google.com/maps?q=${settings.latitude},${settings.longitude}&z=18&output=embed`}
+                className="w-full h-full border-0"
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="text-white block mb-1 font-bold">Radius Toleransi Geofence (Meter)</label>
-                <input
-                  type="number"
-                  value={settings.geofenceRadius}
-                  onChange={(e) => setSettings({ ...settings, geofenceRadius: parseInt(e.target.value) || 50 })}
-                  className="w-full bg-[#010804] border border-emerald-900/60 rounded-xl px-3.5 py-2.5 text-white font-mono"
-                />
+            {/* Ringkasan Aturan Zona Geofence & Anti-Fake GPS */}
+            <div className="bg-[#010804] p-4 rounded-2xl border border-emerald-900/60 space-y-2 text-xs">
+              <div className="flex items-center justify-between border-b border-emerald-900/40 pb-2">
+                <span className="text-white/60 font-semibold">Koordinat Acuan Absensi:</span>
+                <span className="font-mono font-bold text-emerald-300">
+                  {settings.latitude.toFixed(6)}, {settings.longitude.toFixed(6)}
+                </span>
               </div>
-              <div>
-                <label className="text-white block mb-1 font-bold">Ambang Batas Skor AI Wajah (%)</label>
-                <input
-                  type="number"
-                  value={settings.aiFaceThreshold}
-                  onChange={(e) => setSettings({ ...settings, aiFaceThreshold: parseInt(e.target.value) || 80 })}
-                  className="w-full bg-[#010804] border border-emerald-900/60 rounded-xl px-3.5 py-2.5 text-white font-mono"
-                />
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-1 text-[11px]">
+                <div className="p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30">
+                  <span className="text-emerald-400 font-extrabold block">✓ Zona Valid (Diterima)</span>
+                  <span className="font-mono text-white/90 text-xs font-bold">
+                    &gt; {settings.minSafeDistance ?? 2}m s/d {settings.geofenceRadius}m
+                  </span>
+                </div>
+
+                <div className="p-2.5 rounded-xl bg-red-500/10 border border-red-500/30">
+                  <span className="text-red-400 font-extrabold block">❌ Di Luar Radius</span>
+                  <span className="font-mono text-white/90 text-xs font-bold">
+                    &gt; {settings.geofenceRadius} Meter
+                  </span>
+                </div>
+
+                <div className="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/30">
+                  <span className="text-amber-300 font-extrabold block">🚨 Anti-Fake GPS</span>
+                  <span className="font-mono text-white/90 text-xs font-bold">
+                    0m s/d {settings.minSafeDistance ?? 2}m (Ditolak)
+                  </span>
+                </div>
               </div>
             </div>
-
-            <button
-              onClick={() => showToast("✓ Konfigurasi server geofence berhasil disimpan oleh tim IT!")}
-              className="w-full mt-4 py-3 rounded-xl bg-gradient-to-r from-blue-600 to-teal-500 text-white font-extrabold text-xs hover:brightness-110 transition-all shadow-lg cursor-pointer"
-            >
-              Simpan Konfigurasi Teknis IT
-            </button>
           </div>
         </div>
       )}

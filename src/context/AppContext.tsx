@@ -41,6 +41,31 @@ import {
 import { getFormattedServerTime } from "@/hooks/useClock";
 
 const COMPANY_PROFILE_STORAGE_KEY = "absensi.companyProfile.v1";
+const OFFICE_SETTINGS_STORAGE_KEY = "absensi.officeSettings.v1";
+
+/**
+ * Haversine Formula: Menghitung jarak permukaan bumi (dalam meter)
+ * antara titik koordinat karyawan (lat1, lon1) dan titik koordinat kantor (lat2, lon2).
+ */
+export function calculateHaversineDistance(
+  lat1: number,
+  lon1: number,
+  lat2: number,
+  lon2: number
+): number {
+  const R = 6371000; // Radius bumi dalam meter
+  const toRad = (deg: number) => (deg * Math.PI) / 180;
+  const dLat = toRad(lat2 - lat1);
+  const dLon = toRad(lon2 - lon1);
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(toRad(lat1)) *
+      Math.cos(toRad(lat2)) *
+      Math.sin(dLon / 2) *
+      Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return Math.round(R * c * 10) / 10;
+}
 
 export function useAppProviderValue() {
 // Navigation State
@@ -260,6 +285,47 @@ export function useAppProviderValue() {
 
   // Office Geofence & System Settings State
   const [settings, setSettings] = useState(initialSettings);
+
+  // Muat konfigurasi lokasi & geofence tersimpan dari localStorage
+  useEffect(() => {
+    let cancelled = false;
+    Promise.resolve().then(() => {
+      if (cancelled) return;
+      try {
+        const raw = window.localStorage.getItem(OFFICE_SETTINGS_STORAGE_KEY);
+        if (!raw) return;
+        const parsed: unknown = JSON.parse(raw);
+        if (typeof parsed !== "object" || parsed === null) return;
+        const s = parsed as Partial<typeof initialSettings>;
+        setSettings((prev) => ({
+          officeName: typeof s.officeName === "string" && s.officeName.trim() ? s.officeName : prev.officeName,
+          latitude: typeof s.latitude === "number" && Number.isFinite(s.latitude) ? s.latitude : prev.latitude,
+          longitude: typeof s.longitude === "number" && Number.isFinite(s.longitude) ? s.longitude : prev.longitude,
+          geofenceRadius: typeof s.geofenceRadius === "number" && s.geofenceRadius >= 5 ? s.geofenceRadius : prev.geofenceRadius,
+          minSafeDistance: typeof s.minSafeDistance === "number" && s.minSafeDistance >= 0 ? s.minSafeDistance : prev.minSafeDistance,
+          aiFaceThreshold: typeof s.aiFaceThreshold === "number" && s.aiFaceThreshold >= 50 ? s.aiFaceThreshold : prev.aiFaceThreshold,
+        }));
+      } catch (err) {
+        console.warn("Gagal memuat konfigurasi geofence tersimpan:", err);
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const handleSaveOfficeSettings = () => {
+    try {
+      window.localStorage.setItem(OFFICE_SETTINGS_STORAGE_KEY, JSON.stringify(settings));
+      showToast(
+        `✓ Titik koordinat kantor (${settings.latitude.toFixed(6)}, ${settings.longitude.toFixed(6)}) & radius geofence ${settings.geofenceRadius}m berhasil disimpan!`,
+        "success"
+      );
+    } catch (err) {
+      console.error("Gagal menyimpan pengaturan lokasi kantor:", err);
+      showToast("Gagal menyimpan pengaturan lokasi ke penyimpanan browser.", "error");
+    }
+  };
 
   // Audit Trail & Activity Log State (Log Otomatis & Koreksi Manual Warna Merah)
   const [activityLogs, setActivityLogs] = useState<ActivityLog[]>(initialActivityLogs);
@@ -1416,7 +1482,10 @@ export function useAppProviderValue() {
     currentActiveEmployee.isFirstLogin === true &&
     Boolean(currentActiveEmployee.temporaryPassword);
 
-  const isWithinGeofence = simulatedDistance <= settings.geofenceRadius;
+  const minSafeDistance = settings.minSafeDistance ?? 2;
+  const isSuspiciousFakeGps = simulatedDistance <= minSafeDistance;
+  const isOutOfGeofenceRadius = simulatedDistance > settings.geofenceRadius;
+  const isWithinGeofence = !isSuspiciousFakeGps && !isOutOfGeofenceRadius;
   const isFaceScoreValid = simulatedFaceScore >= settings.aiFaceThreshold;
 
   // ─────────────────────────────────────────────────────────────
@@ -1650,8 +1719,18 @@ export function useAppProviderValue() {
       showToast("Harap selesaikan uji liveness Level 4 AI (3 tantangan acak) terlebih dahulu!", "error");
       return;
     }
-    if (!isWithinGeofence) {
-      showToast(`Gagal: Jarak Anda (${simulatedDistance}m) melebihi batas geofence (${settings.geofenceRadius}m)!`, "error");
+    if (isSuspiciousFakeGps) {
+      showToast(
+        `⛔ DITOLAK (ANTI-FAKE GPS): Jarak Anda (${simulatedDistance.toFixed(1)}m) terlalu dekat/identik dengan titik pusat kantor (≤ ${minSafeDistance}m). Sistem mendeteksi indikasi Fake GPS / Mock Location!`,
+        "error"
+      );
+      return;
+    }
+    if (isOutOfGeofenceRadius || !isWithinGeofence) {
+      showToast(
+        `⛔ DITOLAK (DI LUAR GEOFENCE): Jarak Anda (${simulatedDistance.toFixed(1)}m) melewati batas radius kantor (${settings.geofenceRadius}m)!`,
+        "error"
+      );
       return;
     }
     if (!isFaceScoreValid) {
@@ -2296,6 +2375,7 @@ export function useAppProviderValue() {
     attendanceState,
     attendances,
     canApproveLeaves,
+    calculateHaversineDistance,
     canViewAllAttendances,
     canViewTeamAttendances,
     challengeDefinitions,
@@ -2369,6 +2449,7 @@ export function useAppProviderValue() {
     handleSaveEditAttendance,
     handleSaveEditEmployee,
     handleSaveJournal,
+    handleSaveOfficeSettings,
     handleSaveShift,
     handleSaveWeeklySchedule,
     handleSelectScheduleEmployee,
@@ -2381,7 +2462,9 @@ export function useAppProviderValue() {
     isForcedPasswordRequired,
     isMobileSidebarOpen,
     isMobileSimulated,
+    isOutOfGeofenceRadius,
     isStaff,
+    isSuspiciousFakeGps,
     isWebcamActive,
     isWithinGeofence,
     journalForm,

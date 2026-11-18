@@ -1,14 +1,27 @@
 "use client";
 
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { useApp } from "@/context/AppContext";
-import { MapPin, CheckCircle2, AlertTriangle, Smartphone, RefreshCw, Sparkles, Video, VideoOff, ShieldAlert, ScanFace } from "lucide-react";
+import {
+  MapPin,
+  CheckCircle2,
+  AlertTriangle,
+  Smartphone,
+  RefreshCw,
+  Sparkles,
+  Video,
+  VideoOff,
+  ShieldAlert,
+  ScanFace,
+  LocateFixed,
+} from "lucide-react";
 import { ServerClock } from "@/hooks/useClock";
 
 export default function AbsensiView() {
   const {
     antiSpoofScore,
     attendanceState,
+    calculateHaversineDistance,
     challengeDefinitions,
     challengeStepStatus,
     currentActiveEmployee,
@@ -20,6 +33,8 @@ export default function AbsensiView() {
     handleSimulateSpoofAttack,
     isCapturing,
     isMobileSimulated,
+    isOutOfGeofenceRadius,
+    isSuspiciousFakeGps,
     isWebcamActive,
     isWithinGeofence,
     livenessChallengeSequence,
@@ -34,6 +49,7 @@ export default function AbsensiView() {
     setSimulatedDistance,
     settings,
     showDeviceSimulator,
+    showToast,
     simulatedDeviceId,
     simulatedDistance,
     simulatedFaceScore,
@@ -43,6 +59,65 @@ export default function AbsensiView() {
     toggleWebcam,
     videoRef,
   } = useApp();
+
+  const [employeeCoords, setEmployeeCoords] = useState<{
+    lat: number;
+    lng: number;
+    accuracy?: number;
+  } | null>(null);
+  const [isDetectingUserGps, setIsDetectingUserGps] = useState<boolean>(false);
+  const [showOfficeMap, setShowOfficeMap] = useState<boolean>(false);
+
+  const handleDetectEmployeeGps = () => {
+    if (typeof navigator === "undefined" || !navigator.geolocation) {
+      showToast("Browser Anda tidak mendukung fitur Geolocation GPS!", "error");
+      return;
+    }
+    setIsDetectingUserGps(true);
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const lat = Number(pos.coords.latitude.toFixed(6));
+        const lng = Number(pos.coords.longitude.toFixed(6));
+        const acc = Math.round(pos.coords.accuracy || 0);
+        const dist = calculateHaversineDistance(
+          lat,
+          lng,
+          settings.latitude,
+          settings.longitude
+        );
+        setEmployeeCoords({ lat, lng, accuracy: acc });
+        setSimulatedDistance(dist);
+        setIsDetectingUserGps(false);
+
+        const minSafe = settings.minSafeDistance ?? 2;
+        if (dist <= minSafe) {
+          showToast(
+            `🚨 Terdeteksi jarak mencurigakan (${dist.toFixed(1)}m ≤ ${minSafe}m). Indikasi Fake GPS!`,
+            "error"
+          );
+        } else if (dist > settings.geofenceRadius) {
+          showToast(
+            `❌ Lokasi Anda berjarak ${dist.toFixed(1)}m (melebihi radius kantor ${settings.geofenceRadius}m).`,
+            "error"
+          );
+        } else {
+          showToast(
+            `✓ Lokasi GPS valid! Jarak Anda ${dist.toFixed(1)}m dari titik kantor.`,
+            "success"
+          );
+        }
+      },
+      (err) => {
+        setIsDetectingUserGps(false);
+        console.warn("Employee GPS error:", err);
+        showToast(
+          "Gagal membaca GPS perangkat (pastikan izin lokasi aktif, atau gunakan slider simulasi).",
+          "error"
+        );
+      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+    );
+  };
 
   // Lifecycle Cleanup: Menjamin seluruh MediaStream tracks kamera fisik dihentikan saat AbsensiView unmount
   useEffect(() => {
@@ -104,12 +179,18 @@ export default function AbsensiView() {
                   </div>
                   <span
                     className={`px-3 py-1 rounded-full text-[10px] font-bold border ${
-                      isWithinGeofence
+                      isSuspiciousFakeGps
+                        ? "bg-amber-500/20 text-amber-300 border-amber-500/40 animate-pulse"
+                        : isWithinGeofence
                         ? "bg-emerald-500/20 text-white border-emerald-500/30"
                         : "bg-red-500/20 text-red-300 border-red-500/40"
                     }`}
                   >
-                    {isWithinGeofence ? "✓ Geofence OK" : "❌ Di Luar Area"}
+                    {isSuspiciousFakeGps
+                      ? `🚨 Fake GPS (${simulatedDistance.toFixed(1)}m)`
+                      : isWithinGeofence
+                      ? `✓ Geofence OK (${simulatedDistance.toFixed(1)}m)`
+                      : `❌ Di Luar Area (${simulatedDistance.toFixed(1)}m)`}
                   </span>
                 </div>
 
@@ -179,30 +260,160 @@ export default function AbsensiView() {
                   )}
                 </div>
 
-                {/* Distance Slider */}
-                <div className="bg-[#010804] rounded-2xl p-4 border border-emerald-900/60 mb-4 space-y-3">                  <div className="flex justify-between items-center text-xs">
+                {/* Panel Validasi Titik Koordinat Kantor, Geofence & Pengaman Anti-Fake GPS */}
+                <div className="bg-[#010804] rounded-2xl p-4 border border-emerald-900/60 mb-4 space-y-3">
+                  <div className="flex flex-wrap justify-between items-center gap-2 text-xs">
                     <div className="flex items-center gap-2">
-                      <MapPin className="w-4 h-4 text-emerald-400" />
+                      <MapPin className="w-4 h-4 text-emerald-400 shrink-0" />
                       <div>
-                        <span className="text-[10px] text-white/70 block">Jarak Simulasi ke Pusat Kantor</span>
-                        <span className="font-black text-white text-sm">{simulatedDistance.toFixed(1)} Meter</span>
+                        <span className="text-[10px] text-white/70 block">
+                          Jarak ke Titik Koordinat Kantor ({settings.latitude.toFixed(4)}, {settings.longitude.toFixed(4)})
+                        </span>
+                        <div className="flex items-center gap-2">
+                          <span
+                            className={`font-black text-sm ${
+                              isSuspiciousFakeGps
+                                ? "text-amber-300"
+                                : isWithinGeofence
+                                ? "text-emerald-400"
+                                : "text-red-400"
+                            }`}
+                          >
+                            {simulatedDistance.toFixed(1)} Meter
+                          </span>
+                          <span className="text-[10px] text-white/50">
+                            (Rentang Aman: &gt; {settings.minSafeDistance ?? 2}m s/d {settings.geofenceRadius}m)
+                          </span>
+                        </div>
                       </div>
                     </div>
-                    <div className="text-right">
-                      <span className="text-[10px] text-white/70 block">Batas Radius Kantor</span>
-                      <span className="font-mono font-bold text-emerald-400">{settings.geofenceRadius} Meter</span>
+
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        type="button"
+                        disabled={isDetectingUserGps}
+                        onClick={handleDetectEmployeeGps}
+                        className="px-3 py-1.5 rounded-xl bg-emerald-500/20 hover:bg-emerald-500 hover:text-black text-emerald-300 border border-emerald-500/40 text-[11px] font-extrabold flex items-center gap-1.5 transition-all cursor-pointer disabled:opacity-60"
+                        title="Hitung jarak GPS Anda saat ini ke titik koordinat kantor"
+                      >
+                        <LocateFixed className={`w-3.5 h-3.5 ${isDetectingUserGps ? "animate-spin" : ""}`} />
+                        <span>{isDetectingUserGps ? "Mendeteksi..." : "📍 Cek GPS Saya"}</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setShowOfficeMap((prev) => !prev)}
+                        className="px-2.5 py-1.5 rounded-xl bg-[#021008] hover:bg-emerald-950 text-white/80 hover:text-white border border-emerald-900/60 text-[11px] font-bold transition-all cursor-pointer"
+                      >
+                        {showOfficeMap ? "Tutup Peta" : "🗺️ Peta Kantor"}
+                      </button>
                     </div>
                   </div>
 
-                  <input
-                    type="range"
-                    min="5"
-                    max="120"
-                    step="1"
-                    value={simulatedDistance}
-                    onChange={(e) => setSimulatedDistance(parseFloat(e.target.value))}
-                    className="w-full accent-emerald-400 cursor-pointer"
-                  />
+                  {employeeCoords && (
+                    <div className="text-[10px] font-mono text-white/60 bg-[#021008] px-3 py-1.5 rounded-xl border border-emerald-900/40 flex flex-wrap items-center justify-between gap-2">
+                      <span>
+                        Posisi GPS Anda: <strong className="text-white">{employeeCoords.lat}, {employeeCoords.lng}</strong>
+                      </span>
+                      {employeeCoords.accuracy !== undefined && (
+                        <span>Akurasi Sensor: ±{employeeCoords.accuracy}m</span>
+                      )}
+                    </div>
+                  )}
+
+                  {showOfficeMap && (
+                    <div className="rounded-xl overflow-hidden border border-emerald-800/70 h-44 bg-[#021008]">
+                      <iframe
+                        title="Peta Titik Kantor Absensi"
+                        width="100%"
+                        height="100%"
+                        loading="lazy"
+                        referrerPolicy="no-referrer-when-downgrade"
+                        src={`https://maps.google.com/maps?q=${settings.latitude},${settings.longitude}&z=18&output=embed`}
+                        className="w-full h-full border-0"
+                      />
+                    </div>
+                  )}
+
+                  {/* Slider Uji Jarak (0m s/d 120m) & Tombol Skenario Cepat */}
+                  <div className="space-y-2 pt-1">
+                    <input
+                      type="range"
+                      min="0"
+                      max="120"
+                      step="0.5"
+                      value={simulatedDistance}
+                      onChange={(e) => setSimulatedDistance(parseFloat(e.target.value))}
+                      className="w-full accent-emerald-400 cursor-pointer"
+                    />
+                    <div className="flex flex-wrap items-center justify-between gap-1.5 text-[10px]">
+                      <span className="text-white/50">Simulasi Uji Jarak:</span>
+                      <div className="flex flex-wrap gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => setSimulatedDistance(1.0)}
+                          className={`px-2 py-0.5 rounded-md font-bold border transition-all cursor-pointer ${
+                            isSuspiciousFakeGps
+                              ? "bg-amber-400 text-black border-amber-300"
+                              : "bg-amber-500/10 text-amber-300 border-amber-500/30 hover:bg-amber-500/20"
+                          }`}
+                        >
+                          🚨 Uji Fake GPS (1.0m)
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setSimulatedDistance(14.5)}
+                          className={`px-2 py-0.5 rounded-md font-bold border transition-all cursor-pointer ${
+                            isWithinGeofence
+                              ? "bg-emerald-500 text-black border-emerald-400"
+                              : "bg-emerald-500/10 text-emerald-300 border-emerald-500/30 hover:bg-emerald-500/20"
+                          }`}
+                        >
+                          ✓ Uji Normal (14.5m)
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setSimulatedDistance(settings.geofenceRadius + 25)}
+                          className={`px-2 py-0.5 rounded-md font-bold border transition-all cursor-pointer ${
+                            isOutOfGeofenceRadius
+                              ? "bg-red-500 text-white border-red-400"
+                              : "bg-red-500/10 text-red-300 border-red-500/30 hover:bg-red-500/20"
+                          }`}
+                        >
+                          ❌ Uji Luar Radius ({settings.geofenceRadius + 25}m)
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Peringatan Anti-Fake GPS atau Luar Radius */}
+                  {isSuspiciousFakeGps && (
+                    <div className="p-3 rounded-xl bg-amber-500/15 border border-amber-500/50 text-xs text-amber-200 flex items-start gap-2.5">
+                      <ShieldAlert className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+                      <div>
+                        <span className="font-extrabold text-amber-300 block">
+                          🚨 TERDETEKSI INDIKASI FAKE GPS / LOKASI MENCURIGAKAN ({simulatedDistance.toFixed(1)}m)
+                        </span>
+                        <span className="text-[11px] text-amber-200/80">
+                          Jarak terlalu dekat/identik dengan titik koordinat kantor (&le; {settings.minSafeDistance ?? 2}m). Sistem menolak absensi untuk mencegah manipulasi Mock Location / Fake GPS.
+                        </span>
+                      </div>
+                    </div>
+                  )}
+
+                  {isOutOfGeofenceRadius && (
+                    <div className="p-3 rounded-xl bg-red-500/15 border border-red-500/50 text-xs text-red-200 flex items-start gap-2.5">
+                      <AlertTriangle className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />
+                      <div>
+                        <span className="font-extrabold text-red-300 block">
+                          ❌ DI LUAR RADIUS GEOFENCE KANTOR ({simulatedDistance.toFixed(1)}m &gt; {settings.geofenceRadius}m)
+                        </span>
+                        <span className="text-[11px] text-red-200/80">
+                          Anda berada di luar batas radius maksimal kantor ({settings.geofenceRadius} meter). Silakan mendekat ke area kantor untuk melakukan absensi.
+                        </span>
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 {/* 🛡️ LEVEL 4 BIOMETRIC AI SCANNER & ANTI-SPOOFING ENGINE */}
@@ -618,10 +829,19 @@ export default function AbsensiView() {
                         <AlertTriangle className="w-5 h-5 text-red-400" />
                         <span>TIDAK DAPAT ABSEN: PERANGKAT TIDAK DIKENALI</span>
                       </>
+                    ) : isSuspiciousFakeGps ? (
+                      <>
+                        <ShieldAlert className="w-5 h-5 text-red-400" />
+                        <span>
+                          DITOLAK: TERDETEKSI FAKE GPS / JARAK MENCURIGAKAN ({simulatedDistance.toFixed(1)}m)
+                        </span>
+                      </>
                     ) : !isWithinGeofence ? (
                       <>
                         <AlertTriangle className="w-5 h-5 text-red-400" />
-                        <span>TIDAK DAPAT ABSEN: DI LUAR RADIUS KANTOR</span>
+                        <span>
+                          TIDAK DAPAT ABSEN: DI LUAR RADIUS KANTOR ({simulatedDistance.toFixed(1)}m &gt; {settings.geofenceRadius}m)
+                        </span>
                       </>
                     ) : !livenessPassed ? (
                       <>

@@ -636,10 +636,11 @@ export const initialUsers: SystemUser[] = [
   ];
 
 export const initialSettings = {
-    officeName: "Kantor Pusat - Sudirman Tower Lt. 12",
-    latitude: -6.2088,
-    longitude: 106.8456,
+    officeName: "Kantor Pusat - Sudirman Tower Lt. 12, Denpasar, Bali",
+    latitude: -8.6705,
+    longitude: 115.2126,
     geofenceRadius: 50,
+    minSafeDistance: 2,
     aiFaceThreshold: 80,
   };
 
