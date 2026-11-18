@@ -1,9 +1,9 @@
 "use client";
 
-import React from "react";
+import React, { useRef } from "react";
 import { useApp } from "@/context/AppContext";
 import type { DepartmentType, HierarchyLevel } from "@/types";
-import { X, UserPlus, ShieldCheck, Lock } from "lucide-react";
+import { X, UserPlus, ShieldCheck, Lock, Upload, Trash2 } from "lucide-react";
 
 export default function AddEmployeeModal() {
   const {
@@ -18,7 +18,52 @@ export default function AddEmployeeModal() {
     handleRegisterEmployeeSubmit,
     handleDeptChange,
     handleLevelChange,
+    showToast,
   } = useApp();
+
+  const registerPhotoInputRef = useRef<HTMLInputElement>(null);
+
+  const handleRegisterPhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const input = e.target;
+    const file = input.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      showToast("File foto harus berupa gambar (PNG/JPEG/WebP)!", "error");
+      input.value = "";
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      showToast("Ukuran foto maksimal 5 MB!", "error");
+      input.value = "";
+      return;
+    }
+    const reader = new FileReader();
+    reader.onerror = () => showToast("Gagal membaca file foto!", "error");
+    reader.onload = () => {
+      const src = typeof reader.result === "string" ? reader.result : null;
+      if (!src) return;
+      const img = new Image();
+      img.onerror = () => showToast("File gambar foto tidak valid!", "error");
+      img.onload = () => {
+        const maxSide = 320;
+        const scale = Math.min(1, maxSide / Math.max(img.naturalWidth || 1, img.naturalHeight || 1));
+        const w = Math.max(1, Math.round((img.naturalWidth || 1) * scale));
+        const h = Math.max(1, Math.round((img.naturalHeight || 1) * scale));
+        const canvas = document.createElement("canvas");
+        canvas.width = w;
+        canvas.height = h;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) return;
+        ctx.drawImage(img, 0, 0, w, h);
+        const compressedDataUrl = canvas.toDataURL("image/jpeg", 0.82);
+        setNewEmployeeForm((prev) => ({ ...prev, photoUrl: compressedDataUrl }));
+        showToast("✓ Foto karyawan berhasil dimuat (< 300 KB).", "info");
+      };
+      img.src = src;
+    };
+    reader.readAsDataURL(file);
+    input.value = "";
+  };
 
   if (!showAddEmployeeModal) return null;
 
@@ -109,6 +154,72 @@ export default function AddEmployeeModal() {
         </div>
 
         <form onSubmit={handleRegisterEmployeeSubmit} className="space-y-3.5 text-xs">
+          {/* Upload Foto Karyawan (Opsional) */}
+          <div className="bg-[#010804] border border-emerald-900/80 rounded-2xl p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-full bg-emerald-950 flex items-center justify-center font-black text-white text-sm ring-2 ring-emerald-500/40 overflow-hidden shrink-0">
+                {newEmployeeForm.photoUrl ? (
+                  /* eslint-disable-next-line @next/next/no-img-element */
+                  <img
+                    src={newEmployeeForm.photoUrl}
+                    alt="Preview Foto Karyawan"
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <span>
+                    {newEmployeeForm.name
+                      ? newEmployeeForm.name
+                          .split(" ")
+                          .map((w) => w[0])
+                          .join("")
+                          .slice(0, 2)
+                          .toUpperCase()
+                      : "FOTO"}
+                  </span>
+                )}
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="text-white/90 font-bold">Foto Profil Karyawan</span>
+                  <span className="px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 text-[10px] font-bold">
+                    Opsional
+                  </span>
+                </div>
+                <p className="text-[11px] text-white/60 mt-0.5">
+                  Boleh dikosongkan dan dapat diunggah/diubah menyusul pada bagian avatar di menu Karyawan.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 shrink-0">
+              <input
+                ref={registerPhotoInputRef}
+                type="file"
+                accept="image/png,image/jpeg,image/webp"
+                onChange={handleRegisterPhotoChange}
+                className="hidden"
+              />
+              <button
+                type="button"
+                onClick={() => registerPhotoInputRef.current?.click()}
+                className="px-3 py-1.5 rounded-xl bg-emerald-500/20 hover:bg-emerald-500 hover:text-black text-emerald-300 border border-emerald-500/40 font-bold text-xs transition-all flex items-center gap-1.5 cursor-pointer"
+              >
+                <Upload className="w-3.5 h-3.5" />
+                <span>{newEmployeeForm.photoUrl ? "Ganti Foto" : "Upload Foto"}</span>
+              </button>
+              {newEmployeeForm.photoUrl && (
+                <button
+                  type="button"
+                  onClick={() => setNewEmployeeForm((prev) => ({ ...prev, photoUrl: null }))}
+                  className="p-1.5 rounded-xl bg-red-500/20 hover:bg-red-500 hover:text-white text-red-300 border border-red-500/30 transition-all cursor-pointer"
+                  title="Hapus foto pilihan"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
+          </div>
+
           {/* Data Pribadi (Sama untuk Staff & Atasan) */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>

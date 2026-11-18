@@ -25,6 +25,7 @@ export interface Employee {
   faceScore: number;
   status: "Aktif" | "Cuti" | "Non-Aktif";
   avatar: string;
+  photoUrl?: string | null;
   managerId: string | null;
   isFirstLogin: boolean;
   temporaryPassword?: string | null;

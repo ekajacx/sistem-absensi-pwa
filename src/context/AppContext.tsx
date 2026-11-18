@@ -1228,6 +1228,7 @@ export function useAppProviderValue() {
     contractType: ContractType;
     startDate: string;
     endDate?: string | null;
+    photoUrl?: string | null;
   }
 
   const [newEmployeeForm, setNewEmployeeForm] = useState<NewEmployeeFormData>({
@@ -1244,6 +1245,7 @@ export function useAppProviderValue() {
     contractType: "Kontrak",
     startDate: "2026-11-20",
     endDate: "2027-11-20",
+    photoUrl: null,
   });
 
   const openAddEmployeeModal = (type: "staff" | "atasan" = "staff") => {
@@ -1264,6 +1266,7 @@ export function useAppProviderValue() {
         contractType: "Kontrak",
         startDate: "2026-11-20",
         endDate: "2027-11-20",
+        photoUrl: null,
       });
     } else {
       const hasCeo = employees.some((e) => e.level === "Director");
@@ -1303,6 +1306,7 @@ export function useAppProviderValue() {
         contractType: "Tetap",
         startDate: "2026-11-20",
         endDate: null,
+        photoUrl: null,
       });
     }
     setShowAddEmployeeModal(true);
@@ -1491,6 +1495,7 @@ export function useAppProviderValue() {
         .join("")
         .slice(0, 2)
         .toUpperCase(),
+      photoUrl: newEmployeeForm.photoUrl || null,
       managerId: superiorEmployee ? superiorEmployee.id : null,
       isFirstLogin: true,
       temporaryPassword: randomTempPass,
