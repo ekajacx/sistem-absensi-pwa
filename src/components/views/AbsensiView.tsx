@@ -56,7 +56,8 @@ export default function AbsensiView() {
   const [isDetectingUserGps, setIsDetectingUserGps] = useState<boolean>(false);
   const [showOfficeMap, setShowOfficeMap] = useState<boolean>(false);
   const [autoStepProgress, setAutoStepProgress] = useState<number>(0);
-  const [isFaceDetected, setIsFaceDetected] = useState<boolean>(false);
+  type FaceDistanceStatus = "NO_FACE" | "TOO_FAR" | "TOO_CLOSE" | "OPTIMAL";
+  const [faceDistanceStatus, setFaceDistanceStatus] = useState<FaceDistanceStatus>("NO_FACE");
 
   const passChallengeRef = useRef(handlePassCurrentChallenge);
   useEffect(() => {
@@ -67,12 +68,12 @@ export default function AbsensiView() {
   useEffect(() => {
     const timer = setTimeout(() => {
       setAutoStepProgress(0);
-      setIsFaceDetected(false);
+      setFaceDistanceStatus("NO_FACE");
     }, 0);
     return () => clearTimeout(timer);
   }, [currentChallengeIndex, isWebcamActive, livenessPassed]);
 
-  // Deteksi Wajah Nyata & Gerakan (Real-Time WebRTC Frame & Face Heuristic Analyzer)
+  // Deteksi Wajah Nyata, Jarak Optimal & Respons Gerakan Khusus per Tantangan
   useEffect(() => {
     if (
       !isWebcamActive ||
@@ -100,15 +101,26 @@ export default function AbsensiView() {
         ctx.drawImage(video, 0, 0, width, height);
         const frameData = ctx.getImageData(0, 0, width, height).data;
 
-        // Analisis Area Tengah (Zona Elips Bingkai Wajah: x=14..33, y=10..37)
+        // Analisis Area Tengah (Zona Oval Wajah: x:13..34, y:9..38)
         let centerPixels = 0;
         let skinPixels = 0;
         let lumSum = 0;
         let lumSqSum = 0;
-        let diffSum = 0;
 
-        for (let y = 10; y <= 37; y++) {
-          for (let x = 14; x <= 33; x++) {
+        let eyePixels = 0;
+        let eyeDiffSum = 0;
+
+        let mouthPixels = 0;
+        let mouthDiffSum = 0;
+        let mouthTeethPixels = 0;
+
+        let skinXSum = 0;
+        let skinYSum = 0;
+        let leftSkinPixels = 0;
+        let rightSkinPixels = 0;
+
+        for (let y = 9; y <= 38; y++) {
+          for (let x = 13; x <= 34; x++) {
             const idx = (y * width + x) * 4;
             const r = frameData[idx];
             const g = frameData[idx + 1];
@@ -119,15 +131,16 @@ export default function AbsensiView() {
             lumSum += lum;
             lumSqSum += lum * lum;
 
+            let diff = 0;
             if (prevFrame) {
               const prevLum =
                 0.299 * prevFrame[idx] +
                 0.587 * prevFrame[idx + 1] +
                 0.114 * prevFrame[idx + 2];
-              diffSum += Math.abs(lum - prevLum);
+              diff = Math.abs(lum - prevLum);
             }
 
-            // Spektrum warna kulit manusia (Melanin/Hemoglobin RGB range)
+            // Cek warna kulit manusia alami (Melanin / Hemoglobin RGB)
             const maxVal = Math.max(r, g, b);
             const minVal = Math.min(r, g, b);
             const isSkin =
@@ -141,6 +154,32 @@ export default function AbsensiView() {
 
             if (isSkin) {
               skinPixels++;
+              skinXSum += x;
+              skinYSum += y;
+              if (x <= 23) leftSkinPixels++;
+              else rightSkinPixels++;
+            }
+
+            // Zona Mata (x: 15..32, y: 13..21)
+            if (y >= 13 && y <= 21 && x >= 15 && x <= 32) {
+              eyePixels++;
+              eyeDiffSum += diff;
+            }
+
+            // Zona Mulut (x: 15..32, y: 26..35)
+            if (y >= 26 && y <= 35 && x >= 15 && x <= 32) {
+              mouthPixels++;
+              mouthDiffSum += diff;
+              // Deteksi gigi / senyum putih-terang
+              if (
+                r > 125 &&
+                g > 125 &&
+                b > 125 &&
+                Math.abs(r - g) < 22 &&
+                Math.abs(g - b) < 22
+              ) {
+                mouthTeethPixels++;
+              }
             }
           }
         }
@@ -148,56 +187,114 @@ export default function AbsensiView() {
         const avgLum = lumSum / centerPixels;
         const variance = lumSqSum / centerPixels - avgLum * avgLum;
         const skinRatio = skinPixels / centerPixels;
-        const avgDiff = prevFrame ? diffSum / centerPixels : 0;
+        const avgEyeDiff = eyePixels > 0 ? eyeDiffSum / eyePixels : 0;
+        const avgMouthDiff = mouthPixels > 0 ? mouthDiffSum / mouthPixels : 0;
+        const teethRatio = mouthPixels > 0 ? mouthTeethPixels / mouthPixels : 0;
+
+        const skinCentroidX = skinPixels > 0 ? skinXSum / skinPixels : 23.5;
+        const skinCentroidY = skinPixels > 0 ? skinYSum / skinPixels : 23.5;
+
         prevFrame = new Uint8ClampedArray(frameData);
 
-        // Kriteria Kehadiran Wajah:
-        // 1. Rasio warna kulit di tengah bingkai memadai (skinRatio >= 0.18)
-        // 2. Pencahayaan wajar (avgLum 25-235, tidak gelap gulita atau silau total)
-        // 3. Tekstur kontras fitur wajah (mata, hidung, bibir -> variance >= 70)
-        let faceDetected =
-          skinRatio >= 0.18 && avgLum >= 25 && avgLum <= 235 && variance >= 70;
+        // Evaluasi Jarak Wajah:
+        // - NO_FACE: tidak ada kulit / gelap / tidak ada kontras
+        // - TOO_FAR: wajah terlalu jauh (skinRatio < 0.38)
+        // - TOO_CLOSE: wajah terlalu dekat/terpotong (skinRatio > 0.88 atau silau)
+        // - OPTIMAL: wajah pas di dalam bingkai oval (skinRatio 0.38 - 0.88)
+        let detectedStatus: FaceDistanceStatus = "NO_FACE";
+        const hasBasicFace =
+          skinRatio >= 0.16 && avgLum >= 25 && avgLum <= 235 && variance >= 50;
 
-        // Validasi native FaceDetector API (Shape Detection API di Chromium) bila tersedia
+        if (!hasBasicFace) {
+          detectedStatus = "NO_FACE";
+        } else if (skinRatio < 0.38) {
+          detectedStatus = "TOO_FAR";
+        } else if (skinRatio > 0.88 || avgLum > 235) {
+          detectedStatus = "TOO_CLOSE";
+        } else {
+          detectedStatus = "OPTIMAL";
+        }
+
+        // Validasi native FaceDetector jika tersedia di browser
         if (typeof window !== "undefined" && "FaceDetector" in window) {
           try {
             // @ts-expect-error Native Shape Detection API
             const detector = new window.FaceDetector({ fastMode: true, maxDetectedFaces: 1 });
             const faces = await detector.detect(video);
             if (faces && faces.length > 0) {
-              faceDetected = true;
+              const faceBox = faces[0].boundingBox;
+              const vidWidth = video.videoWidth || 640;
+              const coverage = faceBox.width / vidWidth;
+              if (coverage < 0.28) {
+                detectedStatus = "TOO_FAR";
+              } else if (coverage > 0.72) {
+                detectedStatus = "TOO_CLOSE";
+              } else {
+                detectedStatus = "OPTIMAL";
+              }
+            } else if (skinRatio < 0.25) {
+              detectedStatus = "NO_FACE";
             }
           } catch {
-            // Abaikan fallback
+            // Fallback ke heuristik
           }
         }
 
-        if (!faceDetected) {
-          // BUKAN WAJAH: Turunkan progress & tolak verifikasi otomatis
-          setIsFaceDetected(false);
-          accumulated = Math.max(0, accumulated - 15);
+        setFaceDistanceStatus(detectedStatus);
+
+        // Jika jarak belum optimal (terlalu jauh / belum ada wajah):
+        // Kunci progres di 0%, tolak verifikasi otomatis!
+        if (detectedStatus !== "OPTIMAL") {
+          accumulated = Math.max(0, accumulated - 14);
           setAutoStepProgress(accumulated);
+          return;
+        }
+
+        // Jarak sudah OPTIMAL! Evaluasi respon spesifik tantangan aktif:
+        const activeChallenge = livenessChallengeSequence[currentChallengeIndex];
+        let actionDetected = false;
+
+        if (activeChallenge === "blink") {
+          // Uji Kedipan: Butuh perubahan kontras mata yang tajam (avgEyeDiff >= 1.5)
+          // Bengong (mata terbuka statis) menghasilkan avgEyeDiff < 0.8
+          if (avgEyeDiff >= 1.5) {
+            actionDetected = true;
+          }
+        } else if (activeChallenge === "smile") {
+          // Uji Senyum: Gigi terlihat (teethRatio >= 0.05) ATAU gerakan mulut melebar jelas (avgMouthDiff >= 1.5)
+          // Bengong (bibir diam) menghasilkan teethRatio < 0.02 & avgMouthDiff < 0.7
+          if (teethRatio >= 0.05 || avgMouthDiff >= 1.5) {
+            actionDetected = true;
+          }
+        } else if (activeChallenge === "turnRight") {
+          // Tengok Kanan: Centroid bergeser ke kanan atau dominansi pipi kanan
+          if (skinCentroidX > 25.2 || rightSkinPixels / (leftSkinPixels + 1) > 1.35) {
+            actionDetected = true;
+          }
+        } else if (activeChallenge === "turnLeft") {
+          // Tengok Kiri: Centroid bergeser ke kiri atau dominansi pipi kiri
+          if (skinCentroidX < 21.8 || leftSkinPixels / (rightSkinPixels + 1) > 1.35) {
+            actionDetected = true;
+          }
+        } else if (activeChallenge === "nod") {
+          // Anggukan: Centroid bergeser ke bawah
+          if (skinCentroidY > 25.2) {
+            actionDetected = true;
+          }
+        }
+
+        if (actionDetected) {
+          accumulated = Math.min(100, accumulated + 34);
         } else {
-          // WAJAH TERDETEKSI: Verifikasi respons gerakan aktif
-          setIsFaceDetected(true);
+          // Bengong / tidak melakukan gerakan yang diminta: turunkan progres perlahan
+          accumulated = Math.max(0, accumulated - 5);
+        }
 
-          if (avgDiff >= 1.4) {
-            // Gerakan aktif jelas (kedip, senyum, menoleh)
-            accumulated = Math.min(100, accumulated + 25);
-          } else if (avgDiff >= 0.5) {
-            // Mikro-gerakan liveness
-            accumulated = Math.min(100, accumulated + 10);
-          } else {
-            // Foto diam / statis
-            accumulated = Math.max(0, accumulated - 4);
-          }
+        setAutoStepProgress(accumulated);
 
-          setAutoStepProgress(accumulated);
-
-          if (accumulated >= 100) {
-            window.clearInterval(intervalId);
-            passChallengeRef.current();
-          }
+        if (accumulated >= 100) {
+          window.clearInterval(intervalId);
+          passChallengeRef.current();
         }
       } catch {
         // Fallback jika frame canvas belum siap
@@ -212,6 +309,7 @@ export default function AbsensiView() {
     livenessPassed,
     challengeStepStatus,
     currentChallengeIndex,
+    livenessChallengeSequence,
     videoRef,
   ]);
 
@@ -717,8 +815,24 @@ export default function AbsensiView() {
                           <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-emerald-300 bg-emerald-950/80 px-2 py-0.5 rounded-md border border-emerald-500/40">
                             Langkah {currentChallengeIndex + 1} dari 3
                           </span>
-                          <span className="text-[10px] font-bold text-white/70">
-                            {isFaceDetected ? "✓ Wajah Terkunci" : "⚠️ Butuh Wajah"}
+                          <span
+                            className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                              faceDistanceStatus === "OPTIMAL"
+                                ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/40"
+                                : faceDistanceStatus === "TOO_FAR"
+                                ? "bg-orange-500/20 text-orange-300 border border-orange-500/50 animate-pulse"
+                                : faceDistanceStatus === "TOO_CLOSE"
+                                ? "bg-amber-500/20 text-amber-300 border border-amber-500/50"
+                                : "bg-white/10 text-white/50"
+                            }`}
+                          >
+                            {faceDistanceStatus === "OPTIMAL"
+                              ? "✓ Jarak Pas"
+                              : faceDistanceStatus === "TOO_FAR"
+                              ? "🔍 Dekatkan Wajah"
+                              : faceDistanceStatus === "TOO_CLOSE"
+                              ? "⚠️ Mundurkan Wajah"
+                              : "⚠️ Arahkan ke Wajah"}
                           </span>
                         </div>
 
@@ -745,8 +859,10 @@ export default function AbsensiView() {
                               ? "border-red-500 bg-red-950/40 shadow-red-500/30 animate-pulse ring-4 ring-red-500/20"
                               : livenessPassed
                               ? "border-emerald-400 bg-emerald-500/10 shadow-emerald-500/30 ring-4 ring-emerald-500/20"
-                              : isFaceDetected
-                              ? "border-emerald-400 bg-[#010a05] ring-4 ring-emerald-500/30"
+                              : faceDistanceStatus === "OPTIMAL"
+                              ? "border-emerald-400 bg-[#010a05] ring-4 ring-emerald-500/40"
+                              : faceDistanceStatus === "TOO_FAR"
+                              ? "border-orange-500 bg-[#010a05] ring-4 ring-orange-500/30 animate-pulse"
                               : "border-amber-500/60 bg-[#010a05] ring-2 ring-amber-500/20"
                           }`}
                         >
@@ -769,15 +885,28 @@ export default function AbsensiView() {
                                 : "justify-center bg-black/60"
                             }`}
                           >
-                            {/* Top Badge: Indikator Wajah */}
+                            {/* Top Badge: Indikator Jarak & Deteksi Wajah */}
                             {!livenessPassed && challengeStepStatus !== "spoof_detected" && (
                               <div>
-                                {isFaceDetected ? (
+                                {faceDistanceStatus === "OPTIMAL" && (
                                   <span className="px-3 py-1 rounded-full text-[10px] font-bold bg-emerald-500 text-black shadow-lg flex items-center gap-1.5 backdrop-blur-sm">
                                     <CheckCircle2 className="w-3.5 h-3.5 text-black" />
-                                    Wajah Terdeteksi ✓
+                                    Jarak Pas — Lakukan Gerakan!
                                   </span>
-                                ) : (
+                                )}
+                                {faceDistanceStatus === "TOO_FAR" && (
+                                  <span className="px-3 py-1 rounded-full text-[10px] font-bold bg-orange-500 text-black shadow-lg flex items-center gap-1.5 backdrop-blur-sm animate-bounce">
+                                    <ScanFace className="w-3.5 h-3.5 text-black" />
+                                    Dekatkan Wajah ke Kamera!
+                                  </span>
+                                )}
+                                {faceDistanceStatus === "TOO_CLOSE" && (
+                                  <span className="px-3 py-1 rounded-full text-[10px] font-bold bg-amber-400 text-black shadow-lg flex items-center gap-1.5 backdrop-blur-sm">
+                                    <AlertTriangle className="w-3.5 h-3.5 text-black" />
+                                    Mundurkan Sedikit Wajah Anda
+                                  </span>
+                                )}
+                                {faceDistanceStatus === "NO_FACE" && (
                                   <span className="px-3 py-1 rounded-full text-[10px] font-bold bg-amber-500 text-black shadow-lg flex items-center gap-1.5 backdrop-blur-sm animate-pulse">
                                     <AlertTriangle className="w-3.5 h-3.5 text-black" />
                                     Arahkan ke Wajah Anda
@@ -807,9 +936,11 @@ export default function AbsensiView() {
                             ) : (
                               <div className="space-y-1">
                                 <span className="text-[11px] font-mono text-emerald-300 bg-black/80 px-3 py-0.5 rounded-full border border-emerald-500/40 inline-block font-bold">
-                                  {isFaceDetected
-                                    ? `Gerakan: ${autoStepProgress}%`
-                                    : "Posisikan Wajah di Oval"}
+                                  {faceDistanceStatus === "OPTIMAL"
+                                    ? `Respon: ${autoStepProgress}%`
+                                    : faceDistanceStatus === "TOO_FAR"
+                                    ? "Dekatkan ke Lingkaran"
+                                    : "Posisikan Wajah"}
                                 </span>
                               </div>
                             )}
@@ -863,8 +994,12 @@ export default function AbsensiView() {
                             <div className="flex items-center justify-between text-[11px] font-mono">
                               <span className="text-emerald-300 font-bold flex items-center gap-1.5">
                                 <Sparkles className="w-3.5 h-3.5 text-emerald-400 animate-spin" />
-                                {isFaceDetected
+                                {faceDistanceStatus === "OPTIMAL"
                                   ? `Mendeteksi respon ${challengeDefinitions[livenessChallengeSequence[currentChallengeIndex]]?.title}...`
+                                  : faceDistanceStatus === "TOO_FAR"
+                                  ? "⚠️ Wajah terlalu jauh dari lingkaran. Dekatkan ke kamera!"
+                                  : faceDistanceStatus === "TOO_CLOSE"
+                                  ? "⚠️ Wajah terlalu dekat. Mundurkan sedikit!"
                                   : "Menunggu wajah terposisikan di oval..."}
                               </span>
                               <span className="text-white font-extrabold">{autoStepProgress}%</span>
@@ -872,7 +1007,7 @@ export default function AbsensiView() {
                             <div className="w-full h-2.5 rounded-full bg-black/80 overflow-hidden border border-emerald-500/30">
                               <div
                                 className={`h-full transition-all duration-200 ${
-                                  isFaceDetected
+                                  faceDistanceStatus === "OPTIMAL"
                                     ? "bg-gradient-to-r from-emerald-500 to-teal-300"
                                     : "bg-white/20"
                                 }`}
@@ -894,20 +1029,26 @@ export default function AbsensiView() {
 
                             <button
                               type="button"
-                              disabled={!isFaceDetected}
+                              disabled={faceDistanceStatus !== "OPTIMAL"}
                               onClick={() => {
-                                if (isFaceDetected) {
+                                if (faceDistanceStatus === "OPTIMAL") {
                                   passChallengeRef.current();
                                 }
                               }}
                               className={`py-2.5 px-4 rounded-xl text-xs font-bold border transition-all flex items-center justify-center gap-1.5 shadow-lg ${
-                                isFaceDetected
+                                faceDistanceStatus === "OPTIMAL"
                                   ? "bg-gradient-to-r from-emerald-500 to-teal-400 text-black border-emerald-300 hover:brightness-110 active:scale-[0.98] cursor-pointer"
                                   : "bg-white/5 text-white/30 border-white/10 cursor-not-allowed"
                               }`}
                             >
                               <CheckCircle2 className="w-3.5 h-3.5" />
-                              <span>Lanjut Langkah Ini</span>
+                              <span>
+                                {faceDistanceStatus === "TOO_FAR"
+                                  ? "Dekatkan Wajah Dulu"
+                                  : faceDistanceStatus === "OPTIMAL"
+                                  ? "Lanjut Langkah Ini"
+                                  : "Posisikan Wajah"}
+                              </span>
                             </button>
                           </div>
                         </div>
