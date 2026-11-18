@@ -59,6 +59,7 @@ export default function AbsensiView() {
   type FaceDistanceStatus = "NO_FACE" | "TOO_FAR" | "TOO_CLOSE" | "OPTIMAL";
   const [faceDistanceStatus, setFaceDistanceStatus] = useState<FaceDistanceStatus>("NO_FACE");
   const [isPhoneShaking, setIsPhoneShaking] = useState<boolean>(false);
+  const [isCalibrated, setIsCalibrated] = useState<boolean>(false);
 
   const passChallengeRef = useRef(handlePassCurrentChallenge);
   useEffect(() => {
@@ -71,6 +72,7 @@ export default function AbsensiView() {
       setAutoStepProgress(0);
       setFaceDistanceStatus("NO_FACE");
       setIsPhoneShaking(false);
+      setIsCalibrated(false);
     }, 0);
     return () => clearTimeout(timer);
   }, [currentChallengeIndex, isWebcamActive, livenessPassed]);
@@ -94,6 +96,13 @@ export default function AbsensiView() {
     const ctx = canvas.getContext("2d", { willReadFrequently: true });
     let accumulated = 0;
     let prevLum: Uint8Array | null = null;
+
+    // Baseline Kalibrasi Posisi Wajah Netral (Mencegah verifikasi instan tanpa gerakan nyata)
+    let neutralX: number | null = null;
+    let neutralY: number | null = null;
+    let neutralSamples = 0;
+    let sumNeutralX = 0;
+    let sumNeutralY = 0;
 
     const intervalId = window.setInterval(async () => {
       const video = videoRef.current;
@@ -157,8 +166,14 @@ export default function AbsensiView() {
         setIsPhoneShaking(isShaking);
 
         if (isShaking) {
-          // Goyangan HP terdeteksi: Reset/turunkan progres dengan cepat, tolak verifikasi otomatis!
-          accumulated = Math.max(0, accumulated - 20);
+          // Goyangan HP terdeteksi: Reset kalibrasi & potong progres, tolak verifikasi otomatis!
+          neutralX = null;
+          neutralY = null;
+          neutralSamples = 0;
+          sumNeutralX = 0;
+          sumNeutralY = 0;
+          setIsCalibrated(false);
+          accumulated = Math.max(0, accumulated - 25);
           setAutoStepProgress(accumulated);
           prevLum = currentLum;
           return;
@@ -270,14 +285,38 @@ export default function AbsensiView() {
         // Jika jarak belum optimal (terlalu jauh / belum ada wajah):
         // Kunci progres di 0%, tolak verifikasi otomatis!
         if (detectedStatus !== "OPTIMAL") {
-          accumulated = Math.max(0, accumulated - 14);
-          setAutoStepProgress(accumulated);
+          neutralX = null;
+          neutralY = null;
+          neutralSamples = 0;
+          sumNeutralX = 0;
+          sumNeutralY = 0;
+          setIsCalibrated(false);
+          accumulated = 0;
+          setAutoStepProgress(0);
+          prevLum = currentLum;
+          return;
+        }
+
+        // 🛡️ TAHAP KALIBRASI POSISI AWAL (NEUTRAL BASELINE):
+        // Wajib menetapkan titik tengah wajah netral pengguna terlebih dahulu saat menghadap kamera.
+        // Sebelum kalibrasi selesai, progres DILARANG naik agar tidak terjadi verifikasi palsu instan!
+        if (neutralX === null || neutralY === null) {
+          sumNeutralX += skinCentroidX;
+          sumNeutralY += skinCentroidY;
+          neutralSamples++;
+
+          if (neutralSamples >= 3) {
+            neutralX = sumNeutralX / neutralSamples;
+            neutralY = sumNeutralY / neutralSamples;
+            setIsCalibrated(true);
+          }
+
+          setAutoStepProgress(0);
           prevLum = currentLum;
           return;
         }
 
         // 🎯 COMPUTATIONAL MOTION FLOW (Optical Flow Block-Matching pada Fitur Wajah Tengah)
-        // Mencari vektor pergeseran (flowDx, flowDy) dari fitur wajah di tengah frame
         let bestSad = 999999;
         let flowDx = 0;
         let flowDy = 0;
@@ -308,42 +347,41 @@ export default function AbsensiView() {
           }
         }
 
-        // Jarak sudah OPTIMAL & HP Tenang! Evaluasi arah gerakan aktif:
+        // Hitung pergeseran relatif nyata terhadap posisi wajah netral awal (Relative Motion Delta):
+        const deltaX = skinCentroidX - neutralX;
+        const deltaY = skinCentroidY - neutralY;
+
+        // Jarak sudah OPTIMAL, HP Tenang, & Posisi Awal Terkalibrasi!
+        // Evaluasi apakah pengguna benar-benar melakukan pergerakan kepala sesuai tantangan aktif:
         const activeChallenge = livenessChallengeSequence[0] || "turnRight";
         let actionDetected = false;
 
         if (activeChallenge === "turnLeft") {
-          // Tengok Kiri: Pada mirrored screen, wajah memutar / bergerak ke sisi KIRI layar (flowDx < 0)
-          const isMovingLeft = flowDx <= -1 && bestSad < centerSad0 * 0.96;
-          const isPosedLeft =
-            skinCentroidX < 22.8 ||
-            leftSkinPixels / (rightSkinPixels + 1) >= 1.2 ||
-            (rightSkinPixels / (leftSkinPixels + 1) >= 1.2 && skinCentroidX < 23.5);
-          if (isMovingLeft || isPosedLeft) {
+          // Tengok Kiri: Wajah bergeser/memutar ke KIRI layar relatif terhadap posisi netral (deltaX <= -1.6)
+          const isTurnedLeft = deltaX <= -1.6;
+          const isFlowLeft = flowDx <= -1 && deltaX <= -0.9 && bestSad < centerSad0 * 0.95;
+          if (isTurnedLeft || isFlowLeft) {
             actionDetected = true;
           }
         } else if (activeChallenge === "turnRight") {
-          // Tengok Kanan: Pada mirrored screen, wajah memutar / bergerak ke sisi KANAN layar (flowDx > 0)
-          const isMovingRight = flowDx >= 1 && bestSad < centerSad0 * 0.96;
-          const isPosedRight =
-            skinCentroidX > 24.2 ||
-            rightSkinPixels / (leftSkinPixels + 1) >= 1.2 ||
-            (leftSkinPixels / (rightSkinPixels + 1) >= 1.2 && skinCentroidX > 23.5);
-          if (isMovingRight || isPosedRight) {
+          // Tengok Kanan: Wajah bergeser/memutar ke KANAN layar relatif terhadap posisi netral (deltaX >= 1.6)
+          const isTurnedRight = deltaX >= 1.6;
+          const isFlowRight = flowDx >= 1 && deltaX >= 0.9 && bestSad < centerSad0 * 0.95;
+          if (isTurnedRight || isFlowRight) {
             actionDetected = true;
           }
         } else if (activeChallenge === "lookUp") {
-          // Tengok Atas / Dongak: Wajah memutar / bergerak ke ATAS layar (flowDy < 0)
-          const isMovingUp = flowDy <= -1 && bestSad < centerSad0 * 0.96;
-          const isPosedUp = skinCentroidY < 22.6 || topSkinPixels / (bottomSkinPixels + 1) >= 1.2;
-          if (isMovingUp || isPosedUp) {
+          // Tengok Atas / Dongak: Wajah bergeser/mendongak ke ATAS layar relatif terhadap posisi netral (deltaY <= -1.6)
+          const isTurnedUp = deltaY <= -1.6;
+          const isFlowUp = flowDy <= -1 && deltaY <= -0.9 && bestSad < centerSad0 * 0.95;
+          if (isTurnedUp || isFlowUp) {
             actionDetected = true;
           }
         } else if (activeChallenge === "lookDown") {
-          // Tengok Bawah / Tunduk: Wajah memutar / bergerak ke BAWAH layar (flowDy > 0)
-          const isMovingDown = flowDy >= 1 && bestSad < centerSad0 * 0.96;
-          const isPosedDown = skinCentroidY > 24.8 || bottomSkinPixels / (topSkinPixels + 1) >= 1.2;
-          if (isMovingDown || isPosedDown) {
+          // Tengok Bawah / Tunduk: Wajah bergeser/menunduk ke BAWAH layar relatif terhadap posisi netral (deltaY >= 1.6)
+          const isTurnedDown = deltaY >= 1.6;
+          const isFlowDown = flowDy >= 1 && deltaY >= 0.9 && bestSad < centerSad0 * 0.95;
+          if (isTurnedDown || isFlowDown) {
             actionDetected = true;
           }
         }
@@ -351,8 +389,8 @@ export default function AbsensiView() {
         if (actionDetected) {
           accumulated = Math.min(100, accumulated + 35);
         } else {
-          // Bengong / tidak melakukan gerakan yang diminta: turunkan progres perlahan
-          accumulated = Math.max(0, accumulated - 7);
+          // Diam / bengong / belum melakukan gerakan yang diminta: turunkan progres perlahan
+          accumulated = Math.max(0, accumulated - 8);
         }
 
         setAutoStepProgress(accumulated);
@@ -905,7 +943,12 @@ export default function AbsensiView() {
                             <AlertTriangle className="w-3.5 h-3.5 text-amber-600" />
                             ⚠️ Goyangan HP Terdeteksi — Tahan HP Tetap Tenang
                           </span>
-                        ) : faceDistanceStatus === "OPTIMAL" ? (
+                        ) : faceDistanceStatus === "OPTIMAL" && !isCalibrated ? (
+                          <span className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full text-xs font-black bg-emerald-50 text-emerald-800 border border-emerald-300 shadow-sm">
+                            <Sparkles className="w-3.5 h-3.5 text-emerald-600 animate-spin" />
+                            Menyiapkan Sensor Wajah... Hadap Lurus ke Depan
+                          </span>
+                        ) : faceDistanceStatus === "OPTIMAL" && isCalibrated ? (
                           <span className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full text-xs font-black bg-emerald-100 text-emerald-800 border border-emerald-300 shadow-sm">
                             <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
                             Wajah Siap — Silakan Lakukan Gerakan Sekarang!
@@ -975,6 +1018,8 @@ export default function AbsensiView() {
                               ? "✓ Gerakan Berhasil Tervalidasi!"
                               : isPhoneShaking
                               ? "HP bergoyang, mohon pegang HP stabil..."
+                              : faceDistanceStatus === "OPTIMAL" && !isCalibrated
+                              ? "Menyesuaikan posisi wajah awal..."
                               : faceDistanceStatus === "OPTIMAL"
                               ? `Mendeteksi respon ${challengeDefinitions[livenessChallengeSequence[0]]?.title}...`
                               : faceDistanceStatus === "TOO_FAR"
