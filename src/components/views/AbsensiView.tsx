@@ -90,7 +90,6 @@ export default function AbsensiView() {
     canvas.width = width;
     canvas.height = height;
     const ctx = canvas.getContext("2d", { willReadFrequently: true });
-    let prevFrame: Uint8ClampedArray | null = null;
     let accumulated = 0;
 
     const intervalId = window.setInterval(async () => {
@@ -106,13 +105,6 @@ export default function AbsensiView() {
         let skinPixels = 0;
         let lumSum = 0;
         let lumSqSum = 0;
-
-        let eyePixels = 0;
-        let eyeDiffSum = 0;
-
-        let mouthPixels = 0;
-        let mouthDiffSum = 0;
-        let mouthTeethPixels = 0;
 
         let skinXSum = 0;
         let skinYSum = 0;
@@ -130,15 +122,6 @@ export default function AbsensiView() {
             const lum = 0.299 * r + 0.587 * g + 0.114 * b;
             lumSum += lum;
             lumSqSum += lum * lum;
-
-            let diff = 0;
-            if (prevFrame) {
-              const prevLum =
-                0.299 * prevFrame[idx] +
-                0.587 * prevFrame[idx + 1] +
-                0.114 * prevFrame[idx + 2];
-              diff = Math.abs(lum - prevLum);
-            }
 
             // Cek warna kulit manusia alami (Melanin / Hemoglobin RGB)
             const maxVal = Math.max(r, g, b);
@@ -159,42 +142,15 @@ export default function AbsensiView() {
               if (x <= 23) leftSkinPixels++;
               else rightSkinPixels++;
             }
-
-            // Zona Mata (x: 15..32, y: 13..21)
-            if (y >= 13 && y <= 21 && x >= 15 && x <= 32) {
-              eyePixels++;
-              eyeDiffSum += diff;
-            }
-
-            // Zona Mulut (x: 15..32, y: 26..35)
-            if (y >= 26 && y <= 35 && x >= 15 && x <= 32) {
-              mouthPixels++;
-              mouthDiffSum += diff;
-              // Deteksi gigi / senyum putih-terang
-              if (
-                r > 125 &&
-                g > 125 &&
-                b > 125 &&
-                Math.abs(r - g) < 22 &&
-                Math.abs(g - b) < 22
-              ) {
-                mouthTeethPixels++;
-              }
-            }
           }
         }
 
         const avgLum = lumSum / centerPixels;
         const variance = lumSqSum / centerPixels - avgLum * avgLum;
         const skinRatio = skinPixels / centerPixels;
-        const avgEyeDiff = eyePixels > 0 ? eyeDiffSum / eyePixels : 0;
-        const avgMouthDiff = mouthPixels > 0 ? mouthDiffSum / mouthPixels : 0;
-        const teethRatio = mouthPixels > 0 ? mouthTeethPixels / mouthPixels : 0;
 
         const skinCentroidX = skinPixels > 0 ? skinXSum / skinPixels : 23.5;
         const skinCentroidY = skinPixels > 0 ? skinYSum / skinPixels : 23.5;
-
-        prevFrame = new Uint8ClampedArray(frameData);
 
         // Evaluasi Jarak Wajah:
         // - NO_FACE: tidak ada kulit / gelap / tidak ada kontras
@@ -250,44 +206,39 @@ export default function AbsensiView() {
           return;
         }
 
-        // Jarak sudah OPTIMAL! Evaluasi respon spesifik tantangan aktif:
-        const activeChallenge = livenessChallengeSequence[currentChallengeIndex];
+        // Jarak sudah OPTIMAL! Evaluasi arah gerakan aktif (1 Verifikasi Acak: Kiri, Kanan, Atas, Bawah):
+        const activeChallenge = livenessChallengeSequence[0] || "turnRight";
         let actionDetected = false;
 
-        if (activeChallenge === "blink") {
-          // Uji Kedipan: Butuh perubahan kontras mata yang tajam (avgEyeDiff >= 1.5)
-          // Bengong (mata terbuka statis) menghasilkan avgEyeDiff < 0.8
-          if (avgEyeDiff >= 1.5) {
-            actionDetected = true;
-          }
-        } else if (activeChallenge === "smile") {
-          // Uji Senyum: Gigi terlihat (teethRatio >= 0.05) ATAU gerakan mulut melebar jelas (avgMouthDiff >= 1.5)
-          // Bengong (bibir diam) menghasilkan teethRatio < 0.02 & avgMouthDiff < 0.7
-          if (teethRatio >= 0.05 || avgMouthDiff >= 1.5) {
+        if (activeChallenge === "turnLeft") {
+          // Tengok Kiri: Wajah memutar ke kiri -> centroid bergeser ke kiri (skinCentroidX < 21.8)
+          // ATAU dominansi kulit di sisi kiri kamera meningkat
+          if (skinCentroidX < 21.8 || leftSkinPixels / (rightSkinPixels + 1) >= 1.25) {
             actionDetected = true;
           }
         } else if (activeChallenge === "turnRight") {
-          // Tengok Kanan: Centroid bergeser ke kanan atau dominansi pipi kanan
-          if (skinCentroidX > 25.2 || rightSkinPixels / (leftSkinPixels + 1) > 1.35) {
+          // Tengok Kanan: Wajah memutar ke kanan -> centroid bergeser ke kanan (skinCentroidX > 25.2)
+          // ATAU dominansi kulit di sisi kanan kamera meningkat
+          if (skinCentroidX > 25.2 || rightSkinPixels / (leftSkinPixels + 1) >= 1.25) {
             actionDetected = true;
           }
-        } else if (activeChallenge === "turnLeft") {
-          // Tengok Kiri: Centroid bergeser ke kiri atau dominansi pipi kiri
-          if (skinCentroidX < 21.8 || leftSkinPixels / (rightSkinPixels + 1) > 1.35) {
+        } else if (activeChallenge === "lookUp") {
+          // Tengok Atas / Dongak: Kepala mendongak ke atas -> centroid bergeser ke atas (skinCentroidY < 21.8)
+          if (skinCentroidY < 21.8) {
             actionDetected = true;
           }
-        } else if (activeChallenge === "nod") {
-          // Anggukan: Centroid bergeser ke bawah
+        } else if (activeChallenge === "lookDown") {
+          // Tengok Bawah / Tunduk: Kepala menunduk ke bawah -> centroid bergeser ke bawah (skinCentroidY > 25.2)
           if (skinCentroidY > 25.2) {
             actionDetected = true;
           }
         }
 
         if (actionDetected) {
-          accumulated = Math.min(100, accumulated + 34);
+          accumulated = Math.min(100, accumulated + 35);
         } else {
           // Bengong / tidak melakukan gerakan yang diminta: turunkan progres perlahan
-          accumulated = Math.max(0, accumulated - 5);
+          accumulated = Math.max(0, accumulated - 8);
         }
 
         setAutoStepProgress(accumulated);
@@ -772,29 +723,29 @@ export default function AbsensiView() {
                   );
                 })()}
 
-                {/* 🛡️ POP-UP MODAL KAMERA & INSTRUKSI VERIFIKASI BIOMETRIK BERSIH */}
+                {/* 🛡️ POP-UP KAMERA BERSIH WARNA PUTIH - 1 VERIFIKASI GERAKAN */}
                 {isWebcamActive && (
-                  <div className="fixed inset-0 z-50 bg-[#010804]/90 backdrop-blur-md flex items-center justify-center p-3 sm:p-4 overflow-y-auto animate-in fade-in duration-200">
-                    <div className="relative w-full max-w-md bg-gradient-to-b from-[#02150c] via-[#021008] to-[#010804] border border-emerald-500/50 rounded-3xl p-5 shadow-[0_0_50px_rgba(16,185,129,0.3)] space-y-3.5 my-auto">
+                  <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 overflow-y-auto animate-in fade-in duration-200">
+                    <div className="relative w-full max-w-md bg-white text-gray-900 border border-gray-100 rounded-3xl p-5 sm:p-6 shadow-2xl space-y-4 my-auto">
                       {/* Header Pop-up Bersih */}
-                      <div className="flex items-center justify-between pb-3 border-b border-emerald-900/60">
+                      <div className="flex items-center justify-between pb-3 border-b border-gray-100">
                         <div className="flex items-center gap-2.5">
-                          <div className="w-9 h-9 rounded-xl bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center">
-                            <ScanFace className="w-5 h-5 text-emerald-400" />
+                          <div className="w-10 h-10 rounded-2xl bg-emerald-50 border border-emerald-200 flex items-center justify-center text-emerald-600 shadow-sm">
+                            <ScanFace className="w-5 h-5" />
                           </div>
                           <div>
-                            <h3 className="text-sm font-black text-white tracking-wide uppercase flex items-center gap-2">
+                            <h3 className="text-sm font-black text-gray-900 tracking-wide uppercase flex items-center gap-2">
                               <span>
                                 {pendingAttendanceAction === "CHECK_OUT"
-                                  ? "Check-Out Pulang"
-                                  : "Check-In Masuk"}
+                                  ? "Check-Out (Absen Pulang)"
+                                  : "Check-In (Absen Masuk)"}
                               </span>
-                              <span className="px-2 py-0.5 rounded-full text-[9px] font-black bg-emerald-500 text-black">
-                                BIOMETRIK
+                              <span className="px-2 py-0.5 rounded-full text-[9px] font-black bg-emerald-600 text-white">
+                                1 LANGKAH
                               </span>
                             </h3>
-                            <p className="text-[11px] text-emerald-400/80">
-                              Verifikasi Wajah Anti-Spoofing Level 4
+                            <p className="text-[11px] text-gray-500 font-medium">
+                              Verifikasi Arah Wajah Biometrik
                             </p>
                           </div>
                         </div>
@@ -802,50 +753,28 @@ export default function AbsensiView() {
                         <button
                           type="button"
                           onClick={stopWebcam}
-                          className="w-8 h-8 rounded-full bg-white/10 hover:bg-red-500/30 text-white hover:text-red-300 flex items-center justify-center border border-white/10 hover:border-red-500/40 transition-all cursor-pointer"
+                          className="w-8 h-8 rounded-full bg-gray-100 hover:bg-red-50 text-gray-400 hover:text-red-500 flex items-center justify-center border border-gray-200 transition-all cursor-pointer"
                           title="Tutup / Batal"
                         >
                           <X className="w-4 h-4" />
                         </button>
                       </div>
 
-                      {/* Kartu Instruksi Langkah Saat Ini (Jelas & Kontras Tinggi) */}
-                      <div className="bg-[#011209] border border-emerald-500/40 rounded-2xl p-3.5 space-y-2">
-                        <div className="flex items-center justify-between">
-                          <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-emerald-300 bg-emerald-950/80 px-2 py-0.5 rounded-md border border-emerald-500/40">
-                            Langkah {currentChallengeIndex + 1} dari 3
-                          </span>
-                          <span
-                            className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                              faceDistanceStatus === "OPTIMAL"
-                                ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/40"
-                                : faceDistanceStatus === "TOO_FAR"
-                                ? "bg-orange-500/20 text-orange-300 border border-orange-500/50 animate-pulse"
-                                : faceDistanceStatus === "TOO_CLOSE"
-                                ? "bg-amber-500/20 text-amber-300 border border-amber-500/50"
-                                : "bg-white/10 text-white/50"
-                            }`}
-                          >
-                            {faceDistanceStatus === "OPTIMAL"
-                              ? "✓ Jarak Pas"
-                              : faceDistanceStatus === "TOO_FAR"
-                              ? "🔍 Dekatkan Wajah"
-                              : faceDistanceStatus === "TOO_CLOSE"
-                              ? "⚠️ Mundurkan Wajah"
-                              : "⚠️ Arahkan ke Wajah"}
-                          </span>
-                        </div>
-
-                        <div className="flex items-start gap-3 pt-0.5">
-                          <span className="text-3xl filter drop-shadow">
-                            {challengeDefinitions[livenessChallengeSequence[currentChallengeIndex]]?.icon}
+                      {/* Kartu Petunjuk Gerakan (Jelas & Kontras Tinggi) */}
+                      <div className="bg-emerald-50/80 border-2 border-emerald-300 rounded-2xl p-4 shadow-sm">
+                        <div className="flex items-center gap-3.5">
+                          <span className="text-4xl filter drop-shadow">
+                            {challengeDefinitions[livenessChallengeSequence[0]]?.icon}
                           </span>
                           <div className="flex-1">
-                            <h4 className="text-sm font-extrabold text-white leading-tight">
-                              {challengeDefinitions[livenessChallengeSequence[currentChallengeIndex]]?.instruction}
+                            <span className="text-[10px] font-mono font-black uppercase tracking-wider text-emerald-800 bg-emerald-200/60 px-2 py-0.5 rounded-md inline-block mb-1">
+                              PETUNJUK GERAKAN
+                            </span>
+                            <h4 className="text-base font-extrabold text-gray-900 leading-tight">
+                              {challengeDefinitions[livenessChallengeSequence[0]]?.instruction}
                             </h4>
-                            <p className="text-[11px] text-emerald-300/70 font-mono mt-0.5">
-                              {challengeDefinitions[livenessChallengeSequence[currentChallengeIndex]]?.detail}
+                            <p className="text-xs text-emerald-900/70 font-medium mt-0.5">
+                              {challengeDefinitions[livenessChallengeSequence[0]]?.detail}
                             </p>
                           </div>
                         </div>
@@ -854,16 +783,16 @@ export default function AbsensiView() {
                       {/* Oval Camera Viewport (Ukuran Besar & Rapi) */}
                       <div className="relative text-center py-1">
                         <div
-                          className={`relative mx-auto w-60 h-76 sm:w-68 sm:h-84 rounded-[50%] border-4 transition-all duration-300 overflow-hidden flex flex-col items-center justify-center shadow-2xl ${
+                          className={`relative mx-auto w-60 h-76 sm:w-68 sm:h-84 rounded-[50%] border-4 transition-all duration-300 overflow-hidden flex flex-col items-center justify-center shadow-lg bg-gray-900 ${
                             challengeStepStatus === "spoof_detected"
-                              ? "border-red-500 bg-red-950/40 shadow-red-500/30 animate-pulse ring-4 ring-red-500/20"
+                              ? "border-red-500 ring-4 ring-red-400/30 animate-pulse"
                               : livenessPassed
-                              ? "border-emerald-400 bg-emerald-500/10 shadow-emerald-500/30 ring-4 ring-emerald-500/20"
+                              ? "border-emerald-500 ring-4 ring-emerald-400/40"
                               : faceDistanceStatus === "OPTIMAL"
-                              ? "border-emerald-400 bg-[#010a05] ring-4 ring-emerald-500/40"
+                              ? "border-emerald-500 ring-4 ring-emerald-400/30"
                               : faceDistanceStatus === "TOO_FAR"
-                              ? "border-orange-500 bg-[#010a05] ring-4 ring-orange-500/30 animate-pulse"
-                              : "border-amber-500/60 bg-[#010a05] ring-2 ring-amber-500/20"
+                              ? "border-amber-500 ring-4 ring-amber-400/30 animate-pulse"
+                              : "border-gray-400 ring-2 ring-gray-200"
                           }`}
                         >
                           <video
@@ -874,42 +803,42 @@ export default function AbsensiView() {
                             className="absolute inset-0 w-full h-full object-cover scale-x-[-1]"
                           />
 
-                          {/* Scanline Efek Biometrik */}
+                          {/* Scanline Efek */}
                           <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-transparent via-emerald-400 to-transparent animate-bounce opacity-70" />
 
                           {/* Status Badge di dalam Oval */}
                           <div
                             className={`relative z-10 flex flex-col items-center p-3 w-full h-full ${
                               !livenessPassed && challengeStepStatus !== "spoof_detected"
-                                ? "justify-between py-4 bg-gradient-to-t from-black/85 via-transparent to-black/30"
+                                ? "justify-between py-4 bg-gradient-to-t from-black/80 via-transparent to-black/30"
                                 : "justify-center bg-black/60"
                             }`}
                           >
-                            {/* Top Badge: Indikator Jarak & Deteksi Wajah */}
+                            {/* Top Badge: Indikator Jarak & Posisi Wajah */}
                             {!livenessPassed && challengeStepStatus !== "spoof_detected" && (
                               <div>
                                 {faceDistanceStatus === "OPTIMAL" && (
-                                  <span className="px-3 py-1 rounded-full text-[10px] font-bold bg-emerald-500 text-black shadow-lg flex items-center gap-1.5 backdrop-blur-sm">
-                                    <CheckCircle2 className="w-3.5 h-3.5 text-black" />
-                                    Jarak Pas — Lakukan Gerakan!
+                                  <span className="px-3 py-1 rounded-full text-[10px] font-bold bg-emerald-500 text-white shadow-lg flex items-center gap-1.5 backdrop-blur-sm">
+                                    <CheckCircle2 className="w-3.5 h-3.5 text-white" />
+                                    Wajah Siap — Silakan Tengok!
                                   </span>
                                 )}
                                 {faceDistanceStatus === "TOO_FAR" && (
-                                  <span className="px-3 py-1 rounded-full text-[10px] font-bold bg-orange-500 text-black shadow-lg flex items-center gap-1.5 backdrop-blur-sm animate-bounce">
+                                  <span className="px-3 py-1 rounded-full text-[10px] font-bold bg-amber-500 text-black shadow-lg flex items-center gap-1.5 backdrop-blur-sm animate-bounce">
                                     <ScanFace className="w-3.5 h-3.5 text-black" />
                                     Dekatkan Wajah ke Kamera!
                                   </span>
                                 )}
                                 {faceDistanceStatus === "TOO_CLOSE" && (
-                                  <span className="px-3 py-1 rounded-full text-[10px] font-bold bg-amber-400 text-black shadow-lg flex items-center gap-1.5 backdrop-blur-sm">
+                                  <span className="px-3 py-1 rounded-full text-[10px] font-bold bg-orange-400 text-black shadow-lg flex items-center gap-1.5 backdrop-blur-sm">
                                     <AlertTriangle className="w-3.5 h-3.5 text-black" />
                                     Mundurkan Sedikit Wajah Anda
                                   </span>
                                 )}
                                 {faceDistanceStatus === "NO_FACE" && (
-                                  <span className="px-3 py-1 rounded-full text-[10px] font-bold bg-amber-500 text-black shadow-lg flex items-center gap-1.5 backdrop-blur-sm animate-pulse">
-                                    <AlertTriangle className="w-3.5 h-3.5 text-black" />
-                                    Arahkan ke Wajah Anda
+                                  <span className="px-3 py-1 rounded-full text-[10px] font-bold bg-gray-800 text-white border border-white/20 shadow-lg flex items-center gap-1.5 backdrop-blur-sm animate-pulse">
+                                    <AlertTriangle className="w-3.5 h-3.5 text-amber-400" />
+                                    Posisikan Wajah di Lingkaran
                                   </span>
                                 )}
                               </div>
@@ -927,7 +856,7 @@ export default function AbsensiView() {
                               <div className="space-y-1">
                                 <CheckCircle2 className="w-14 h-14 text-emerald-400 mx-auto drop-shadow-[0_0_12px_rgba(16,185,129,0.8)]" />
                                 <span className="text-sm font-black text-white block">
-                                  Wajah Terverifikasi!
+                                  Gerakan Terverifikasi!
                                 </span>
                                 <span className="text-[11px] font-mono text-emerald-300 block font-bold">
                                   Menyimpan {pendingAttendanceAction === "CHECK_OUT" ? "Check-Out" : "Check-In"}...
@@ -954,76 +883,42 @@ export default function AbsensiView() {
                         </div>
                       </div>
 
-                      {/* 3 Tantangan Steps Tracker */}
-                      <div className="grid grid-cols-3 gap-2">
-                        {livenessChallengeSequence.map((cType, idx) => {
-                          const def = challengeDefinitions[cType];
-                          const isDone = livenessPassed || idx < currentChallengeIndex;
-                          const isCurrent =
-                            !livenessPassed &&
-                            idx === currentChallengeIndex &&
-                            challengeStepStatus !== "spoof_detected";
-                          return (
-                            <div
-                              key={idx}
-                              className={`p-2 rounded-xl border text-center transition-all ${
-                                isDone
-                                  ? "bg-emerald-500/20 border-emerald-500/50 text-white"
-                                  : isCurrent
-                                  ? "bg-amber-500/20 border-amber-500/60 text-amber-200 ring-2 ring-amber-500/30"
-                                  : "bg-white/5 border-white/10 text-white/40"
-                              }`}
-                            >
-                              <div className="text-sm mb-0.5">{isDone ? "✅" : def.icon}</div>
-                              <span className="text-[10px] font-bold block leading-tight truncate">
-                                {def.title.replace("Uji ", "")}
-                              </span>
-                              <span className="text-[8px] font-mono opacity-70 block">
-                                Step {idx + 1}
-                              </span>
-                            </div>
-                          );
-                        })}
-                      </div>
-
                       {/* Progress Bar & Tombol Aksi Pop-up */}
                       {!livenessPassed && challengeStepStatus !== "spoof_detected" && (
                         <div className="space-y-3 pt-1">
                           {/* Progress Bar Gerakan */}
                           <div className="space-y-1">
-                            <div className="flex items-center justify-between text-[11px] font-mono">
-                              <span className="text-emerald-300 font-bold flex items-center gap-1.5">
-                                <Sparkles className="w-3.5 h-3.5 text-emerald-400 animate-spin" />
+                            <div className="flex items-center justify-between text-xs font-mono font-bold text-gray-700">
+                              <span className="flex items-center gap-1.5 text-emerald-700">
+                                <Sparkles className="w-3.5 h-3.5 text-emerald-600 animate-spin" />
                                 {faceDistanceStatus === "OPTIMAL"
-                                  ? `Mendeteksi respon ${challengeDefinitions[livenessChallengeSequence[currentChallengeIndex]]?.title}...`
+                                  ? `Mendeteksi ${challengeDefinitions[livenessChallengeSequence[0]]?.title}...`
                                   : faceDistanceStatus === "TOO_FAR"
-                                  ? "⚠️ Wajah terlalu jauh dari lingkaran. Dekatkan ke kamera!"
-                                  : faceDistanceStatus === "TOO_CLOSE"
-                                  ? "⚠️ Wajah terlalu dekat. Mundurkan sedikit!"
-                                  : "Menunggu wajah terposisikan di oval..."}
+                                  ? "Wajah terlalu jauh, silakan dekatkan!"
+                                  : "Posisikan wajah di lingkaran..."}
                               </span>
-                              <span className="text-white font-extrabold">{autoStepProgress}%</span>
+                              <span className="text-gray-900">{autoStepProgress}%</span>
                             </div>
-                            <div className="w-full h-2.5 rounded-full bg-black/80 overflow-hidden border border-emerald-500/30">
+                            <div className="w-full h-2.5 rounded-full bg-gray-100 overflow-hidden border border-gray-200">
                               <div
                                 className={`h-full transition-all duration-200 ${
                                   faceDistanceStatus === "OPTIMAL"
-                                    ? "bg-gradient-to-r from-emerald-500 to-teal-300"
-                                    : "bg-white/20"
+                                    ? "bg-gradient-to-r from-emerald-500 to-teal-500"
+                                    : "bg-gray-300"
                                 }`}
                                 style={{ width: `${autoStepProgress}%` }}
                               />
                             </div>
                           </div>
 
-                          {/* Tombol Aksi */}
+                          {/* Tombol Aksi Pop-up */}
                           <div className="grid grid-cols-2 gap-2.5 pt-1">
                             <button
                               type="button"
                               onClick={stopWebcam}
-                              className="py-2.5 px-4 rounded-xl text-xs font-bold border border-red-500/40 bg-red-500/10 text-red-300 hover:bg-red-500/20 transition-all cursor-pointer flex items-center justify-center gap-1.5"
+                              className="py-3 px-4 rounded-xl text-xs font-bold border border-gray-300 bg-gray-50 text-gray-700 hover:bg-gray-100 transition-all cursor-pointer flex items-center justify-center gap-1.5"
                             >
-                              <VideoOff className="w-3.5 h-3.5" />
+                              <VideoOff className="w-3.5 h-3.5 text-gray-500" />
                               <span>Batal</span>
                             </button>
 
@@ -1035,10 +930,10 @@ export default function AbsensiView() {
                                   passChallengeRef.current();
                                 }
                               }}
-                              className={`py-2.5 px-4 rounded-xl text-xs font-bold border transition-all flex items-center justify-center gap-1.5 shadow-lg ${
+                              className={`py-3 px-4 rounded-xl text-xs font-bold border transition-all flex items-center justify-center gap-1.5 shadow-md ${
                                 faceDistanceStatus === "OPTIMAL"
-                                  ? "bg-gradient-to-r from-emerald-500 to-teal-400 text-black border-emerald-300 hover:brightness-110 active:scale-[0.98] cursor-pointer"
-                                  : "bg-white/5 text-white/30 border-white/10 cursor-not-allowed"
+                                  ? "bg-emerald-600 hover:bg-emerald-500 text-white border-emerald-600 hover:brightness-105 active:scale-[0.98] cursor-pointer shadow-emerald-600/30"
+                                  : "bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed"
                               }`}
                             >
                               <CheckCircle2 className="w-3.5 h-3.5" />
@@ -1046,7 +941,7 @@ export default function AbsensiView() {
                                 {faceDistanceStatus === "TOO_FAR"
                                   ? "Dekatkan Wajah Dulu"
                                   : faceDistanceStatus === "OPTIMAL"
-                                  ? "Lanjut Langkah Ini"
+                                  ? "Konfirmasi Gerakan Ini"
                                   : "Posisikan Wajah"}
                               </span>
                             </button>

@@ -592,11 +592,9 @@ export function useAppProviderValue() {
   const [simulatedDistance, setSimulatedDistance] = useState<number>(14.2);
   const [simulatedFaceScore, setSimulatedFaceScore] = useState<number>(96.4);
 
-  // ─── LEVEL 4 AI ANTI-SPOOFING & MULTI-CHALLENGE LIVENESS STATES ───────────
-  type LivenessChallengeType = "blink" | "smile" | "turnRight" | "turnLeft" | "nod";
+  // ─── LEVEL 4 AI ANTI-SPOOFING & DIRECTIONAL LIVENESS STATES ───────────
+  type LivenessChallengeType = "turnLeft" | "turnRight" | "lookUp" | "lookDown";
   const [livenessChallengeSequence, setLivenessChallengeSequence] = useState<LivenessChallengeType[]>([
-    "blink",
-    "smile",
     "turnRight",
   ]);
   const [currentChallengeIndex, setCurrentChallengeIndex] = useState<number>(0);
@@ -614,48 +612,42 @@ export function useAppProviderValue() {
   const mediaStreamRef = useRef<MediaStream | null>(null);
 
   const challengeDefinitions: Record<LivenessChallengeType, { title: string; instruction: string; icon: string; detail: string }> = {
-    blink: {
-      title: "Uji Kedipan Mata",
-      instruction: "Kedipkan kedua mata Anda secara natural (2x)",
-      icon: "👁️",
-      detail: "Analisis rasio aspek mata (EAR) & mikro-gerakan pupil",
-    },
-    smile: {
-      title: "Uji Senyum Alami",
-      instruction: "Tersenyumlah ke arah kamera hingga bibir melebar",
-      icon: "😊",
-      detail: "Analisis kontur otot zygomaticus & geometri mulut",
+    turnLeft: {
+      title: "Tengok Kiri",
+      instruction: "Tengokkan kepala Anda ke KIRI",
+      icon: "⬅️",
+      detail: "Putar wajah perlahan menghadap ke sisi kiri",
     },
     turnRight: {
-      title: "Uji Kedalaman 3D (Tengok Kanan)",
-      instruction: "Tengokkan kepala Anda perlahan ke arah KANAN",
+      title: "Tengok Kanan",
+      instruction: "Tengokkan kepala Anda ke KANAN",
       icon: "➡️",
-      detail: "Verifikasi rotasi yaw 3D & pergeseran paralaks optik",
+      detail: "Putar wajah perlahan menghadap ke sisi kanan",
     },
-    turnLeft: {
-      title: "Uji Kedalaman 3D (Tengok Kiri)",
-      instruction: "Tengokkan kepala Anda perlahan ke arah KIRI",
-      icon: "⬅️",
-      detail: "Verifikasi rotasi yaw 3D & pergeseran paralaks optik",
+    lookUp: {
+      title: "Tengok Atas",
+      instruction: "Dongakkan kepala / wajah ke ATAS",
+      icon: "⬆️",
+      detail: "Arahkan pandangan dan wajah menghadap ke atas",
     },
-    nod: {
-      title: "Uji Gerak Vertikal (Anggukan)",
-      instruction: "Anggukkan kepala Anda ke bawah perlahan",
-      icon: "↕️",
-      detail: "Analisis pitch aksis z-depth & volumetrik tengkorak",
+    lookDown: {
+      title: "Tengok Bawah",
+      instruction: "Tundukkan kepala / wajah ke BAWAH",
+      icon: "⬇️",
+      detail: "Arahkan pandangan dan wajah menghadap ke bawah",
     },
   };
 
   const startLevel4Liveness = () => {
-    const allChallenges: LivenessChallengeType[] = ["blink", "smile", "turnRight", "turnLeft", "nod"];
-    const shuffled = [...allChallenges].sort(() => 0.5 - Math.random());
-    const selected = shuffled.slice(0, 3);
-    setLivenessChallengeSequence(selected);
+    // 1 verifikasi acak otomatis: Tengok Kiri, Kanan, Atas, atau Bawah
+    const allDirections: LivenessChallengeType[] = ["turnLeft", "turnRight", "lookUp", "lookDown"];
+    const randomPick = allDirections[Math.floor(Math.random() * allDirections.length)];
+    setLivenessChallengeSequence([randomPick]);
     setCurrentChallengeIndex(0);
     setChallengeStepStatus("verifying");
     setSpoofAlertDetails(null);
     setLivenessPassed(false);
-    setAntiSpoofScore(98.5);
+    setAntiSpoofScore(98.8);
   };
 
   const handlePassCurrentChallenge = () => {
