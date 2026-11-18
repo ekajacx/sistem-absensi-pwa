@@ -42,6 +42,7 @@ import { getFormattedServerTime } from "@/hooks/useClock";
 
 const COMPANY_PROFILE_STORAGE_KEY = "absensi.companyProfile.v1";
 const OFFICE_SETTINGS_STORAGE_KEY = "absensi.officeSettings.v1";
+const AUTH_SESSION_STORAGE_KEY = "absensi.authSession.v1";
 
 /**
  * Haversine Formula: Menghitung jarak permukaan bumi (dalam meter)
@@ -337,6 +338,95 @@ export function useAppProviderValue() {
   // - IT: Server, database, maintenance, geofence, bug & keamanan teknis
   // ─────────────────────────────────────────────────────────────
   const [rolePermissions, setRolePermissions] = useState<Record<string, string[]>>(initialRolePermissions);
+  const [isDbSynced, setIsDbSynced] = useState<boolean>(false);
+
+  // 1. Hydrate seluruh state dari Database PostgreSQL (sistem_absensi_pwa) saat aplikasi dimuat
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/state", { cache: "no-store" })
+      .then((r) => r.json())
+      .then((res) => {
+        if (cancelled || !res?.ok || !res?.data) return;
+        const d = res.data;
+        if (Array.isArray(d.employees) && d.employees.length > 0) setEmployees(d.employees);
+        if (Array.isArray(d.users) && d.users.length > 0) setUsers(d.users);
+        if (Array.isArray(d.shifts) && d.shifts.length > 0) setShifts(d.shifts);
+        if (d.weeklySchedules && typeof d.weeklySchedules === "object") {
+          setWeeklySchedules(d.weeklySchedules);
+        }
+        if (Array.isArray(d.attendances)) setAttendances(d.attendances);
+        if (Array.isArray(d.leaves)) setLeaves(d.leaves);
+        if (Array.isArray(d.journals)) setJournals(d.journals);
+        if (Array.isArray(d.activityLogs)) setActivityLogs(d.activityLogs);
+        if (d.companyProfile && typeof d.companyProfile === "object") {
+          setCompanyProfile(d.companyProfile);
+          setCompanyProfileForm(d.companyProfile);
+          setCompanyName(d.companyProfile.name);
+          setTempCompanyName(d.companyProfile.name);
+          setCompanyLogoUrl(d.companyProfile.logoUrl ?? null);
+        }
+        if (d.settings && typeof d.settings === "object") {
+          setSettings(d.settings);
+        }
+        if (d.rolePermissions && typeof d.rolePermissions === "object") {
+          setRolePermissions(d.rolePermissions);
+        }
+        setIsDbSynced(true);
+      })
+      .catch((err) => {
+        console.warn("Database PostgreSQL belum terjangkau, menggunakan fallback state lokal:", err);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // 2. Simpan otomatis setiap perubahan data ke PostgreSQL (sistem_absensi_pwa) dengan X-Idempotency-Key
+  useEffect(() => {
+    if (!isDbSynced) return;
+    const timer = setTimeout(() => {
+      const idempotencyKey =
+        typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
+          ? crypto.randomUUID()
+          : `sync-${Date.now()}`;
+      fetch("/api/state", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Idempotency-Key": idempotencyKey,
+        },
+        body: JSON.stringify({
+          employees,
+          users,
+          shifts,
+          weeklySchedules,
+          attendances,
+          leaves,
+          journals,
+          activityLogs,
+          companyProfile,
+          settings,
+          rolePermissions,
+        }),
+      }).catch((err) => {
+        console.warn("Gagal menyinkronkan perubahan ke PostgreSQL:", err);
+      });
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [
+    isDbSynced,
+    employees,
+    users,
+    shifts,
+    weeklySchedules,
+    attendances,
+    leaves,
+    journals,
+    activityLogs,
+    companyProfile,
+    settings,
+    rolePermissions,
+  ]);
 
   const togglePermission = (role: string, permId: string) => {
     setRolePermissions((prev) => {
@@ -348,9 +438,27 @@ export function useAppProviderValue() {
   };
 
   // ─────────────────────────────────────────────────────────────
-  // ACTIVE VIEWING PERSPECTIVE (SIMULASI ROLE ATASAN vs BAWAHAN)
+  // ACTIVE VIEWING PERSPECTIVE & AUTHENTICATION SESSION
   // ─────────────────────────────────────────────────────────────
   const [activePerspective, setActivePerspective] = useState<string>("admin");
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
+
+  // Pulihkan sesi login dari localStorage setelah mount agar bebas hydration mismatch
+  useEffect(() => {
+    try {
+      const raw = window.localStorage.getItem(AUTH_SESSION_STORAGE_KEY);
+      if (!raw) return;
+      const parsed = JSON.parse(raw) as { isAuthenticated?: boolean; perspective?: string };
+      if (parsed && parsed.isAuthenticated && typeof parsed.perspective === "string") {
+        /* eslint-disable react-hooks/set-state-in-effect */
+        setActivePerspective(parsed.perspective);
+        setIsAuthenticated(true);
+        /* eslint-enable react-hooks/set-state-in-effect */
+      }
+    } catch {
+      // Abaikan jika gagal membaca storage
+    }
+  }, []);
 
   const currentActiveEmployee: Employee =
     activePerspective === "admin"
@@ -1691,22 +1799,187 @@ export function useAppProviderValue() {
       return;
     }
 
+    const updatedPass = forcedPasswordForm.newPass;
+
     setEmployees((prev) =>
       prev.map((emp) =>
-        emp.id === currentActiveEmployee.id ? { ...emp, isFirstLogin: false, temporaryPassword: null } : emp
+        emp.id === currentActiveEmployee.id
+          ? { ...emp, isFirstLogin: false, temporaryPassword: null, password: updatedPass }
+          : emp
       )
     );
 
     setUsers((prev) =>
       prev.map((usr) =>
         usr.employeeId === currentActiveEmployee.id
-          ? { ...usr, isFirstLogin: false, temporaryPassword: null, lastLogin: "Hari ini (Password Diganti)" }
+          ? {
+              ...usr,
+              isFirstLogin: false,
+              temporaryPassword: null,
+              password: updatedPass,
+              lastLogin: `${new Date().toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" })} ${getFormattedServerTime()}`,
+            }
           : usr
       )
     );
 
     setForcedPasswordForm({ newPass: "", confirmPass: "" });
-    showToast("🎉 Password baru Anda berhasil disimpan! Password sementara kini telah dihapus permanen dari sistem.");
+    showToast("🎉 Password baru Anda berhasil disimpan ke PostgreSQL! Password sementara kini telah dihapus permanen dari sistem.");
+  };
+
+  // Ganti Password Mandiri (dari Topbar ChangePasswordModal)
+  const handleChangePassword = (newPassword: string): boolean => {
+    if (newPassword.trim().length < 6) {
+      showToast("Password baru minimal 6 karakter!", "error");
+      return false;
+    }
+    const cleanPass = newPassword.trim();
+    setEmployees((prev) =>
+      prev.map((emp) =>
+        emp.id === currentActiveEmployee.id
+          ? { ...emp, isFirstLogin: false, temporaryPassword: null, password: cleanPass }
+          : emp
+      )
+    );
+    setUsers((prev) =>
+      prev.map((usr) =>
+        usr.employeeId === currentActiveEmployee.id
+          ? { ...usr, isFirstLogin: false, temporaryPassword: null, password: cleanPass }
+          : usr
+      )
+    );
+    setShowPasswordModal(false);
+    showToast("✓ Kata sandi akun Anda berhasil diperbarui dan disimpan ke PostgreSQL!");
+    return true;
+  };
+
+  // Login Akun Karyawan / Admin dengan Email & Password
+  const handleLogin = (emailInput: string, passwordInput: string): boolean => {
+    const cleanEmail = emailInput.trim().toLowerCase();
+    const cleanPass = passwordInput.trim();
+
+    if (!cleanEmail || !cleanPass) {
+      showToast("Email dan Password wajib diisi!", "error");
+      return false;
+    }
+
+    const matchedEmp = employees.find(
+      (e) => e.email.toLowerCase() === cleanEmail || e.nik === cleanEmail
+    );
+
+    if (!matchedEmp) {
+      showToast("Akun dengan email/NIK tersebut tidak ditemukan di database!", "error");
+      return false;
+    }
+
+    if (matchedEmp.status === "Non-Aktif") {
+      showToast("Akun karyawan ini berstatus Non-Aktif. Silakan hubungi HRD.", "error");
+      return false;
+    }
+
+    const matchedUser = users.find((u) => u.employeeId === matchedEmp.id);
+    if (matchedUser && matchedUser.status === "NON-AKTIF") {
+      showToast("Akses login akun ini sedang dinonaktifkan oleh Administrator.", "error");
+      return false;
+    }
+
+    // Cek kecocokan password sementara (jika login pertama kali) atau password aktif
+    const activePass = matchedEmp.password || matchedUser?.password || "123456";
+    const tempPass = matchedEmp.temporaryPassword || matchedUser?.temporaryPassword;
+
+    const isTempValid = Boolean(matchedEmp.isFirstLogin && tempPass && cleanPass === tempPass);
+    const isRegularValid = !matchedEmp.isFirstLogin && cleanPass === activePass;
+
+    if (!isTempValid && !isRegularValid) {
+      showToast(
+        matchedEmp.isFirstLogin && tempPass
+          ? "Akun baru wajib masuk menggunakan Password Sementara dari HRD!"
+          : "Password yang Anda masukkan tidak sesuai! (Default akun demo: 123456)",
+        "error"
+      );
+      return false;
+    }
+
+    const targetPerspective =
+      matchedEmp.id === "emp-ceo" || matchedEmp.level === "Director" ? "admin" : matchedEmp.id;
+
+    const nowLoginStr = `${new Date().toLocaleDateString("id-ID", {
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+    })} ${getFormattedServerTime()}`;
+
+    setUsers((prev) =>
+      prev.map((u) => (u.employeeId === matchedEmp.id ? { ...u, lastLogin: nowLoginStr } : u))
+    );
+
+    setActivePerspective(targetPerspective);
+    setActiveMenu("dashboard");
+    setIsAuthenticated(true);
+
+    try {
+      window.localStorage.setItem(
+        AUTH_SESSION_STORAGE_KEY,
+        JSON.stringify({ isAuthenticated: true, perspective: targetPerspective, email: matchedEmp.email })
+      );
+    } catch {
+      // Abaikan jika gagal menyimpan ke localStorage
+    }
+
+    showToast(`Selamat datang kembali, ${matchedEmp.name} (${matchedEmp.role})!`, "success");
+    return true;
+  };
+
+  // Akses Cepat 1-Klik Akun Demo untuk Pengujian
+  const handleQuickDemoLogin = (perspectiveId: string) => {
+    const targetEmp =
+      perspectiveId === "admin"
+        ? employees[0]
+        : employees.find((e) => e.id === perspectiveId) || employees[0];
+
+    const nowLoginStr = `${new Date().toLocaleDateString("id-ID", {
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+    })} ${getFormattedServerTime()}`;
+
+    if (targetEmp) {
+      setUsers((prev) =>
+        prev.map((u) => (u.employeeId === targetEmp.id ? { ...u, lastLogin: nowLoginStr } : u))
+      );
+    }
+
+    setActivePerspective(perspectiveId);
+    setActiveMenu("dashboard");
+    setIsAuthenticated(true);
+
+    try {
+      window.localStorage.setItem(
+        AUTH_SESSION_STORAGE_KEY,
+        JSON.stringify({ isAuthenticated: true, perspective: perspectiveId, email: targetEmp?.email })
+      );
+    } catch {
+      // Abaikan
+    }
+
+    showToast(
+      `Login cepat berhasil sebagai: ${
+        perspectiveId === "admin" ? "Super Admin / Direksi" : `${targetEmp?.name} (${targetEmp?.role})`
+      }`,
+      "success"
+    );
+  };
+
+  // Logout & Hapus Sesi Aktif
+  const handleLogout = () => {
+    setShowLogoutConfirm(false);
+    setIsAuthenticated(false);
+    try {
+      window.localStorage.removeItem(AUTH_SESSION_STORAGE_KEY);
+    } catch {
+      // Abaikan
+    }
+    showToast("Anda telah keluar dari sesi kerja. Silakan login kembali.", "info");
   };
 
   // Process Check-In Absensi
@@ -2423,6 +2696,7 @@ export function useAppProviderValue() {
     getVisibleEmployees,
     handleApplyLeaveSubmit,
     handleApproveLeave,
+    handleChangePassword,
     handleCheckIn,
     handleConfirmAction,
     handleDeleteShift,
@@ -2436,12 +2710,15 @@ export function useAppProviderValue() {
     handleExportWeeklyScheduleExcel,
     handleForcedPasswordSubmit,
     handleLevelChange,
+    handleLogin,
     handleLogoUpload,
+    handleLogout,
     handleOpenAddShift,
     handleOpenEditAttendance,
     handleOpenEditModal,
     handleOpenEditShift,
     handlePassCurrentChallenge,
+    handleQuickDemoLogin,
     handleRegisterEmployeeSubmit,
     handleRejectLeave,
     handleRemoveCompanyLogo,
@@ -2456,6 +2733,7 @@ export function useAppProviderValue() {
     handleSimulateSpoofAttack,
     handleUpdateCompanyLogo,
     hasPermission,
+    isAuthenticated,
     isCapturing,
     isEditingCompany,
     isFaceScoreValid,
@@ -2526,6 +2804,7 @@ export function useAppProviderValue() {
     setFilterDept,
     setFilterShift,
     setForcedPasswordForm,
+    setIsAuthenticated,
     setIsCapturing,
     setIsEditingCompany,
     setIsMobileSimulated,

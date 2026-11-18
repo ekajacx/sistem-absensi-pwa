@@ -29,6 +29,7 @@ export interface Employee {
   managerId: string | null;
   isFirstLogin: boolean;
   temporaryPassword?: string | null;
+  password?: string;
   registeredDeviceId?: string | null;
   deviceModel?: string | null;
   deviceStatus?: "Bound" | "Unbound";
@@ -119,6 +120,7 @@ export interface SystemUser {
   status: "AKTIF" | "NON-AKTIF";
   isFirstLogin: boolean;
   temporaryPassword?: string | null;
+  password?: string;
   registeredDeviceId?: string | null;
   deviceModel?: string | null;
   deviceStatus?: "Bound" | "Unbound";

@@ -19,10 +19,21 @@ import PengajuanCutiView from "@/components/views/PengajuanCutiView";
 import JurnalKerjaView from "@/components/views/JurnalKerjaView";
 import PengaturanView from "@/components/views/PengaturanView";
 import AuditLogView from "@/components/views/AuditLogView";
+import LoginView from "@/components/views/LoginView";
 import AllModals from "@/components/modals/AllModals";
+import ToastNotification from "@/components/modals/ToastNotification";
 
 function MainApp() {
-  const { activeMenu, hasPermission } = useApp();
+  const { activeMenu, hasPermission, isAuthenticated } = useApp();
+
+  if (!isAuthenticated) {
+    return (
+      <>
+        <LoginView />
+        <ToastNotification />
+      </>
+    );
+  }
 
   return (
     <div className="flex h-screen overflow-hidden bg-[#010804] text-white font-sans selection:bg-emerald-500 selection:text-black">

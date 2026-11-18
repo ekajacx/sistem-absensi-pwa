@@ -1,11 +1,14 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import { useApp } from "@/context/AppContext";
 import { X } from "lucide-react";
 
 export default function ChangePasswordModal() {
-  const { showPasswordModal, setShowPasswordModal, showToast } = useApp();
+  const { showPasswordModal, setShowPasswordModal, handleChangePassword, currentActiveEmployee } = useApp();
+  const [newPass, setNewPass] = useState("");
+  const [confirmPass, setConfirmPass] = useState("");
+  const { showToast } = useApp();
 
   if (!showPasswordModal) return null;
 
@@ -13,7 +16,12 @@ export default function ChangePasswordModal() {
     <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
       <div className="bg-[#021008] border border-emerald-500/40 rounded-3xl p-6 max-w-md w-full shadow-2xl space-y-4">
         <div className="flex justify-between items-center">
-          <h3 className="font-black text-white text-base">Ganti Kata Sandi Akun</h3>
+          <div>
+            <h3 className="font-black text-white text-base">Ganti Kata Sandi Akun</h3>
+            <p className="text-[11px] text-emerald-400 font-semibold">
+              {currentActiveEmployee.name} ({currentActiveEmployee.email})
+            </p>
+          </div>
           <button onClick={() => setShowPasswordModal(false)} className="text-white/60 hover:text-white">
             <X className="w-5 h-5" />
           </button>
@@ -21,18 +29,41 @@ export default function ChangePasswordModal() {
         <form
           onSubmit={(e) => {
             e.preventDefault();
-            setShowPasswordModal(false);
-            showToast("Kata sandi akun Anda berhasil diperbarui!");
+            if (newPass.trim().length < 6) {
+              showToast("Password baru minimal 6 karakter!", "error");
+              return;
+            }
+            if (newPass !== confirmPass) {
+              showToast("Konfirmasi password tidak cocok!", "error");
+              return;
+            }
+            if (handleChangePassword(newPass)) {
+              setNewPass("");
+              setConfirmPass("");
+            }
           }}
           className="space-y-3 text-xs"
         >
           <div>
-            <label className="block text-white/80 font-bold mb-1">Password Baru</label>
+            <label className="block text-white/80 font-bold mb-1">Password Baru (Min. 6 Karakter)</label>
             <input
               type="password"
               required
+              value={newPass}
+              onChange={(e) => setNewPass(e.target.value)}
               placeholder="••••••••"
-              className="w-full bg-[#010804] border border-emerald-900/80 rounded-xl p-2.5 text-white"
+              className="w-full bg-[#010804] border border-emerald-900/80 rounded-xl p-2.5 text-white focus:outline-none focus:border-emerald-400"
+            />
+          </div>
+          <div>
+            <label className="block text-white/80 font-bold mb-1">Konfirmasi Password Baru</label>
+            <input
+              type="password"
+              required
+              value={confirmPass}
+              onChange={(e) => setConfirmPass(e.target.value)}
+              placeholder="Ulangi password baru..."
+              className="w-full bg-[#010804] border border-emerald-900/80 rounded-xl p-2.5 text-white focus:outline-none focus:border-emerald-400"
             />
           </div>
           <div className="pt-2 flex gap-2">

@@ -5,7 +5,7 @@ import { useApp } from "@/context/AppContext";
 import { LogOut } from "lucide-react";
 
 export default function LogoutModal() {
-  const { showLogoutConfirm, setShowLogoutConfirm, showToast } = useApp();
+  const { showLogoutConfirm, setShowLogoutConfirm, handleLogout } = useApp();
 
   if (!showLogoutConfirm) return null;
 
@@ -40,10 +40,7 @@ export default function LogoutModal() {
           </button>
           <button
             type="button"
-            onClick={() => {
-              setShowLogoutConfirm(false);
-              showToast("Anda telah keluar dari sesi kerja.", "info");
-            }}
+            onClick={handleLogout}
             className="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-400 hover:from-amber-400 hover:to-amber-300 text-black font-black text-xs transition-all shadow-lg shadow-amber-500/20 text-center"
           >
             🚪 Ya, Keluar Sistem

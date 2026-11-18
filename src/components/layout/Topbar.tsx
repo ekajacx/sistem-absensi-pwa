@@ -57,12 +57,21 @@ export default function Topbar() {
           <select
             value={activePerspective}
             onChange={(e) => {
-              setActivePerspective(e.target.value);
+              const nextVal = e.target.value;
+              setActivePerspective(nextVal);
+              try {
+                window.localStorage.setItem(
+                  "absensi.authSession.v1",
+                  JSON.stringify({ isAuthenticated: true, perspective: nextVal })
+                );
+              } catch {
+                // Abaikan
+              }
               showToast(
                 `Beralih sudut pandang ke: ${
-                  e.target.value === "admin"
+                  nextVal === "admin"
                     ? "Super Admin / Direksi"
-                    : employees.find((emp) => emp.id === e.target.value)?.name
+                    : employees.find((emp) => emp.id === nextVal)?.name
                 }`
               );
             }}
