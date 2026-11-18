@@ -9,13 +9,11 @@ export default function JurnalKerjaView() {
     currentActiveEmployee,
     handleExportJournalsExcel,
     isStaff,
-    journals,
+    visibleJournals,
     setShowAddJournalModal,
   } = useApp();
 
-  const displayJournals = isStaff
-              ? journals.filter((j) => j.employeeId === currentActiveEmployee.id)
-              : journals;
+  const displayJournals = visibleJournals;
 
             return (
               <div className="space-y-5">

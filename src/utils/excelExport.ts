@@ -39,6 +39,39 @@ export interface ExportToExcelOptions<T> {
 }
 
 /**
+ * Memuat logo (blob/data/http URL) dan menormalkannya ke PNG base64 agar kompatibel dengan Excel.
+ * Mengembalikan null bila logo tidak tersedia atau gagal dimuat (export tetap berjalan tanpa logo).
+ */
+async function loadLogoAsPng(
+  url: string | null | undefined
+): Promise<{ base64: string; width: number; height: number } | null> {
+  if (!url || typeof document === "undefined") return null;
+  try {
+    const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+      const el = new Image();
+      el.onload = () => resolve(el);
+      el.onerror = () => reject(new Error("Logo gagal dimuat"));
+      el.src = url;
+    });
+    const natW = img.naturalWidth || 1;
+    const natH = img.naturalHeight || 1;
+    const scale = Math.min(110 / natW, 72 / natH);
+    const width = Math.max(1, Math.round(natW * scale));
+    const height = Math.max(1, Math.round(natH * scale));
+    const canvas = document.createElement("canvas");
+    canvas.width = width * 2;
+    canvas.height = height * 2;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return null;
+    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+    return { base64: canvas.toDataURL("image/png"), width, height };
+  } catch (err) {
+    console.warn("Logo kop surat dilewati:", err);
+    return null;
+  }
+}
+
+/**
  * Reusable utility to generate a corporate-standard .xlsx file with Dark Forest Emerald identity,
  * Kop Surat, Summary KPIs, zebra striping, proper types, and print-ready A4 settings.
  */
@@ -76,20 +109,30 @@ export async function exportToExcel<T>(options: ExportToExcelOptions<T>): Promis
   const totalCols = Math.max(columns.length, 6);
 
   // ─────────────────────────────────────────────────────────────
-  // 1. KOP SURAT (Rows 1 - 4)
+  // 1. KOP SURAT (Rows 1 - 4) + LOGO
   // ─────────────────────────────────────────────────────────────
+  const logo = await loadLogoAsPng(kopSurat.logoUrl);
+  const textCol = logo ? 3 : 1;
+  if (logo) {
+    const imageId = workbook.addImage({ base64: logo.base64, extension: "png" });
+    worksheet.addImage(imageId, {
+      tl: { col: 0.15, row: 0.1 },
+      ext: { width: logo.width, height: logo.height },
+    });
+  }
+
   // Row 1: Nama Perusahaan
   const row1 = worksheet.getRow(1);
   row1.height = 24;
-  row1.getCell(1).value = (kopSurat.companyName || "ABSENKU").toUpperCase() + " • WORKFORCE SYSTEM";
-  row1.getCell(1).font = {
+  row1.getCell(textCol).value = (kopSurat.companyName || "ABSENKU").toUpperCase();
+  row1.getCell(textCol).font = {
     name: "Calibri",
     size: 15,
     bold: true,
     color: { argb: "FF022C19" }, // Dark Forest Emerald
   };
-  row1.getCell(1).alignment = { vertical: "middle", horizontal: "left" };
-  worksheet.mergeCells(1, 1, 1, totalCols);
+  row1.getCell(textCol).alignment = { vertical: "middle", horizontal: "left" };
+  worksheet.mergeCells(1, textCol, 1, totalCols);
 
   // Row 2: Alamat & Kontak Perusahaan (Zona Waktu WITA)
   const row2 = worksheet.getRow(2);
@@ -99,27 +142,27 @@ export async function exportToExcel<T>(options: ExportToExcelOptions<T>): Promis
     kopSurat.companyContact || "admin@perusahaan.id",
     "Zona Waktu: WITA (Bali, UTC+8)",
   ].filter(Boolean).join("  |  ");
-  row2.getCell(1).value = addressInfo;
-  row2.getCell(1).font = {
+  row2.getCell(textCol).value = addressInfo;
+  row2.getCell(textCol).font = {
     name: "Calibri",
     size: 9.5,
     color: { argb: "FF4B5563" },
   };
-  row2.getCell(1).alignment = { vertical: "middle", horizontal: "left" };
-  worksheet.mergeCells(2, 1, 2, totalCols);
+  row2.getCell(textCol).alignment = { vertical: "middle", horizontal: "left" };
+  worksheet.mergeCells(2, textCol, 2, totalCols);
 
   // Row 3: Judul Laporan
   const row3 = worksheet.getRow(3);
   row3.height = 22;
-  row3.getCell(1).value = kopSurat.reportTitle.toUpperCase();
-  row3.getCell(1).font = {
+  row3.getCell(textCol).value = kopSurat.reportTitle.toUpperCase();
+  row3.getCell(textCol).font = {
     name: "Calibri",
     size: 12.5,
     bold: true,
     color: { argb: "FF064E3B" },
   };
-  row3.getCell(1).alignment = { vertical: "middle", horizontal: "left" };
-  worksheet.mergeCells(3, 1, 3, totalCols);
+  row3.getCell(textCol).alignment = { vertical: "middle", horizontal: "left" };
+  worksheet.mergeCells(3, textCol, 3, totalCols);
 
   // Row 4: Periode & Metadata Ekspor
   const row4 = worksheet.getRow(4);
@@ -130,15 +173,15 @@ export async function exportToExcel<T>(options: ExportToExcelOptions<T>): Promis
   if (kopSurat.exportedBy) metaParts.push(`Oleh: ${kopSurat.exportedBy}`);
   metaParts.push(`Total Data: ${data.length} Baris`);
 
-  row4.getCell(1).value = metaParts.join("   •   ");
-  row4.getCell(1).font = {
+  row4.getCell(textCol).value = metaParts.join("   •   ");
+  row4.getCell(textCol).font = {
     name: "Calibri",
     size: 9,
     italic: true,
     color: { argb: "FF6B7280" },
   };
-  row4.getCell(1).alignment = { vertical: "middle", horizontal: "left" };
-  worksheet.mergeCells(4, 1, 4, totalCols);
+  row4.getCell(textCol).alignment = { vertical: "middle", horizontal: "left" };
+  worksheet.mergeCells(4, textCol, 4, totalCols);
 
   // Bottom border untuk Kop Surat (pemisah garis ganda)
   for (let c = 1; c <= totalCols; c++) {
@@ -288,11 +331,14 @@ export async function exportToExcel<T>(options: ExportToExcelOptions<T>): Promis
       // Soft Status Badges dalam Cell Excel
       if (col.key === "status" && typeof rawVal === "string") {
         const valUpper = rawVal.toUpperCase();
+        // "NON-AKTIF" / "TIDAK AKTIF" mengandung kata AKTIF, jadi harus dikecualikan dari warna hijau
+        const isInactive = valUpper.includes("NON-AKTIF") || valUpper.includes("NONAKTIF") || valUpper.includes("TIDAK AKTIF");
         if (
-          valUpper.includes("APPROVED") ||
+          !isInactive &&
+          (valUpper.includes("APPROVED") ||
           valUpper.includes("TEPAT WAKTU") ||
           valUpper.includes("DISETUJUI") ||
-          valUpper.includes("AKTIF")
+          valUpper.includes("AKTIF"))
         ) {
           cell.fill = {
             type: "pattern",
@@ -313,7 +359,7 @@ export async function exportToExcel<T>(options: ExportToExcelOptions<T>): Promis
           cell.font = { name: "Calibri", size: 9.5, bold: true, color: { argb: "FF92400E" } };
         } else if (
           valUpper.includes("DITOLAK") ||
-          valUpper.includes("NON-AKTIF") ||
+          isInactive ||
           valUpper.includes("ABSEN")
         ) {
           cell.fill = {
@@ -337,7 +383,7 @@ export async function exportToExcel<T>(options: ExportToExcelOptions<T>): Promis
   signDateRow.height = 18;
   const colSignRight = Math.max(columns.length - 1, 4);
 
-  signDateRow.getCell(colSignRight).value = `Denpasar/Bali, ${new Date().toLocaleDateString("id-ID", {
+  signDateRow.getCell(colSignRight).value = `${new Date().toLocaleDateString("id-ID", {
     day: "numeric",
     month: "long",
     year: "numeric",

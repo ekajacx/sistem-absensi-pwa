@@ -2,7 +2,7 @@
 
 import React from "react";
 import { useApp } from "@/context/AppContext";
-import { ChevronDown, ChevronRight, Pencil, Check, X, Upload } from "lucide-react";
+import { ChevronDown, ChevronRight, Pencil, X, Upload } from "lucide-react";
 
 export default function Sidebar() {
   const {
@@ -12,30 +12,37 @@ export default function Sidebar() {
     companyName,
     currentActiveEmployee,
     currentMeta,
-    fileInputRef,
     hasPermission,
-    isEditingCompany,
     isMobileSidebarOpen,
     isStaff,
-    journals,
     myLeaves,
     openSections,
     pendingSubordinateCount,
-    saveCompanyName,
     setActiveMenu,
     setFilterDept,
     setFilterShift,
-    setIsEditingCompany,
+    setPengaturanTab,
+    showToast,
     setIsMobileSidebarOpen,
-    setTempCompanyName,
     shifts,
     standardDepartments,
-    tempCompanyName,
     toggleSection,
     users,
     visibleAttendances,
     visibleEmployees,
+    visibleJournals,
   } = useApp();
+
+  // Satu-satunya sumber edit identitas perusahaan: tab Profil Perusahaan di Pengaturan (butuh izin menu_settings)
+  const openCompanyProfileSettings = () => {
+    if (!hasPermission("menu_settings")) {
+      showToast("Hanya role dengan izin Pengaturan yang dapat mengubah profil perusahaan.", "error");
+      return;
+    }
+    setPengaturanTab("perusahaan");
+    setActiveMenu("pengaturan");
+    setIsMobileSidebarOpen(false);
+  };
 
   return (
     <>
@@ -58,8 +65,8 @@ export default function Sidebar() {
           <div className="group relative p-2.5 rounded-2xl bg-[#03140d]/70 border border-emerald-900/40 hover:border-emerald-500/40 transition-all mb-6">
             <div className="flex items-center gap-3">
               <div
-                onClick={() => fileInputRef.current?.click()}
-                title="Klik untuk ganti logo perusahaan"
+                onClick={openCompanyProfileSettings}
+                title="Klik untuk ubah logo di Profil Perusahaan"
                 className="relative w-11 h-11 rounded-2xl bg-gradient-to-tr from-teal-400 via-emerald-400 to-emerald-600 flex items-center justify-center font-black text-black text-sm shadow-lg shadow-black cursor-pointer overflow-hidden flex-shrink-0 group/logo ring-1 ring-emerald-300/40 hover:brightness-110 transition-all"
               >
                 {companyLogoUrl ? (
@@ -74,24 +81,6 @@ export default function Sidebar() {
               </div>
 
               <div className="flex-1 min-w-0">
-                {isEditingCompany ? (
-                  <div className="flex items-center gap-1.5">
-                    <input
-                      type="text"
-                      value={tempCompanyName}
-                      onChange={(e) => setTempCompanyName(e.target.value)}
-                      onKeyDown={(e) => e.key === "Enter" && saveCompanyName()}
-                      className="w-full bg-[#020b06] border border-emerald-500/50 rounded-lg px-2 py-1 text-xs text-white focus:outline-none"
-                      autoFocus
-                    />
-                    <button onClick={saveCompanyName} className="p-1 rounded bg-emerald-500 text-black hover:bg-emerald-400">
-                      <Check className="w-3 h-3" />
-                    </button>
-                    <button onClick={() => setIsEditingCompany(false)} className="p-1 rounded bg-red-950 text-red-300 hover:bg-red-900">
-                      <X className="w-3 h-3" />
-                    </button>
-                  </div>
-                ) : (
                   <div className="flex items-center justify-between">
                     <div className="overflow-hidden">
                       <div className="flex items-center gap-1.5">
@@ -99,11 +88,8 @@ export default function Sidebar() {
                           {companyName}
                         </h1>
                         <button
-                          onClick={() => {
-                            setTempCompanyName(companyName);
-                            setIsEditingCompany(true);
-                          }}
-                          title="Klik untuk ubah nama perusahaan"
+                          onClick={openCompanyProfileSettings}
+                          title="Klik untuk ubah profil perusahaan"
                           className="opacity-0 group-hover:opacity-100 text-emerald-400 hover:text-white p-1 rounded-md transition-opacity"
                         >
                           <Pencil className="w-3 h-3" />
@@ -124,7 +110,6 @@ export default function Sidebar() {
                       <X className="w-4 h-4" />
                     </button>
                   </div>
-                )}
               </div>
             </div>
           </div>
@@ -283,7 +268,7 @@ export default function Sidebar() {
                       id: "jurnal-kerja",
                       label: "Jurnal Kerja",
                       icon: "📝",
-                      badge: isStaff ? journals.filter((j) => j.employeeId === currentActiveEmployee.id).length : journals.length,
+                      badge: visibleJournals.length,
                     },
                   ].map((item) => (
                     <button

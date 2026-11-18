@@ -34,7 +34,9 @@ import {
 } from "@/data/initialData";
 import { getFormattedServerTime } from "@/hooks/useClock";
 
-function useAppProviderValue() {
+const COMPANY_PROFILE_STORAGE_KEY = "absensi.companyProfile.v1";
+
+export function useAppProviderValue() {
 // Navigation State
   const [activeMenu, setActiveMenu] = useState<string>("dashboard");
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState<boolean>(false);
@@ -50,6 +52,40 @@ function useAppProviderValue() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const companyLogoInputRef = useRef<HTMLInputElement>(null);
 
+  // Persistensi Profil Perusahaan (localStorage) - dimuat setelah mount agar aman dari hydration mismatch
+  useEffect(() => {
+    let cancelled = false;
+    Promise.resolve().then(() => {
+      if (cancelled) return;
+      try {
+        const raw = window.localStorage.getItem(COMPANY_PROFILE_STORAGE_KEY);
+        if (!raw) return;
+        const parsed: unknown = JSON.parse(raw);
+        if (typeof parsed !== "object" || parsed === null) return;
+        const p = parsed as Partial<CompanyProfile>;
+        if (typeof p.name !== "string" || !p.name.trim()) return;
+        const restored: CompanyProfile = {
+          name: p.name,
+          address: typeof p.address === "string" ? p.address : "",
+          phone: typeof p.phone === "string" ? p.phone : "",
+          email: typeof p.email === "string" ? p.email : "",
+          logoUrl: typeof p.logoUrl === "string" && p.logoUrl.startsWith("data:image/") ? p.logoUrl : null,
+        };
+        setCompanyProfile(restored);
+        setCompanyProfileForm(restored);
+        setCompanyName(restored.name);
+        setTempCompanyName(restored.name);
+        setCompanyLogoUrl(restored.logoUrl);
+      } catch (err) {
+        console.warn("Gagal memuat profil perusahaan tersimpan:", err);
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // Simpan = satu-satunya titik yang menerapkan perubahan (teks + logo) ke sidebar, Kop Surat Excel, dan penyimpanan.
   const handleSaveCompanyProfile = () => {
     if (!companyProfileForm.name.trim()) {
       showToast("Nama perusahaan tidak boleh kosong!", "error");
@@ -62,45 +98,73 @@ function useAppProviderValue() {
       phone: companyProfileForm.phone.trim(),
       email: companyProfileForm.email.trim(),
     };
+    try {
+      window.localStorage.setItem(COMPANY_PROFILE_STORAGE_KEY, JSON.stringify(updated));
+    } catch (err) {
+      console.error("Gagal menyimpan profil perusahaan:", err);
+      showToast("Gagal menyimpan permanen (penyimpanan browser penuh/ditolak).", "error");
+      return;
+    }
     setCompanyProfile(updated);
+    setCompanyProfileForm(updated);
     setCompanyName(updated.name);
     setTempCompanyName(updated.name);
-    if (updated.logoUrl !== companyLogoUrl) {
-      setCompanyLogoUrl(updated.logoUrl);
-    }
-    showToast("✓ Informasi profil perusahaan & Kop Surat berhasil diperbarui!", "success");
+    setCompanyLogoUrl(updated.logoUrl);
+    showToast("✓ Informasi profil perusahaan & Kop Surat berhasil disimpan!", "success");
   };
 
+  // Logo hanya mengubah draft form (belum berlaku sebelum Simpan). Disimpan sebagai data URL (persisten, bukan blob:).
   const handleUpdateCompanyLogo = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      if (companyProfileForm.logoUrl && companyProfileForm.logoUrl.startsWith("blob:")) {
-        try {
-          URL.revokeObjectURL(companyProfileForm.logoUrl);
-        } catch (err) {
-          console.warn("Failed to revoke previous company logo URL:", err);
-        }
-      }
-      const url = URL.createObjectURL(file);
-      setCompanyProfileForm((prev) => ({ ...prev, logoUrl: url }));
-      setCompanyProfile((prev) => ({ ...prev, logoUrl: url }));
-      setCompanyLogoUrl(url);
-      showToast("Logo perusahaan berhasil diunggah!");
+    const input = e.target;
+    const file = input.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      showToast("File logo harus berupa gambar (PNG/JPEG/WebP/SVG)!", "error");
+      input.value = "";
+      return;
     }
+    if (file.size > 3 * 1024 * 1024) {
+      showToast("Ukuran logo maksimal 3 MB!", "error");
+      input.value = "";
+      return;
+    }
+    const reader = new FileReader();
+    reader.onerror = () => showToast("Gagal membaca file logo!", "error");
+    reader.onload = () => {
+      const src = typeof reader.result === "string" ? reader.result : null;
+      if (!src) {
+        showToast("Gagal membaca file logo!", "error");
+        return;
+      }
+      const img = new Image();
+      img.onerror = () => showToast("File gambar logo tidak valid!", "error");
+      img.onload = () => {
+        const maxSide = 256;
+        const scale = Math.min(1, maxSide / Math.max(img.naturalWidth || 1, img.naturalHeight || 1));
+        const w = Math.max(1, Math.round((img.naturalWidth || 1) * scale));
+        const h = Math.max(1, Math.round((img.naturalHeight || 1) * scale));
+        const canvas = document.createElement("canvas");
+        canvas.width = w;
+        canvas.height = h;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) {
+          showToast("Browser tidak mendukung pemrosesan logo!", "error");
+          return;
+        }
+        ctx.drawImage(img, 0, 0, w, h);
+        const dataUrl = canvas.toDataURL("image/png");
+        setCompanyProfileForm((prev) => ({ ...prev, logoUrl: dataUrl }));
+        showToast("Logo dipilih. Klik 'Simpan' untuk menerapkan.", "info");
+      };
+      img.src = src;
+    };
+    reader.readAsDataURL(file);
+    input.value = "";
   };
 
   const handleRemoveCompanyLogo = () => {
-    if (companyProfileForm.logoUrl && companyProfileForm.logoUrl.startsWith("blob:")) {
-      try {
-        URL.revokeObjectURL(companyProfileForm.logoUrl);
-      } catch (err) {
-        console.warn("Failed to revoke company logo URL:", err);
-      }
-    }
     setCompanyProfileForm((prev) => ({ ...prev, logoUrl: null }));
-    setCompanyProfile((prev) => ({ ...prev, logoUrl: null }));
-    setCompanyLogoUrl(null);
-    showToast("Logo perusahaan telah dihapus.");
+    showToast("Logo dihapus dari draft. Klik 'Simpan' untuk menerapkan.", "info");
   };
 
   // Toast Notification State
@@ -298,6 +362,10 @@ function useAppProviderValue() {
   };
 
   const visibleEmployees = getVisibleEmployees();
+
+  // Jurnal Kerja yang boleh dilihat mengikuti cakupan RBAC direktori karyawan (Staff: diri sendiri, Supervisor: departemen, Admin/GM/HR: semua)
+  const visibleJournalEmployeeIds = new Set(visibleEmployees.map((e) => e.id));
+  const visibleJournals = journals.filter((j) => visibleJournalEmployeeIds.has(j.employeeId));
   const directSuperior = getDirectSuperior(currentActiveEmployee);
   const directSubordinates = getDirectSubordinates(currentActiveEmployee.id);
 
@@ -1657,7 +1725,7 @@ function useAppProviderValue() {
       timeZone: "Asia/Makassar",
     }),
     exportedBy: currentActiveEmployee.name || "HRD Administrator",
-    logoUrl: companyProfile.logoUrl || companyLogoUrl,
+    logoUrl: companyProfile.logoUrl,
   });
 
   // 1. Ekspor Rekap Kehadiran
@@ -2014,9 +2082,7 @@ function useAppProviderValue() {
 
   // 6. Ekspor Jurnal Kerja Harian
   const handleExportJournalsExcel = async () => {
-    const targetJournals = isStaff
-      ? journals.filter((j) => j.employeeId === currentActiveEmployee.id)
-      : journals;
+    const targetJournals = visibleJournals;
 
     if (targetJournals.length === 0) {
       showToast("Tidak ada data jurnal kerja untuk diekspor!", "error");
@@ -2337,6 +2403,7 @@ function useAppProviderValue() {
     videoRef,
     visibleAttendances,
     visibleEmployees,
+    visibleJournals,
     weeklySchedules,
   };
 }
